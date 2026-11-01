@@ -10,17 +10,18 @@ import android.graphics.RectF
 import android.graphics.Typeface
 import android.util.AttributeSet
 import android.view.View
-import com.sdwinnie.airgesture.engine.HandGeometry
 import com.sdwinnie.airgesture.input.RadialAppSlotManager
+import com.sdwinnie.airgesture.model.HudThemeColor
 import com.sdwinnie.airgesture.model.RadialAppSlot
 import kotlin.math.cos
 import kotlin.math.sin
 
 /**
- * 360-Degree 15-App Radial Pie Menu summoned by the Fist Gesture (ท่ากำมือ).
- * - Renders 15 circular app shortcuts spaced at 24° intervals around the center hub.
- * - Highlights the segment targeted by the user's Wrist-to-Palm angle vector.
- * - Releasing the fist launches the focused app.
+ * On-Screen 360-Degree Circular App Selector Wheel (v3.0).
+ * - Renders directly centered on screen (via AccessibilityScreenOverlay) and inside the App Preview!
+ * - Supports configurable 6, 8, 12, or 15 circular app slices with app icons + app labels.
+ * - Renders a live Spatial Virtual Joystick Cursor Dot + Center Safe Cancel Zone so humans can
+ *   effortlessly pick any app by sliding their hand slightly in any direction without twisting their wrist.
  */
 class RadialAppSelectorView @JvmOverloads constructor(
     context: Context,
@@ -28,83 +29,96 @@ class RadialAppSelectorView @JvmOverloads constructor(
 ) : View(context, attrs) {
 
     private var slotManager: RadialAppSlotManager? = null
-
-    fun attachSlotManager(manager: RadialAppSlotManager) {
-        slotManager = manager
-        refreshSlots()
-    }
+    private var themeColor: HudThemeColor = HudThemeColor.CYBER_CYAN
+    private var activeSlotCount: Int = 8
 
     private val density = resources.displayMetrics.density
     private fun dp(v: Float): Float = v * density
 
-    private val defaultWheelSizePx = dp(308f).toInt()
-    private val iconPx = dp(32f).toInt().coerceAtLeast(48)
+    private val defaultWheelSizePx = dp(332f).toInt()
+    private val iconPx = dp(36f).toInt().coerceAtLeast(56)
 
     private var slots: List<RadialAppSlot> = emptyList()
-    private var slotIcons: Array<Bitmap?> = arrayOfNulls(HandGeometry.RADIAL_SLOTS)
+    private var slotIcons: Array<Bitmap?> = emptyArray()
 
     private var currentAngleDeg: Float = 0f
     private var selectedSlotIndex: Int = 0
+    private var cursorNormX: Float = 0f
+    private var cursorNormY: Float = 0f
+    private var inCancelZone: Boolean = false
 
     private val outerArcRect = RectF()
     private val innerArcRect = RectF()
     private val iconDstRect = RectF()
+    private val centerIconRect = RectF()
     private val wedgePath = Path()
 
     private val ringBgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.FILL
-        color = Color.parseColor("#EB0B101B")
+        color = Color.parseColor("#F0080D18")
     }
 
     private val ringStrokePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
-        strokeWidth = dp(1.5f)
-        color = Color.parseColor("#2E3E5C")
+        strokeWidth = dp(2.0f)
+        color = Color.parseColor("#2B3D5E")
     }
 
     private val activeWedgePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.FILL
-        color = Color.parseColor("#4D00E5FF")
+        color = Color.parseColor("#5200E5FF")
     }
 
     private val activeWedgeBorderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
-        strokeWidth = dp(2.0f)
+        strokeWidth = dp(2.2f)
         color = Color.parseColor("#00E5FF")
     }
 
     private val dividerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
         strokeWidth = dp(1.0f)
-        color = Color.parseColor("#223049")
+        color = Color.parseColor("#1E2C45")
     }
 
     private val badgeBgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.FILL
-        color = Color.parseColor("#182236")
+        color = Color.parseColor("#162136")
     }
 
     private val hubBgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.FILL
-        color = Color.parseColor("#F5080C14")
+        color = Color.parseColor("#FA060A12")
     }
 
-    private val pointerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+    private val joystickBeamPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
-        strokeWidth = dp(2.8f)
+        strokeWidth = dp(2.6f)
         strokeCap = Paint.Cap.ROUND
         color = Color.parseColor("#00E676")
     }
 
+    private val cursorDotPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.FILL
+        color = Color.parseColor("#00E676")
+    }
+
+    private val sliceLabelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.parseColor("#D5E3FA")
+        textSize = dp(9.5f)
+        textAlign = Paint.Align.CENTER
+        typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+    }
+
     private val centerTitlePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.parseColor("#FFFFFF")
-        textSize = dp(13.0f)
+        color = Color.WHITE
+        textSize = dp(13.5f)
         textAlign = Paint.Align.CENTER
         typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
     }
 
     private val centerSubPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.parseColor("#8FA3C0")
+        color = Color.parseColor("#93A8CA")
         textSize = dp(10.0f)
         textAlign = Paint.Align.CENTER
     }
@@ -116,24 +130,54 @@ class RadialAppSelectorView @JvmOverloads constructor(
         typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
     }
 
-    fun refreshSlots() {
+    fun attachSlotManager(manager: RadialAppSlotManager, slotCount: Int = activeSlotCount) {
+        slotManager = manager
+        activeSlotCount = slotCount.coerceIn(6, 15)
+        refreshSlots(activeSlotCount)
+    }
+
+    fun applyThemeColor(theme: HudThemeColor) {
+        themeColor = theme
+        val primary = Color.parseColor(theme.primaryHex)
+        val secondary = Color.parseColor(theme.secondaryHex)
+        activeWedgeBorderPaint.color = primary
+        activeWedgePaint.color = Color.argb(78, Color.red(primary), Color.green(primary), Color.blue(primary))
+        monogramPaint.color = primary
+        joystickBeamPaint.color = secondary
+        cursorDotPaint.color = secondary
+        postInvalidateOnAnimation()
+    }
+
+    fun refreshSlots(slotCount: Int = activeSlotCount) {
+        activeSlotCount = slotCount.coerceIn(6, 15)
         val mgr = slotManager ?: return
-        val loaded = mgr.loadResolvedSlots()
+        val loaded = mgr.loadResolvedSlots(activeSlotCount)
         slots = loaded
-        val icons = arrayOfNulls<Bitmap>(HandGeometry.RADIAL_SLOTS)
+        val icons = arrayOfNulls<Bitmap>(loaded.size)
         for (i in loaded.indices) {
             icons[i] = mgr.getCachedAppIcon(loaded[i].packageName, iconPx)
         }
         slotIcons = icons
+        selectedSlotIndex = selectedSlotIndex.coerceIn(0, (loaded.size - 1).coerceAtLeast(0))
         invalidate()
     }
 
-    fun updateSelection(angleDegrees: Float, selectedSlot: Int) {
-        if (slots.isEmpty()) {
-            refreshSlots()
+    fun updateSelection(
+        angleDegrees: Float,
+        selectedSlot: Int,
+        totalSlots: Int = activeSlotCount,
+        normCursorX: Float = 0f,
+        normCursorY: Float = 0f,
+        cancelZone: Boolean = false
+    ) {
+        if (slots.isEmpty() || totalSlots != activeSlotCount) {
+            refreshSlots(totalSlots)
         }
         currentAngleDeg = angleDegrees
-        selectedSlotIndex = selectedSlot.coerceIn(0, HandGeometry.RADIAL_SLOTS - 1)
+        selectedSlotIndex = selectedSlot.coerceIn(0, (activeSlotCount - 1).coerceAtLeast(0))
+        cursorNormX = normCursorX.coerceIn(-1f, 1f)
+        cursorNormY = normCursorY.coerceIn(-1f, 1f)
+        inCancelZone = cancelZone
         postInvalidateOnAnimation()
     }
 
@@ -150,50 +194,59 @@ class RadialAppSelectorView @JvmOverloads constructor(
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
 
+        val count = slots.size.coerceAtLeast(activeSlotCount).coerceIn(6, 15)
+        val sliceDeg = 360.0f / count
         val cx = width * 0.5f
         val cy = height * 0.5f
         val halfMin = minOf(width, height) * 0.5f
-        val outerR = (halfMin - dp(6f)).coerceAtLeast(dp(90f))
-        val innerR = outerR * 0.40f
-        val orbitR = outerR * 0.71f
+        val outerR = (halfMin - dp(6f)).coerceAtLeast(dp(96f))
+        val innerR = outerR * 0.39f
+        val orbitR = outerR * 0.70f
 
         outerArcRect.set(cx - outerR, cy - outerR, cx + outerR, cy + outerR)
         innerArcRect.set(cx - innerR, cy - innerR, cx + innerR, cy + innerR)
 
-        // Outer radial backdrop wheel
+        // Outer Circular Wheel Backdrop + Subtle Halo Border
         canvas.drawCircle(cx, cy, outerR, ringBgPaint)
+        ringStrokePaint.color = Color.parseColor(themeColor.primaryHex)
+        ringStrokePaint.alpha = 115
         canvas.drawCircle(cx, cy, outerR, ringStrokePaint)
 
-        // Draw highlighted 24-degree wedge for selectedSlotIndex
-        // Android Canvas 0° is 3 o'clock; our clockwise 0° is 12 o'clock => canvasAngle = ourAngle - 90°
-        val sliceDeg = HandGeometry.SLICE_DEGREES
-        val activeStartCanvasDeg = (selectedSlotIndex * sliceDeg) - (sliceDeg * 0.5f) - 90.0f
-        wedgePath.reset()
-        wedgePath.arcTo(outerArcRect, activeStartCanvasDeg, sliceDeg, true)
-        wedgePath.arcTo(innerArcRect, activeStartCanvasDeg + sliceDeg, -sliceDeg, false)
-        wedgePath.close()
-        canvas.drawPath(wedgePath, activeWedgePaint)
-        canvas.drawPath(wedgePath, activeWedgeBorderPaint)
+        // Highlighted App Wedge (when outside center Safe Cancel Zone)
+        if (!inCancelZone) {
+            val activeStartCanvasDeg = (selectedSlotIndex * sliceDeg) - (sliceDeg * 0.5f) - 90.0f
+            wedgePath.reset()
+            wedgePath.arcTo(outerArcRect, activeStartCanvasDeg, sliceDeg, true)
+            wedgePath.arcTo(innerArcRect, activeStartCanvasDeg + sliceDeg, -sliceDeg, false)
+            wedgePath.close()
+            canvas.drawPath(wedgePath, activeWedgePaint)
+            canvas.drawPath(wedgePath, activeWedgeBorderPaint)
+        }
 
-        // Draw 15 radial slice dividers & 15 circular app shortcut icons
-        for (i in 0 until HandGeometry.RADIAL_SLOTS) {
+        // Draw Circular App Icons & Short Names around 360° Ring
+        val showSliceLabels = count <= 12
+        for (i in 0 until count) {
             val boundaryDeg = (i * sliceDeg) - (sliceDeg * 0.5f) - 90.0f
             val bRad = Math.toRadians(boundaryDeg.toDouble())
-            val bx0 = cx + (innerR * cos(bRad)).toFloat()
-            val by0 = cy + (innerR * sin(bRad)).toFloat()
-            val bx1 = cx + (outerR * cos(bRad)).toFloat()
-            val by1 = cy + (outerR * sin(bRad)).toFloat()
-            canvas.drawLine(bx0, by0, bx1, by1, dividerPaint)
+            canvas.drawLine(
+                cx + (innerR * cos(bRad)).toFloat(),
+                cy + (innerR * sin(bRad)).toFloat(),
+                cx + (outerR * cos(bRad)).toFloat(),
+                cy + (outerR * sin(bRad)).toFloat(),
+                dividerPaint
+            )
 
             val centerCanvasDeg = (i * sliceDeg) - 90.0f
             val cRad = Math.toRadians(centerCanvasDeg.toDouble())
-            val ix = cx + (orbitR * cos(cRad)).toFloat()
-            val iy = cy + (orbitR * sin(cRad)).toFloat()
+            val iconOrbit = if (showSliceLabels) orbitR - dp(5f) else orbitR
+            val ix = cx + (iconOrbit * cos(cRad)).toFloat()
+            val iy = cy + (iconOrbit * sin(cRad)).toFloat()
 
-            val isFocused = (i == selectedSlotIndex)
-            val badgeR = if (isFocused) dp(21f) else dp(17f)
+            val isFocused = (!inCancelZone && i == selectedSlotIndex)
+            val baseBadgeR = if (count <= 8) dp(21f) else if (count <= 12) dp(18.5f) else dp(16.5f)
+            val badgeR = if (isFocused) baseBadgeR + dp(3.5f) else baseBadgeR
 
-            badgeBgPaint.color = if (isFocused) Color.parseColor("#20344F") else Color.parseColor("#141C2B")
+            badgeBgPaint.color = if (isFocused) Color.parseColor("#223859") else Color.parseColor("#131C2E")
             canvas.drawCircle(ix, iy, badgeR, badgeBgPaint)
             if (isFocused) {
                 canvas.drawCircle(ix, iy, badgeR, activeWedgeBorderPaint)
@@ -205,36 +258,73 @@ class RadialAppSelectorView @JvmOverloads constructor(
                 iconDstRect.set(ix - halfIcon, iy - halfIcon, ix + halfIcon, iy + halfIcon)
                 canvas.drawBitmap(iconBmp, null, iconDstRect, null)
             } else {
-                val label = slots.getOrNull(i)?.label?.take(2)?.uppercase() ?: "${i + 1}"
-                canvas.drawText(label, ix, iy + dp(4f), monogramPaint)
+                val mono = slots.getOrNull(i)?.label?.take(2)?.uppercase() ?: "${i + 1}"
+                canvas.drawText(mono, ix, iy + dp(4f), monogramPaint)
+            }
+
+            if (showSliceLabels) {
+                val rawName = slots.getOrNull(i)?.label.orEmpty()
+                val shortName = if (rawName.length > 8) rawName.take(7) + "…" else rawName
+                sliceLabelPaint.color = if (isFocused) Color.WHITE else Color.parseColor("#B6C8E6")
+                canvas.drawText(shortName, ix, iy + badgeR + dp(10.5f), sliceLabelPaint)
             }
         }
 
-        // Inner hub
+        // Center Hub (Safe Cancel Zone & Focused App Preview)
         canvas.drawCircle(cx, cy, innerR, hubBgPaint)
+        ringStrokePaint.color = if (inCancelZone) Color.parseColor("#546E96") else Color.parseColor(themeColor.primaryHex)
+        ringStrokePaint.alpha = 220
         canvas.drawCircle(cx, cy, innerR, ringStrokePaint)
 
-        // Live Wrist-to-Palm angle needle inside hub
-        val pointerRad = Math.toRadians((currentAngleDeg - 90.0f).toDouble())
-        val px = cx + ((innerR - dp(8f)) * cos(pointerRad)).toFloat()
-        val py = cy + ((innerR - dp(8f)) * sin(pointerRad)).toFloat()
-        canvas.drawLine(cx, cy, px, py, pointerPaint)
-        canvas.drawCircle(px, py, dp(3.5f), activeWedgeBorderPaint)
+        if (inCancelZone) {
+            centerTitlePaint.color = Color.parseColor("#DCE7FA")
+            canvas.drawText("⭕ เลื่อนมือเลือกแอป", cx, cy - dp(4f), centerTitlePaint)
+            centerSubPaint.color = Color.parseColor("#93A8CA")
+            canvas.drawText("แบมือตรงกลาง = ยกเลิก", cx, cy + dp(14f), centerSubPaint)
+        } else {
+            val focusedSlot = slots.getOrNull(selectedSlotIndex)
+            val focusedIcon = slotIcons.getOrNull(selectedSlotIndex)
+            if (focusedIcon != null && !focusedIcon.isRecycled) {
+                val halfCenterIcon = dp(14f)
+                centerIconRect.set(
+                    cx - halfCenterIcon,
+                    cy - innerR * 0.68f,
+                    cx + halfCenterIcon,
+                    cy - innerR * 0.68f + halfCenterIcon * 2f
+                )
+                canvas.drawBitmap(focusedIcon, null, centerIconRect, null)
+            }
 
-        // Focused App Title & Release instruction
-        val focusedSlot = slots.getOrNull(selectedSlotIndex)
-        val appTitle = (focusedSlot?.label ?: "App #${selectedSlotIndex + 1}").let {
-            if (it.length > 13) it.take(12) + "…" else it
+            val appTitle = (focusedSlot?.label ?: "ช่อง #${selectedSlotIndex + 1}").let {
+                if (it.length > 13) it.take(12) + "…" else it
+            }
+            centerTitlePaint.color = Color.WHITE
+            canvas.drawText(appTitle, cx, cy + dp(8f), centerTitlePaint)
+            centerSubPaint.color = Color.parseColor("#00E676")
+            canvas.drawText("แบมือเพื่อเปิดแอป", cx, cy + dp(24f), centerSubPaint)
         }
-        canvas.drawText(appTitle, cx, cy - dp(4f), centerTitlePaint)
-        canvas.drawText(
-            "Slot ${selectedSlotIndex + 1}/15 • ${currentAngleDeg.toInt()}°",
-            cx,
-            cy + dp(12f),
-            centerSubPaint
-        )
-        centerSubPaint.color = Color.parseColor("#00E676")
-        canvas.drawText("คลายมือเพื่อเปิด", cx, cy + dp(25f), centerSubPaint)
-        centerSubPaint.color = Color.parseColor("#8FA3C0")
+
+        // Live Spatial Virtual Joystick Cursor Dot
+        val hasJoystickOffset = (cursorNormX * cursorNormX + cursorNormY * cursorNormY) > 0.002f
+        val dotX: Float
+        val dotY: Float
+        if (hasJoystickOffset) {
+            val maxCursorReach = orbitR * 0.92f
+            dotX = cx + cursorNormX * maxCursorReach
+            dotY = cy + cursorNormY * maxCursorReach
+        } else if (!inCancelZone) {
+            val pRad = Math.toRadians((currentAngleDeg - 90.0f).toDouble())
+            dotX = cx + ((innerR + dp(10f)) * cos(pRad)).toFloat()
+            dotY = cy + ((innerR + dp(10f)) * sin(pRad)).toFloat()
+        } else {
+            dotX = cx
+            dotY = cy
+        }
+
+        if (hasJoystickOffset || !inCancelZone) {
+            canvas.drawLine(cx, cy, dotX, dotY, joystickBeamPaint)
+            canvas.drawCircle(dotX, dotY, dp(5.5f), cursorDotPaint)
+            canvas.drawCircle(dotX, dotY, dp(5.5f), activeWedgeBorderPaint)
+        }
     }
 }

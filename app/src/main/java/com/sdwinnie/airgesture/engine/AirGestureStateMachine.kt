@@ -1,30 +1,38 @@
 package com.sdwinnie.airgesture.engine
 
+import com.sdwinnie.airgesture.model.AirGestureConfig
+import com.sdwinnie.airgesture.model.BackTriggerPreset
 import com.sdwinnie.airgesture.model.GestureEvent
 import com.sdwinnie.airgesture.model.HandFrame
+import com.sdwinnie.airgesture.model.HandPosture
 import com.sdwinnie.airgesture.model.Landmark3D
+import com.sdwinnie.airgesture.model.RadialTriggerPreset
+import com.sdwinnie.airgesture.model.ScrollGesturePreset
+import com.sdwinnie.airgesture.model.VolumeGesturePreset
 import kotlin.math.abs
+import kotlin.math.hypot
 
 /**
- * Intelligent Gesture Finite State Machine for Air Gesture:
- * 1. Open Palm Wake -> Dynamic Island Activation & Idle Sleep
- * 2. Vertical Open-Palm Sweep -> Smooth OS Scroll Up / Down with Return-Stroke Clutch Suppression
- * 3. Horizontal Open-Palm Sweep -> OS Back / Recents / App Switch with Refractory Lock
- * 4. Pinch Gesture (ท่ามือจีบ) -> Schmitt-Trigger Hysteresis Continuous Volume Slider
- * 5. Fist Gesture (ท่ากำมือ) -> 360° 15-App Radial Pie Menu Summon, Angle Tracking & Release-to-Launch
+ * Intelligent Ergonomic Gesture Finite State Machine (v3.0):
+ * - Strictly 1-Hand Locked via [SingleHandLockTracker] (zero 2-hand bouncing).
+ * - Multi-frame posture stability & velocity gating prevents erratic misfires during transitions.
+ * - Supports user-configurable MediaPipe canonical human postures for Scroll, Volume, App Wheel, & Back.
+ * - Uses Spatial Virtual Joystick with Center Safe Cancel Zone for effortless 360° circular app selection.
  */
 class AirGestureStateMachine(
     private val palmWakeFramesRequired: Int = 3,
-    private val islandSleepTimeoutMs: Long = 3000L,
-    private val fistHoldActivationMs: Long = 120L,
+    private val islandSleepTimeoutMs: Long = 3200L,
+    private val radialHoldActivationMs: Long = 150L,
+    private val quickBackHoldActivationMs: Long = 260L,
     private val pinchEnterThreshold: Float = 0.28f,
-    private val pinchExitThreshold: Float = 0.40f,
+    private val pinchExitThreshold: Float = 0.42f,
     private val pinchMinDeltaNormalized: Float = 0.018f,
-    private val verticalSweepSpeedThreshold: Float = 1.55f,
-    private val horizontalSweepSpeedThreshold: Float = 2.05f,
-    private val scrollDispatchCooldownMs: Long = 135L,
-    private val scrollOppositeClutchLockMs: Long = 340L,
-    private val horizontalNavCooldownMs: Long = 560L
+    private val thumbVolumeRepeatIntervalMs: Long = 155L,
+    private val verticalSweepSpeedThreshold: Float = 1.50f,
+    private val horizontalSweepSpeedThreshold: Float = 2.00f,
+    private val scrollDispatchCooldownMs: Long = 140L,
+    private val scrollOppositeClutchLockMs: Long = 360L,
+    private val horizontalNavCooldownMs: Long = 580L
 ) {
     enum class Mode {
         DORMANT,
@@ -42,36 +50,61 @@ class AirGestureStateMachine(
     var activeRadialAngleDeg: Float = 0f
         private set
 
+    var activeRadialCursorX: Float = 0f
+        private set
+
+    var activeRadialCursorY: Float = 0f
+        private set
+
+    var activeRadialInCancelZone: Boolean = true
+        private set
+
+    var currentDetectedPosture: HandPosture = HandPosture.NONE
+        private set
+
+    private val singleHandLock = SingleHandLockTracker()
     private val filterBank = LandmarkBankOneEuroFilter()
 
-    private var consecutivePalmFrames = 0
+    private var consecutiveWakeFrames = 0
     private var lastHandSeenMs = -1L
 
-    // Palm motion history for velocity-normalized directional sweeps
+    // Palm motion history
     private var prevPalmCenter: Landmark3D? = null
     private var prevPalmTimestampMs: Long = -1L
     private var smoothedVxNormalized = 0f
     private var smoothedVyNormalized = 0f
 
-    // Scroll & Horizontal navigation debounce / return-stroke clutch protection
+    // Debounce & clutch timers
     private var lastScrollDispatchMs = -10_000L
     private var lastScrollWasUp: Boolean? = null
     private var lastHorizontalDispatchMs = -10_000L
+    private var quickBackCandidateStartMs = -1L
+    private var quickBackFiredInHold = false
 
-    // Pinch state (ท่ามือจีบ)
-    private var consecutivePinchFrames = 0
-    private var lastPinchAnchorY = 0f
+    // Volume state (Pinch / Victory Slide / Thumbs Up-Down)
+    private var consecutiveVolumeFrames = 0
+    private var volumeExitFrames = 0
+    private var lastVolumeAnchorY = 0f
+    private var lastThumbStepMs = -10_000L
 
-    // Fist state (ท่ากำมือ)
-    private var fistCandidateStartMs = -1L
-    private var fistReleaseFrames = 0
+    // Circular App Wheel state (Spatial Virtual Joystick)
+    private var radialCandidateStartMs = -1L
+    private var radialAnchorCenter: Landmark3D? = null
+    private var radialAnchorScale: Float = 0.14f
+    private var radialEverLeftCancelZone = false
+    private var radialReleaseFrames = 0
 
     fun reset() {
         currentMode = Mode.DORMANT
         activeRadialSlot = -1
         activeRadialAngleDeg = 0f
+        activeRadialCursorX = 0f
+        activeRadialCursorY = 0f
+        activeRadialInCancelZone = true
+        currentDetectedPosture = HandPosture.NONE
+        singleHandLock.reset()
         filterBank.reset()
-        consecutivePalmFrames = 0
+        consecutiveWakeFrames = 0
         lastHandSeenMs = -1L
         prevPalmCenter = null
         prevPalmTimestampMs = -1L
@@ -80,69 +113,122 @@ class AirGestureStateMachine(
         lastScrollDispatchMs = -10_000L
         lastScrollWasUp = null
         lastHorizontalDispatchMs = -10_000L
-        consecutivePinchFrames = 0
-        fistCandidateStartMs = -1L
-        fistReleaseFrames = 0
+        quickBackCandidateStartMs = -1L
+        quickBackFiredInHold = false
+        consecutiveVolumeFrames = 0
+        volumeExitFrames = 0
+        lastThumbStepMs = -10_000L
+        radialCandidateStartMs = -1L
+        radialAnchorCenter = null
+        radialEverLeftCancelZone = false
+        radialReleaseFrames = 0
     }
 
     data class StepOutput(
         val mode: Mode,
         val smoothedFrame: HandFrame?,
+        val posture: HandPosture,
+        val lockedHandLabel: String,
         val events: List<GestureEvent>
     )
 
-    fun process(rawFrame: HandFrame?, nowMs: Long): StepOutput {
+    fun process(
+        rawFrame: HandFrame?,
+        nowMs: Long,
+        config: AirGestureConfig = AirGestureConfig()
+    ): StepOutput {
         val events = mutableListOf<GestureEvent>()
+        val gatedFrame = singleHandLock.filterSingleHand(rawFrame, nowMs, config.handLockMode)
+        val lockedLabel = singleHandLock.lockedSide?.thaiLabel ?: config.handLockMode.displayName.take(14)
 
-        if (rawFrame == null) {
-            consecutivePalmFrames = 0
-            consecutivePinchFrames = 0
-            fistCandidateStartMs = -1L
+        if (gatedFrame == null) {
+            consecutiveWakeFrames = 0
+            consecutiveVolumeFrames = 0
+            radialCandidateStartMs = -1L
+            quickBackCandidateStartMs = -1L
+            quickBackFiredInHold = false
             prevPalmCenter = null
             prevPalmTimestampMs = -1L
             smoothedVxNormalized = 0f
             smoothedVyNormalized = 0f
+            currentDetectedPosture = HandPosture.NONE
 
-            if (currentMode == Mode.PINCH_VOLUME) {
-                events.add(GestureEvent.PinchEnded)
-                currentMode = Mode.PALM_ACTIVE
-            } else if (currentMode == Mode.FIST_RADIAL_MENU) {
-                events.add(GestureEvent.RadialMenuCancelled)
-                activeRadialSlot = -1
-                currentMode = Mode.PALM_ACTIVE
+            // Grace period of 260ms before dropping active modal gestures on a single missed frame
+            val missingDuration = if (lastHandSeenMs > 0L) nowMs - lastHandSeenMs else Long.MAX_VALUE
+            if (missingDuration >= 260L) {
+                if (currentMode == Mode.PINCH_VOLUME) {
+                    events.add(GestureEvent.PinchEnded)
+                    currentMode = Mode.PALM_ACTIVE
+                } else if (currentMode == Mode.FIST_RADIAL_MENU) {
+                    events.add(GestureEvent.RadialMenuCancelled)
+                    activeRadialSlot = -1
+                    radialAnchorCenter = null
+                    currentMode = Mode.PALM_ACTIVE
+                }
             }
 
-            if (currentMode != Mode.DORMANT && lastHandSeenMs > 0L && (nowMs - lastHandSeenMs) >= islandSleepTimeoutMs) {
+            if (currentMode != Mode.DORMANT && lastHandSeenMs > 0L && missingDuration >= islandSleepTimeoutMs) {
                 currentMode = Mode.DORMANT
                 events.add(GestureEvent.SleepDynamicIsland)
             }
-            return StepOutput(currentMode, null, events)
+            return StepOutput(currentMode, null, HandPosture.NONE, lockedLabel, events)
         }
 
         lastHandSeenMs = nowMs
-        val frame = filterBank.filter(rawFrame)
+        val frame = filterBank.filter(gatedFrame)
         val landmarks = frame.landmarks
         val scale = HandGeometry.palmScale(landmarks)
         val palmCenter = HandGeometry.palmCentroid(landmarks)
 
         updateNormalizedVelocity(palmCenter, scale, frame.timestampMs)
+        val posture = HandGeometry.classifyPosture(landmarks, pinchEnterThreshold, scale)
+        currentDetectedPosture = posture
 
         when (currentMode) {
-            Mode.DORMANT -> {
-                handleDormantState(landmarks, scale, frame.timestampMs, events)
-            }
-            Mode.PALM_ACTIVE -> {
-                handlePalmActiveState(landmarks, scale, frame.timestampMs, events)
-            }
-            Mode.PINCH_VOLUME -> {
-                handlePinchVolumeState(landmarks, scale, events)
-            }
-            Mode.FIST_RADIAL_MENU -> {
-                handleFistRadialMenuState(landmarks, scale, events)
-            }
+            Mode.DORMANT -> handleDormantState(landmarks, palmCenter, scale, posture, frame.timestampMs, config, events)
+            Mode.PALM_ACTIVE -> handlePalmActiveState(landmarks, palmCenter, scale, posture, frame.timestampMs, config, events)
+            Mode.PINCH_VOLUME -> handleVolumeState(landmarks, scale, posture, frame.timestampMs, config, events)
+            Mode.FIST_RADIAL_MENU -> handleCircularAppWheelState(landmarks, palmCenter, scale, posture, config, events)
         }
 
-        return StepOutput(currentMode, frame, events)
+        return StepOutput(currentMode, frame, posture, lockedLabel, events)
+    }
+
+    private fun isScrollPostureMatch(posture: HandPosture, preset: ScrollGesturePreset): Boolean {
+        return when (preset) {
+            ScrollGesturePreset.OPEN_PALM_SWEEP -> posture == HandPosture.OPEN_PALM
+            ScrollGesturePreset.ONE_FINGER_POINT -> posture == HandPosture.POINTING_ONE || posture == HandPosture.OPEN_PALM
+            ScrollGesturePreset.VICTORY_TWO_FINGER -> posture == HandPosture.VICTORY_PEACE
+        }
+    }
+
+    private fun isVolumePostureMatch(
+        landmarks: List<Landmark3D>,
+        scale: Float,
+        posture: HandPosture,
+        preset: VolumeGesturePreset,
+        alreadyActive: Boolean
+    ): Boolean {
+        return when (preset) {
+            VolumeGesturePreset.PINCH_OK_SLIDE -> {
+                val thresh = if (alreadyActive) pinchExitThreshold else pinchEnterThreshold
+                HandGeometry.isPinchCandidate(landmarks, thresh, scale)
+            }
+            VolumeGesturePreset.THUMBS_UP_DOWN -> {
+                posture == HandPosture.THUMB_UP || posture == HandPosture.THUMB_DOWN
+            }
+            VolumeGesturePreset.VICTORY_SLIDE -> {
+                posture == HandPosture.VICTORY_PEACE
+            }
+        }
+    }
+
+    private fun isRadialTriggerMatch(posture: HandPosture, preset: RadialTriggerPreset): Boolean {
+        return when (preset) {
+            RadialTriggerPreset.CLOSED_FIST -> posture == HandPosture.CLOSED_FIST
+            RadialTriggerPreset.I_LOVE_YOU_SIGN -> posture == HandPosture.I_LOVE_YOU
+            RadialTriggerPreset.THREE_FINGERS -> posture == HandPosture.THREE_FINGERS
+        }
     }
 
     private fun updateNormalizedVelocity(palmCenter: Landmark3D, scale: Float, timestampMs: Long) {
@@ -156,12 +242,12 @@ class AirGestureStateMachine(
                 smoothedVxNormalized = if (instVx * smoothedVxNormalized < 0f) {
                     0.65f * instVx
                 } else {
-                    0.58f * instVx + 0.42f * smoothedVxNormalized
+                    0.56f * instVx + 0.44f * smoothedVxNormalized
                 }
                 smoothedVyNormalized = if (instVy * smoothedVyNormalized < 0f) {
                     0.65f * instVy
                 } else {
-                    0.58f * instVy + 0.42f * smoothedVyNormalized
+                    0.56f * instVy + 0.44f * smoothedVyNormalized
                 }
             } else {
                 smoothedVxNormalized = 0f
@@ -174,90 +260,119 @@ class AirGestureStateMachine(
 
     private fun handleDormantState(
         landmarks: List<Landmark3D>,
+        palmCenter: Landmark3D,
         scale: Float,
+        posture: HandPosture,
         timestampMs: Long,
+        config: AirGestureConfig,
         events: MutableList<GestureEvent>
     ) {
-        if (HandGeometry.isOpenPalm(landmarks, scale)) {
-            consecutivePalmFrames++
-            if (consecutivePalmFrames >= palmWakeFramesRequired) {
+        if (posture == HandPosture.OPEN_PALM || isScrollPostureMatch(posture, config.scrollPreset)) {
+            consecutiveWakeFrames++
+            if (consecutiveWakeFrames >= palmWakeFramesRequired) {
                 currentMode = Mode.PALM_ACTIVE
-                consecutivePalmFrames = 0
+                consecutiveWakeFrames = 0
                 events.add(GestureEvent.WakeDynamicIsland)
             }
-        } else if (HandGeometry.isFullFist(landmarks, scale)) {
-            // Allow waking straight into Radial Menu if user holds deliberate fist
-            if (fistCandidateStartMs < 0L) {
-                fistCandidateStartMs = timestampMs
-            } else if ((timestampMs - fistCandidateStartMs) >= fistHoldActivationMs) {
-                currentMode = Mode.FIST_RADIAL_MENU
-                fistCandidateStartMs = -1L
-                fistReleaseFrames = 0
+        } else if (isRadialTriggerMatch(posture, config.radialPreset)) {
+            if (radialCandidateStartMs < 0L) {
+                radialCandidateStartMs = timestampMs
+            } else if ((timestampMs - radialCandidateStartMs) >= radialHoldActivationMs) {
                 events.add(GestureEvent.WakeDynamicIsland)
-                val angle = HandGeometry.wristToPalmAngleDegrees(landmarks)
-                val slot = HandGeometry.angleToRadialSlot(angle, -1)
-                activeRadialAngleDeg = angle
-                activeRadialSlot = slot
-                events.add(GestureEvent.RadialMenuSummoned(angle, slot))
+                enterCircularAppWheel(landmarks, palmCenter, scale, config, events)
             }
         } else {
-            consecutivePalmFrames = 0
-            fistCandidateStartMs = -1L
+            consecutiveWakeFrames = 0
+            radialCandidateStartMs = -1L
         }
     }
 
     private fun handlePalmActiveState(
         landmarks: List<Landmark3D>,
+        palmCenter: Landmark3D,
         scale: Float,
+        posture: HandPosture,
         timestampMs: Long,
+        config: AirGestureConfig,
         events: MutableList<GestureEvent>
     ) {
-        // 1. Check Fist Gesture (ท่ากำมือ -> 15-App Radial Selector)
-        if (HandGeometry.isFullFist(landmarks, scale)) {
-            consecutivePinchFrames = 0
-            if (fistCandidateStartMs < 0L) {
-                fistCandidateStartMs = timestampMs
-            } else if ((timestampMs - fistCandidateStartMs) >= fistHoldActivationMs) {
-                currentMode = Mode.FIST_RADIAL_MENU
-                fistCandidateStartMs = -1L
-                fistReleaseFrames = 0
-                val angle = HandGeometry.wristToPalmAngleDegrees(landmarks)
-                val slot = HandGeometry.angleToRadialSlot(angle, -1)
-                activeRadialAngleDeg = angle
-                activeRadialSlot = slot
-                events.add(GestureEvent.RadialMenuSummoned(angle, slot))
+        val wholeHandSpeed = hypot(smoothedVxNormalized, smoothedVyNormalized)
+
+        // 1. Check Circular App Wheel Trigger (steady hand hold prevents accidental trigger during fast swipe)
+        if (isRadialTriggerMatch(posture, config.radialPreset) && wholeHandSpeed < 1.85f) {
+            consecutiveVolumeFrames = 0
+            if (radialCandidateStartMs < 0L) {
+                radialCandidateStartMs = timestampMs
+            } else if ((timestampMs - radialCandidateStartMs) >= radialHoldActivationMs) {
+                enterCircularAppWheel(landmarks, palmCenter, scale, config, events)
                 return
             }
             return
         } else {
-            fistCandidateStartMs = -1L
+            radialCandidateStartMs = -1L
         }
 
-        // 2. Check Pinch Gesture (ท่ามือจีบ -> Volume Control)
-        if (HandGeometry.isPinchCandidate(landmarks, pinchEnterThreshold, scale)) {
-            consecutivePinchFrames++
-            if (consecutivePinchFrames >= 2) {
+        // 2. Check Volume Control Trigger (Pinch OK Slide / Thumbs Up-Down / Victory Slide)
+        if (isVolumePostureMatch(landmarks, scale, posture, config.volumePreset, alreadyActive = false) &&
+            wholeHandSpeed < 1.75f
+        ) {
+            consecutiveVolumeFrames++
+            if (consecutiveVolumeFrames >= 2) {
                 currentMode = Mode.PINCH_VOLUME
-                consecutivePinchFrames = 0
-                lastPinchAnchorY = pinchMidpointY(landmarks)
-                // Emit initial 0-delta modulate so HUD immediately transitions into Volume Pill Slider
-                events.add(GestureEvent.PinchVolumeModulate(0f))
+                consecutiveVolumeFrames = 0
+                volumeExitFrames = 0
+                lastVolumeAnchorY = volumeTrackY(landmarks, config.volumePreset)
+                lastThumbStepMs = timestampMs
+                if (config.volumePreset == VolumeGesturePreset.THUMBS_UP_DOWN) {
+                    val step = if (posture == HandPosture.THUMB_UP) 0.08f else -0.08f
+                    events.add(GestureEvent.PinchVolumeModulate(step))
+                } else {
+                    events.add(GestureEvent.PinchVolumeModulate(0f))
+                }
                 return
             }
             return
         } else {
-            consecutivePinchFrames = 0
+            consecutiveVolumeFrames = 0
         }
 
-        // 3. Open Palm Directional Sweeps (Vertical Scroll & Horizontal Back/Switch)
-        if (!HandGeometry.isOpenPalm(landmarks, scale)) {
+        // 3. Optional Static Quick-Back Posture (Peace Hold Back / ILY Hold Back)
+        val isStaticBackMatch = when (config.backPreset) {
+            BackTriggerPreset.HORIZONTAL_SWIPE -> false
+            BackTriggerPreset.PEACE_HOLD_BACK ->
+                posture == HandPosture.VICTORY_PEACE &&
+                    config.scrollPreset != ScrollGesturePreset.VICTORY_TWO_FINGER &&
+                    config.volumePreset != VolumeGesturePreset.VICTORY_SLIDE
+            BackTriggerPreset.ILY_HOLD_BACK ->
+                posture == HandPosture.I_LOVE_YOU &&
+                    config.radialPreset != RadialTriggerPreset.I_LOVE_YOU_SIGN
+        }
+        if (isStaticBackMatch && wholeHandSpeed < 1.35f) {
+            if (quickBackCandidateStartMs < 0L) {
+                quickBackCandidateStartMs = timestampMs
+                quickBackFiredInHold = false
+            } else if (!quickBackFiredInHold && (timestampMs - quickBackCandidateStartMs) >= quickBackHoldActivationMs) {
+                if ((timestampMs - lastHorizontalDispatchMs) >= horizontalNavCooldownMs) {
+                    lastHorizontalDispatchMs = timestampMs
+                    quickBackFiredInHold = true
+                    events.add(GestureEvent.QuickBackTriggered)
+                }
+            }
+            return
+        } else {
+            quickBackCandidateStartMs = -1L
+            quickBackFiredInHold = false
+        }
+
+        // 4. Directional Sweeps (Scroll Up/Down & Horizontal Back/Switch)
+        if (!isScrollPostureMatch(posture, config.scrollPreset)) {
             return
         }
 
         val absVx = abs(smoothedVxNormalized)
         val absVy = abs(smoothedVyNormalized)
 
-        // Horizontal Sweep: Back / Close / Switch Tasks
+        // Horizontal Sweep
         if (absVx >= horizontalSweepSpeedThreshold && absVx > absVy * 1.70f) {
             if ((timestampMs - lastHorizontalDispatchMs) >= horizontalNavCooldownMs) {
                 lastHorizontalDispatchMs = timestampMs
@@ -274,15 +389,10 @@ class AirGestureStateMachine(
             }
         }
 
-        // Vertical Sweep: Smooth Native OS Scroll Up / Scroll Down
+        // Vertical Sweep with Return-Stroke Clutch Suppression
         if (absVy >= verticalSweepSpeedThreshold && absVy > absVx * 1.60f) {
             if ((timestampMs - lastScrollDispatchMs) >= scrollDispatchCooldownMs) {
-                // Screen Y grows downward: hand sweeping UP (vy < 0) scrolls content DOWN (finger swipe up),
-                // or natural directional scroll: hand UP = Scroll Down page / swipe up, hand DOWN = Scroll Up page.
-                // Here scrollUp=true means hand sweeps UPWARD (scrolling feed forward/upward stroke).
                 val handMovingUp = smoothedVyNormalized < 0f
-
-                // Return-Stroke Clutch Protection: ignore immediate reverse stroke within clutch window
                 val prevDir = lastScrollWasUp
                 val elapsedSinceLastScroll = timestampMs - lastScrollDispatchMs
                 if (prevDir != null && prevDir != handMovingUp && elapsedSinceLastScroll < scrollOppositeClutchLockMs) {
@@ -302,60 +412,186 @@ class AirGestureStateMachine(
         }
     }
 
-    private fun handlePinchVolumeState(
+    private fun enterCircularAppWheel(
         landmarks: List<Landmark3D>,
+        palmCenter: Landmark3D,
         scale: Float,
+        config: AirGestureConfig,
         events: MutableList<GestureEvent>
     ) {
-        val pinchDist = HandGeometry.pinchNormalizedDistance(landmarks, scale)
-        // Schmitt-trigger exit hysteresis prevents chatter while sliding volume
-        if (pinchDist > pinchExitThreshold || HandGeometry.isFullFist(landmarks, scale)) {
-            currentMode = Mode.PALM_ACTIVE
-            events.add(GestureEvent.PinchEnded)
+        currentMode = Mode.FIST_RADIAL_MENU
+        radialCandidateStartMs = -1L
+        radialReleaseFrames = 0
+        radialAnchorCenter = palmCenter
+        radialAnchorScale = scale
+        radialEverLeftCancelZone = false
+
+        val totalSlots = config.radialSlotCount.count
+        // Initial angle hint from wrist orientation until user moves hand out of center deadzone
+        val wristAngle = HandGeometry.wristToPalmAngleDegrees(landmarks)
+        val initialSlot = HandGeometry.angleToRadialSlot(wristAngle, -1, totalSlots = totalSlots)
+        val wristClearlyTilted = abs(HandGeometry.shortestAngularDistanceDeg(wristAngle, 0f)) > 18f
+
+        activeRadialAngleDeg = wristAngle
+        activeRadialSlot = initialSlot
+        activeRadialCursorX = 0f
+        activeRadialCursorY = 0f
+        activeRadialInCancelZone = !wristClearlyTilted
+        if (wristClearlyTilted) {
+            radialEverLeftCancelZone = true
+        }
+
+        events.add(
+            GestureEvent.RadialMenuSummoned(
+                angleDegrees = wristAngle,
+                selectedSlot = initialSlot,
+                cursorOffsetX = 0f,
+                cursorOffsetY = 0f,
+                inCancelZone = activeRadialInCancelZone
+            )
+        )
+    }
+
+    private fun handleVolumeState(
+        landmarks: List<Landmark3D>,
+        scale: Float,
+        posture: HandPosture,
+        timestampMs: Long,
+        config: AirGestureConfig,
+        events: MutableList<GestureEvent>
+    ) {
+        val stillInVolumePosture = isVolumePostureMatch(
+            landmarks = landmarks,
+            scale = scale,
+            posture = posture,
+            preset = config.volumePreset,
+            alreadyActive = true
+        )
+
+        if (!stillInVolumePosture || isRadialTriggerMatch(posture, config.radialPreset)) {
+            volumeExitFrames++
+            val requiredExitFrames = if (config.volumePreset == VolumeGesturePreset.PINCH_OK_SLIDE) 1 else 2
+            if (volumeExitFrames >= requiredExitFrames) {
+                currentMode = Mode.PALM_ACTIVE
+                volumeExitFrames = 0
+                events.add(GestureEvent.PinchEnded)
+            }
+            return
+        }
+        volumeExitFrames = 0
+
+        if (config.volumePreset == VolumeGesturePreset.THUMBS_UP_DOWN) {
+            if ((timestampMs - lastThumbStepMs) >= thumbVolumeRepeatIntervalMs) {
+                lastThumbStepMs = timestampMs
+                val delta = when (posture) {
+                    HandPosture.THUMB_UP -> 0.085f
+                    HandPosture.THUMB_DOWN -> -0.085f
+                    else -> 0f
+                }
+                if (delta != 0f) {
+                    events.add(GestureEvent.PinchVolumeModulate(delta))
+                }
+            }
             return
         }
 
-        val currentPinchY = pinchMidpointY(landmarks)
-        // Screen Y increases downward: moving pinched hand UP (lastY - currentY > 0) INCREASES volume (+delta)
-        val deltaUpNormalized = (lastPinchAnchorY - currentPinchY) / scale
+        val currentY = volumeTrackY(landmarks, config.volumePreset)
+        val deltaUpNormalized = (lastVolumeAnchorY - currentY) / scale
         if (abs(deltaUpNormalized) >= pinchMinDeltaNormalized) {
-            lastPinchAnchorY = currentPinchY
+            lastVolumeAnchorY = currentY
             events.add(GestureEvent.PinchVolumeModulate(deltaUpNormalized.coerceIn(-0.85f, 0.85f)))
         }
     }
 
-    private fun handleFistRadialMenuState(
+    private fun handleCircularAppWheelState(
         landmarks: List<Landmark3D>,
+        palmCenter: Landmark3D,
         scale: Float,
+        posture: HandPosture,
+        config: AirGestureConfig,
         events: MutableList<GestureEvent>
     ) {
-        val extendedCount = HandGeometry.countExtendedNonThumbFingers(landmarks, scale)
-        // Releasing the fist (>= 3 fingers extended into open hand) launches the focused app!
-        if (extendedCount >= 3) {
-            fistReleaseFrames++
-            if (fistReleaseFrames >= 2) {
-                val committedSlot = activeRadialSlot.coerceIn(0, HandGeometry.RADIAL_SLOTS - 1)
+        val totalSlots = config.radialSlotCount.count
+
+        // Releasing into Open Palm (>= 4 fingers open) commits or cancels if inside center Safe Cancel Zone
+        val releasedIntoOpenHand = when (config.radialPreset) {
+            RadialTriggerPreset.CLOSED_FIST -> HandGeometry.countExtendedNonThumbFingers(landmarks, scale) >= 3
+            RadialTriggerPreset.I_LOVE_YOU_SIGN -> posture == HandPosture.OPEN_PALM
+            RadialTriggerPreset.THREE_FINGERS -> posture == HandPosture.OPEN_PALM || posture == HandPosture.CLOSED_FIST
+        }
+
+        if (releasedIntoOpenHand) {
+            radialReleaseFrames++
+            if (radialReleaseFrames >= 2) {
                 currentMode = Mode.PALM_ACTIVE
-                activeRadialSlot = -1
-                fistReleaseFrames = 0
-                events.add(GestureEvent.RadialMenuCommitted(committedSlot))
+                radialReleaseFrames = 0
+                radialAnchorCenter = null
+                if (activeRadialInCancelZone && !radialEverLeftCancelZone) {
+                    activeRadialSlot = -1
+                    events.add(GestureEvent.RadialMenuCancelled)
+                } else {
+                    val committed = activeRadialSlot.coerceIn(0, totalSlots - 1)
+                    activeRadialSlot = -1
+                    events.add(GestureEvent.RadialMenuCommitted(committed))
+                }
                 return
             }
             return
         }
 
-        fistReleaseFrames = 0
-        // Keep updating focused 15-slice segment while fist remains closed
-        if (HandGeometry.countCurledNonThumbFingers(landmarks, scale) >= 3) {
-            val angle = HandGeometry.wristToPalmAngleDegrees(landmarks)
-            val newSlot = HandGeometry.angleToRadialSlot(angle, activeRadialSlot)
-            activeRadialAngleDeg = angle
-            activeRadialSlot = newSlot
-            events.add(GestureEvent.RadialMenuUpdated(angle, newSlot))
+        radialReleaseFrames = 0
+
+        val anchor = radialAnchorCenter ?: palmCenter
+        val joystick = HandGeometry.computeJoystickRadialTarget(
+            anchor = anchor,
+            currentCenter = palmCenter,
+            scale = radialAnchorScale,
+            totalSlots = totalSlots,
+            previousSlot = activeRadialSlot
+        )
+
+        activeRadialCursorX = joystick.cursorNormX
+        activeRadialCursorY = joystick.cursorNormY
+
+        if (!joystick.inCancelZone) {
+            // Spatial Virtual Joystick moved outward -> effortless 360° selection!
+            radialEverLeftCancelZone = true
+            activeRadialInCancelZone = false
+            activeRadialAngleDeg = joystick.angleDegrees
+            activeRadialSlot = joystick.selectedSlot
+        } else {
+            // Also support direct wrist tilt if user rotates wrist in place without translating hand
+            val wristAngle = HandGeometry.wristToPalmAngleDegrees(landmarks)
+            val wristTilted = abs(HandGeometry.shortestAngularDistanceDeg(wristAngle, 0f)) > 16f
+            if (wristTilted) {
+                radialEverLeftCancelZone = true
+                activeRadialInCancelZone = false
+                activeRadialAngleDeg = wristAngle
+                activeRadialSlot = HandGeometry.angleToRadialSlot(wristAngle, activeRadialSlot, totalSlots = totalSlots)
+            } else if (!radialEverLeftCancelZone) {
+                activeRadialInCancelZone = true
+            }
         }
+
+        events.add(
+            GestureEvent.RadialMenuUpdated(
+                angleDegrees = activeRadialAngleDeg,
+                selectedSlot = activeRadialSlot.coerceIn(0, totalSlots - 1),
+                cursorOffsetX = activeRadialCursorX,
+                cursorOffsetY = activeRadialCursorY,
+                inCancelZone = activeRadialInCancelZone
+            )
+        )
     }
 
-    private fun pinchMidpointY(landmarks: List<Landmark3D>): Float {
-        return (landmarks[HandGeometry.THUMB_TIP].y + landmarks[HandGeometry.INDEX_TIP].y) * 0.5f
+    private fun volumeTrackY(landmarks: List<Landmark3D>, preset: VolumeGesturePreset): Float {
+        return when (preset) {
+            VolumeGesturePreset.PINCH_OK_SLIDE ->
+                (landmarks[HandGeometry.THUMB_TIP].y + landmarks[HandGeometry.INDEX_TIP].y) * 0.5f
+            VolumeGesturePreset.VICTORY_SLIDE ->
+                (landmarks[HandGeometry.INDEX_TIP].y + landmarks[HandGeometry.MIDDLE_TIP].y) * 0.5f
+            VolumeGesturePreset.THUMBS_UP_DOWN ->
+                landmarks[HandGeometry.THUMB_TIP].y
+        }
     }
 }

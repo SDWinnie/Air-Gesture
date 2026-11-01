@@ -5,14 +5,14 @@
     android:layout_height="match_parent"
     android:background="@color/bg_obsidian">
 
-    <!-- Official Android Picture-in-Picture Floating Dynamic Island HUD (Zero SYSTEM_ALERT_WINDOW) -->
+    <!-- Official Android Picture-in-Picture Floating Dynamic Island HUD -->
     <com.sdwinnie.airgesture.overlay.PipFloatingHudView
         android:id="@+id/pipHudView"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:visibility="gone" />
 
-    <!-- Main Modern 2026 Spatial Bento Dashboard -->
+    <!-- Main Modern 2026 4-Tab Spatial Bento Dashboard -->
     <LinearLayout
         android:id="@+id/dashboardRoot"
         android:layout_width="match_parent"
@@ -62,7 +62,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Spatial Touchless Control • 100% On-Device AI"
+                    android:text="v3.0 Single-Hand Spatial AI • 100% On-Device"
                     android:textColor="@color/text_secondary"
                     android:textSize="11sp" />
             </LinearLayout>
@@ -74,32 +74,32 @@
                 android:background="@drawable/bg_pill_emerald"
                 android:paddingHorizontal="10dp"
                 android:paddingVertical="5dp"
-                android:text="🛡️ v2.0 SAFE"
+                android:text="🛡️ 5/5 SAFE"
                 android:textColor="@color/accent_emerald"
                 android:textSize="10.5sp"
                 android:textStyle="bold" />
         </LinearLayout>
 
-        <!-- Live Interactive Dynamic Island Showcase Dock -->
+        <!-- Live Interactive Dynamic Island & Volume Status Showcase Dock -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:gravity="center"
             android:orientation="vertical"
-            android:paddingHorizontal="16dp"
+            android:paddingHorizontal="12dp"
             android:paddingBottom="4dp">
 
             <com.sdwinnie.airgesture.overlay.DynamicIslandView
                 android:id="@+id/liveDynamicIslandView"
                 android:layout_width="match_parent"
-                android:layout_height="60dp" />
+                android:layout_height="64dp" />
         </LinearLayout>
 
-        <!-- Segmented 3-Tab Capsule Bar -->
+        <!-- Segmented 4-Tab Capsule Bar -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="46dp"
-            android:layout_marginHorizontal="16dp"
+            android:layout_marginHorizontal="14dp"
             android:layout_marginBottom="10dp"
             android:background="@drawable/bg_tab_bar"
             android:gravity="center_vertical"
@@ -115,9 +115,22 @@
                 android:clickable="true"
                 android:focusable="true"
                 android:gravity="center"
-                android:text="⚡ ควบคุมหลัก"
+                android:text="⚡ หน้าหลัก"
                 android:textColor="@color/text_primary"
-                android:textSize="12.5sp"
+                android:textSize="11.5sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tabGestures"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center"
+                android:text="🖐️ ท่ามือ &amp; รูป"
+                android:textColor="@color/text_secondary"
+                android:textSize="11.5sp"
                 android:textStyle="bold" />
 
             <TextView
@@ -128,9 +141,9 @@
                 android:clickable="true"
                 android:focusable="true"
                 android:gravity="center"
-                android:text="🎥 กล้อง &amp; AI"
+                android:text="🎥 กล้อง &amp; ไว"
                 android:textColor="@color/text_secondary"
-                android:textSize="12.5sp"
+                android:textSize="11.5sp"
                 android:textStyle="bold" />
 
             <TextView
@@ -141,9 +154,9 @@
                 android:clickable="true"
                 android:focusable="true"
                 android:gravity="center"
-                android:text="🎡 วงล้อ 15 แอป"
+                android:text="🎡 วงกลมแอป"
                 android:textColor="@color/text_secondary"
-                android:textSize="12.5sp"
+                android:textSize="11.5sp"
                 android:textStyle="bold" />
         </LinearLayout>
 
@@ -162,7 +175,7 @@
                 android:layout_height="wrap_content">
 
                 <!-- ========================================================= -->
-                <!-- TAB 1: CONTROL, TELEMETRY, SETUP & LIVE SECURITY AUDIT    -->
+                <!-- TAB 1: CONTROL, SINGLE-HAND TELEMETRY, SETUP & SECURITY   -->
                 <!-- ========================================================= -->
                 <LinearLayout
                     android:id="@+id/panelControl"
@@ -179,45 +192,31 @@
                         android:orientation="vertical"
                         android:padding="18dp">
 
-                        <LinearLayout
-                            android:layout_width="match_parent"
+                        <TextView
+                            android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:gravity="center_vertical"
-                            android:orientation="horizontal">
+                            android:letterSpacing="0.08"
+                            android:text="SINGLE-HAND TOUCHLESS ENGINE"
+                            android:textColor="@color/text_muted"
+                            android:textSize="10sp"
+                            android:textStyle="bold" />
 
-                            <LinearLayout
-                                android:layout_width="0dp"
-                                android:layout_height="wrap_content"
-                                android:layout_weight="1"
-                                android:orientation="vertical">
-
-                                <TextView
-                                    android:layout_width="wrap_content"
-                                    android:layout_height="wrap_content"
-                                    android:letterSpacing="0.08"
-                                    android:text="TOUCHLESS ENGINE STATUS"
-                                    android:textColor="@color/text_muted"
-                                    android:textSize="10sp"
-                                    android:textStyle="bold" />
-
-                                <TextView
-                                    android:id="@+id/tvEngineHeadline"
-                                    android:layout_width="wrap_content"
-                                    android:layout_height="wrap_content"
-                                    android:layout_marginTop="3dp"
-                                    android:text="● พร้อมเริ่มงาน (Standby)"
-                                    android:textColor="@color/accent_cyan"
-                                    android:textSize="18sp"
-                                    android:textStyle="bold" />
-                            </LinearLayout>
-                        </LinearLayout>
+                        <TextView
+                            android:id="@+id/tvEngineHeadline"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="3dp"
+                            android:text="● พร้อมเริ่มงาน (Standby)"
+                            android:textColor="@color/accent_cyan"
+                            android:textSize="18sp"
+                            android:textStyle="bold" />
 
                         <TextView
                             android:id="@+id/tvLastAction"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="4dp"
-                            android:text="กดเปิดระบบ แล้วแสดงฝ่ามือหน้ากล้องเพื่อปลุก Dynamic Island"
+                            android:text="ล็อกจับเฉพาะ 1 มือ • แสดงสถานะเพิ่ม/ลดเสียง • วงกลมเลือกแอปกลางหน้าจอ"
                             android:textColor="@color/text_secondary"
                             android:textSize="12.5sp" />
 
@@ -240,14 +239,14 @@
                             android:id="@+id/btnEnterPipHud"
                             style="@style/Widget.Material3.Button.OutlinedButton"
                             android:layout_width="match_parent"
-                            android:layout_height="46dp"
+                            android:layout_height="44dp"
                             android:layout_marginTop="10dp"
                             android:insetTop="0dp"
                             android:insetBottom="0dp"
-                            android:text="🫧 ลอยแคปซูล Dynamic Island บนจอ (PiP HUD)"
+                            android:text="🫧 ย่อเป็นหน้าต่างลอย PiP (ตัวเลือกเสริม)"
                             android:textAllCaps="false"
                             android:textColor="@color/text_primary"
-                            android:textSize="13sp"
+                            android:textSize="12.5sp"
                             android:textStyle="bold"
                             app:cornerRadius="14dp"
                             app:strokeColor="@color/stroke_subtle"
@@ -258,6 +257,74 @@
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="14dp"
+                            android:baselineAligned="false"
+                            android:orientation="horizontal">
+
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_marginEnd="5dp"
+                                android:layout_weight="1"
+                                android:background="@drawable/bg_bento_metric"
+                                android:orientation="vertical"
+                                android:padding="11dp">
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="SINGLE-HAND LOCK"
+                                    android:textColor="@color/text_muted"
+                                    android:textSize="9.5sp"
+                                    android:textStyle="bold" />
+
+                                <TextView
+                                    android:id="@+id/tvTelemetryHandLock"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginTop="3dp"
+                                    android:ellipsize="end"
+                                    android:maxLines="1"
+                                    android:text="ล็อก 1 มืออัตโนมัติ"
+                                    android:textColor="@color/accent_emerald"
+                                    android:textSize="12.5sp"
+                                    android:textStyle="bold" />
+                            </LinearLayout>
+
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_marginStart="5dp"
+                                android:layout_weight="1"
+                                android:background="@drawable/bg_bento_metric"
+                                android:orientation="vertical"
+                                android:padding="11dp">
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="1:1 ISOTROPIC RAM"
+                                    android:textColor="@color/text_muted"
+                                    android:textSize="9.5sp"
+                                    android:textStyle="bold" />
+
+                                <TextView
+                                    android:id="@+id/tvTelemetryAiBuffer"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginTop="3dp"
+                                    android:ellipsize="end"
+                                    android:maxLines="1"
+                                    android:text="224×224 RAM"
+                                    android:textColor="@color/accent_cyan"
+                                    android:textSize="12.5sp"
+                                    android:textStyle="bold" />
+                            </LinearLayout>
+                        </LinearLayout>
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="10dp"
                             android:baselineAligned="false"
                             android:orientation="horizontal">
 
@@ -303,45 +370,7 @@
                                 <TextView
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
-                                    android:text="VOLATILE AI RAM"
-                                    android:textColor="@color/text_muted"
-                                    android:textSize="9.5sp"
-                                    android:textStyle="bold" />
-
-                                <TextView
-                                    android:id="@+id/tvTelemetryAiBuffer"
-                                    android:layout_width="wrap_content"
-                                    android:layout_height="wrap_content"
-                                    android:layout_marginTop="3dp"
-                                    android:ellipsize="end"
-                                    android:maxLines="1"
-                                    android:text="192×192 RAM"
-                                    android:textColor="@color/accent_cyan"
-                                    android:textSize="12.5sp"
-                                    android:textStyle="bold" />
-                            </LinearLayout>
-                        </LinearLayout>
-
-                        <LinearLayout
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="10dp"
-                            android:baselineAligned="false"
-                            android:orientation="horizontal">
-
-                            <LinearLayout
-                                android:layout_width="0dp"
-                                android:layout_height="wrap_content"
-                                android:layout_marginEnd="5dp"
-                                android:layout_weight="1"
-                                android:background="@drawable/bg_bento_metric"
-                                android:orientation="vertical"
-                                android:padding="11dp">
-
-                                <TextView
-                                    android:layout_width="wrap_content"
-                                    android:layout_height="wrap_content"
-                                    android:text="LATENCY &amp; FPS"
+                                    android:text="LATENCY &amp; THERMAL"
                                     android:textColor="@color/text_muted"
                                     android:textSize="9.5sp"
                                     android:textStyle="bold" />
@@ -354,36 +383,6 @@
                                     android:ellipsize="end"
                                     android:maxLines="1"
                                     android:text="0.0 ms • 0 fps"
-                                    android:textColor="@color/accent_emerald"
-                                    android:textSize="12.5sp"
-                                    android:textStyle="bold" />
-                            </LinearLayout>
-
-                            <LinearLayout
-                                android:layout_width="0dp"
-                                android:layout_height="wrap_content"
-                                android:layout_marginStart="5dp"
-                                android:layout_weight="1"
-                                android:background="@drawable/bg_bento_metric"
-                                android:orientation="vertical"
-                                android:padding="11dp">
-
-                                <TextView
-                                    android:layout_width="wrap_content"
-                                    android:layout_height="wrap_content"
-                                    android:text="THERMAL GUARD"
-                                    android:textColor="@color/text_muted"
-                                    android:textSize="9.5sp"
-                                    android:textStyle="bold" />
-
-                                <TextView
-                                    android:id="@+id/tvTelemetryThermal"
-                                    android:layout_width="wrap_content"
-                                    android:layout_height="wrap_content"
-                                    android:layout_marginTop="3dp"
-                                    android:ellipsize="end"
-                                    android:maxLines="1"
-                                    android:text="Cool • Full Speed"
                                     android:textColor="@color/text_primary"
                                     android:textSize="12.5sp"
                                     android:textStyle="bold" />
@@ -391,7 +390,7 @@
                         </LinearLayout>
                     </LinearLayout>
 
-                    <!-- Setup & Permissions Checklist Bento Card -->
+                    <!-- Setup & On-Screen Circular Wheel Enablement Card -->
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
@@ -403,7 +402,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="⚙️ ความพร้อมของสิทธิ์ระบบ (Zero-Overlay Architecture)"
+                            android:text="⚙️ เปิดสิทธิ์ระบบ &amp; วงกลมเลือกแอปบนหน้าจอ"
                             android:textColor="@color/text_primary"
                             android:textSize="14.5sp"
                             android:textStyle="bold" />
@@ -412,11 +411,11 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="2dp"
-                            android:text="ตัดสิทธิ์วาดทับจอ (SYSTEM_ALERT_WINDOW) ออก 100% เพื่อความปลอดภัยสูงสุด"
+                            android:text="เปิดข้อ 3 เพื่อให้วงกลมเลือกแอปและแถบสถานะลด/เพิ่มเสียงแสดงกลางหน้าจอทับทุกแอปได้โดยไม่ต้องใช้ SYSTEM_ALERT_WINDOW"
                             android:textColor="@color/text_secondary"
                             android:textSize="11.5sp" />
 
-                        <!-- Row 1: Prominent Disclosure -->
+                        <!-- Row 1 -->
                         <LinearLayout
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
@@ -450,7 +449,7 @@
                                 android:textSize="12sp" />
                         </LinearLayout>
 
-                        <!-- Row 2: Camera Permission -->
+                        <!-- Row 2 -->
                         <LinearLayout
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
@@ -466,7 +465,7 @@
                                 android:layout_width="0dp"
                                 android:layout_height="wrap_content"
                                 android:layout_weight="1"
-                                android:text="⚪ 2. กล้องถ่ายรูป (Volatile RAM)"
+                                android:text="⚪ 2. กล้องถ่ายรูป (ล็อกจับ 1 มือ)"
                                 android:textColor="@color/text_primary"
                                 android:textSize="12.5sp"
                                 android:textStyle="bold" />
@@ -484,7 +483,7 @@
                                 android:textSize="12sp" />
                         </LinearLayout>
 
-                        <!-- Row 3: Accessibility (Touchless Scroll & Back/Recents) -->
+                        <!-- Row 3 -->
                         <LinearLayout
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
@@ -500,7 +499,7 @@
                                 android:layout_width="0dp"
                                 android:layout_height="wrap_content"
                                 android:layout_weight="1"
-                                android:text="⚪ 3. Touchless Scroll &amp; Back"
+                                android:text="⚪ 3. เลื่อนจอ &amp; วงกลมแอปกลางจอ"
                                 android:textColor="@color/text_primary"
                                 android:textSize="12.5sp"
                                 android:textStyle="bold" />
@@ -512,7 +511,7 @@
                                 android:layout_height="36dp"
                                 android:insetTop="0dp"
                                 android:insetBottom="0dp"
-                                android:text="ตั้งค่า"
+                                android:text="เปิดใช้งาน"
                                 android:textAllCaps="false"
                                 android:textColor="@color/accent_cyan"
                                 android:textSize="12sp" />
@@ -532,7 +531,7 @@
                             android:textSize="11.5sp" />
                     </LinearLayout>
 
-                    <!-- 5 Gestures Spatial Cheat-Sheet Bento Card -->
+                    <!-- Active Gesture Summary Card -->
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
@@ -544,22 +543,23 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="🖐️ คู่มือ 5 ท่าทางอัจฉริยะ (Spatial Gesture Map)"
+                            android:text="🎯 สรุปท่ามือที่คุณตั้งค่าใช้งานอยู่"
                             android:textColor="@color/text_primary"
                             android:textSize="14.5sp"
                             android:textStyle="bold" />
 
                         <TextView
+                            android:id="@+id/tvActiveGestureSummary"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="10dp"
+                            android:layout_marginTop="8dp"
                             android:lineSpacingExtra="4dp"
-                            android:text="• 🖐️ แบมือ (Open Palm): ปลุก Dynamic Island แสดงโครงกระดูกมือ 21 จุด\n• ↕️ ปัดฝ่ามือขึ้น / ลง: เลื่อนหน้าจอสมูทไร้สัมผัส (Smooth OS Scroll)\n• ↔️ ปัดฝ่ามือซ้าย / ขวา: ย้อนกลับ (Back) หรือเปิดหน้าสลับแอป (Recents)\n• 🤏 ท่ามือจีบ (Pinch): แตะนิ้วโป้ง-ชี้แล้วเลื่อนขึ้นลงเพื่อปรับระดับเสียงระบบ\n• ✊ ท่ากำมือ (Fist 360°): เรียกวงล้อลัด 15 แอป หมุนข้อมือเลือกแล้วคลายมือเปิด"
+                            android:text=""
                             android:textColor="@color/text_secondary"
                             android:textSize="12sp" />
                     </LinearLayout>
 
-                    <!-- Live Security & Google Play Protect Self-Audit Bento Card -->
+                    <!-- Live Security Self-Audit Bento Card -->
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
@@ -580,7 +580,7 @@
                                 android:layout_weight="1"
                                 android:text="🛡️ ผลตรวจสอบความปลอดภัยจริงในเครื่อง (Live Self-Audit)"
                                 android:textColor="@color/accent_emerald"
-                                android:textSize="14sp"
+                                android:textSize="13.5sp"
                                 android:textStyle="bold" />
 
                             <com.google.android.material.button.MaterialButton
@@ -596,14 +596,6 @@
                                 android:textSize="11.5sp" />
                         </LinearLayout>
 
-                        <TextView
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="2dp"
-                            android:text="ตรวจสอบไบนารี APK ที่ติดตั้งจริง พื้นที่แคช และลายนิ้วมือ SHA-256 ของโมเดล AI แบบเรียลไทม์"
-                            android:textColor="@color/text_secondary"
-                            android:textSize="11.5sp" />
-
                         <LinearLayout
                             android:id="@+id/containerSecurityAudit"
                             android:layout_width="match_parent"
@@ -614,7 +606,270 @@
                 </LinearLayout>
 
                 <!-- ========================================================= -->
-                <!-- TAB 2: DUAL-STREAM CAMERA, AI BUFFER & SENSITIVITY TUNING -->
+                <!-- TAB 2: ERGONOMIC HUMAN GESTURES & PALM/HUD VISUAL STUDIO  -->
+                <!-- ========================================================= -->
+                <LinearLayout
+                    android:id="@+id/panelGestures"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:visibility="gone">
+
+                    <!-- Single-Hand Lock Card -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:background="@drawable/bg_hero_bento"
+                        android:orientation="vertical"
+                        android:padding="16dp">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="🔒 ระบบล็อกจับเฉพาะ 1 มือ (Single-Hand Lock)"
+                            android:textColor="@color/text_primary"
+                            android:textSize="15sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="3dp"
+                            android:text="ตัดปัญหาระบบสลับไปจับมืออีกข้างหรือคนข้างหลัง สามารถล็อกข้างมือที่ถนัดได้ทันที"
+                            android:textColor="@color/text_secondary"
+                            android:textSize="11.5sp" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnPickHandLock"
+                            style="@style/Widget.Material3.Button.OutlinedButton"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="10dp"
+                            android:text="โหมดล็อกมือ"
+                            android:textAllCaps="false"
+                            android:textColor="@color/accent_emerald"
+                            android:textSize="12.5sp"
+                            android:textStyle="bold"
+                            app:cornerRadius="14dp"
+                            app:strokeColor="@color/stroke_subtle" />
+                    </LinearLayout>
+
+                    <!-- Ergonomic Human Gesture Presets Card -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="14dp"
+                        android:background="@drawable/bg_glass_bento"
+                        android:orientation="vertical"
+                        android:padding="16dp">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="🖐️ ตั้งค่าท่าทางมนุษย์ตามถนัด (MediaPipe Ergonomic DB)"
+                            android:textColor="@color/text_primary"
+                            android:textSize="14.5sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="3dp"
+                            android:text="คัดเฉพาะท่ามาตรฐานจากฐานข้อมูล MediaPipe ที่มือมนุษย์ทำได้สบาย ไม่เกร็งนิ้ว และกล้องแยกแยะได้แม่นยำสูงสุด"
+                            android:textColor="@color/text_secondary"
+                            android:textSize="11.5sp" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="12dp"
+                            android:text="1. ท่าเลื่อนหน้าจอขึ้น / ลง (Scroll Gesture)"
+                            android:textColor="@color/text_primary"
+                            android:textSize="12sp"
+                            android:textStyle="bold" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnPickScrollPreset"
+                            style="@style/Widget.Material3.Button.OutlinedButton"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="4dp"
+                            android:text="ท่าเลื่อนหน้าจอ"
+                            android:textAllCaps="false"
+                            android:textColor="@color/text_primary"
+                            android:textSize="12sp"
+                            app:cornerRadius="12dp"
+                            app:strokeColor="@color/stroke_subtle" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="10dp"
+                            android:text="2. ท่าลดเสียง / เพิ่มเสียง (Volume Control Gesture)"
+                            android:textColor="@color/text_primary"
+                            android:textSize="12sp"
+                            android:textStyle="bold" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnPickVolumePreset"
+                            style="@style/Widget.Material3.Button.OutlinedButton"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="4dp"
+                            android:text="ท่าปรับระดับเสียง"
+                            android:textAllCaps="false"
+                            android:textColor="@color/accent_cyan"
+                            android:textSize="12sp"
+                            app:cornerRadius="12dp"
+                            app:strokeColor="@color/stroke_subtle" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="10dp"
+                            android:text="3. ท่าเปิดวงกลมเลือกแอปกลางหน้าจอ (Circular App Wheel)"
+                            android:textColor="@color/text_primary"
+                            android:textSize="12sp"
+                            android:textStyle="bold" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnPickRadialPreset"
+                            style="@style/Widget.Material3.Button.OutlinedButton"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="4dp"
+                            android:text="ท่าเปิดวงกลมแอป"
+                            android:textAllCaps="false"
+                            android:textColor="@color/text_primary"
+                            android:textSize="12sp"
+                            app:cornerRadius="12dp"
+                            app:strokeColor="@color/stroke_subtle" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="10dp"
+                            android:text="4. ท่าย้อนกลับด่วน / สลับแอป (Back &amp; Switch Gesture)"
+                            android:textColor="@color/text_primary"
+                            android:textSize="12sp"
+                            android:textStyle="bold" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnPickBackPreset"
+                            style="@style/Widget.Material3.Button.OutlinedButton"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="4dp"
+                            android:text="ท่าย้อนกลับ"
+                            android:textAllCaps="false"
+                            android:textColor="@color/text_primary"
+                            android:textSize="12sp"
+                            app:cornerRadius="12dp"
+                            app:strokeColor="@color/stroke_subtle" />
+                    </LinearLayout>
+
+                    <!-- Palm & HUD Visual Style Customizer Card -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="14dp"
+                        android:background="@drawable/bg_glass_bento"
+                        android:orientation="vertical"
+                        android:padding="16dp">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="🎨 ตั้งค่ารูปฝ่ามือ ไอคอน &amp; สีธีมบนหน้าจอ"
+                            android:textColor="@color/text_primary"
+                            android:textSize="14.5sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="10dp"
+                            android:text="รูปแบบฝ่ามือและไอคอนบน Dynamic Island"
+                            android:textColor="@color/text_secondary"
+                            android:textSize="12sp" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnPickPalmStyle"
+                            style="@style/Widget.Material3.Button.OutlinedButton"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="4dp"
+                            android:text="รูปฝ่ามือ HUD"
+                            android:textAllCaps="false"
+                            android:textColor="@color/text_primary"
+                            android:textSize="12sp"
+                            app:cornerRadius="12dp"
+                            app:strokeColor="@color/stroke_subtle" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="10dp"
+                            android:text="โทนสีเรืองแสงของ HUD และวงกลมเลือกแอป"
+                            android:textColor="@color/text_secondary"
+                            android:textSize="12sp" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnPickThemeColor"
+                            style="@style/Widget.Material3.Button.OutlinedButton"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="4dp"
+                            android:text="สีธีม HUD"
+                            android:textAllCaps="false"
+                            android:textColor="@color/accent_cyan"
+                            android:textSize="12sp"
+                            app:cornerRadius="12dp"
+                            app:strokeColor="@color/stroke_subtle" />
+
+                        <com.google.android.material.materialswitch.MaterialSwitch
+                            android:id="@+id/switchShowSystemVolumeUi"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:checked="true"
+                            android:text="แสดงแถบเสียงระบบ Android คู่กับสถานะลด/เพิ่มเสียง"
+                            android:textColor="@color/text_primary"
+                            android:textSize="12.5sp" />
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="6dp"
+                            android:orientation="horizontal">
+
+                            <com.google.android.material.button.MaterialButton
+                                android:id="@+id/btnPreviewVolumeDown"
+                                style="@style/Widget.Material3.Button.TextButton"
+                                android:layout_width="0dp"
+                                android:layout_height="38dp"
+                                android:layout_weight="1"
+                                android:text="🔉 ทดสอบสถานะลดเสียง"
+                                android:textAllCaps="false"
+                                android:textColor="@color/accent_amber"
+                                android:textSize="11.5sp" />
+
+                            <com.google.android.material.button.MaterialButton
+                                android:id="@+id/btnPreviewVolumeUp"
+                                style="@style/Widget.Material3.Button.TextButton"
+                                android:layout_width="0dp"
+                                android:layout_height="38dp"
+                                android:layout_weight="1"
+                                android:text="🔊 ทดสอบสถานะเพิ่มเสียง"
+                                android:textAllCaps="false"
+                                android:textColor="@color/accent_emerald"
+                                android:textSize="11.5sp" />
+                        </LinearLayout>
+                    </LinearLayout>
+                </LinearLayout>
+
+                <!-- ========================================================= -->
+                <!-- TAB 3: DUAL-STREAM CAMERA, 1:1 RAM & SENSITIVITY TUNING   -->
                 <!-- ========================================================= -->
                 <LinearLayout
                     android:id="@+id/panelCameraAi"
@@ -623,7 +878,6 @@
                     android:orientation="vertical"
                     android:visibility="gone">
 
-                    <!-- Camera & Volatile RAM ROI Card -->
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
@@ -634,7 +888,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="🎥 Decoupled Dual-Stream Camera Pipeline"
+                            android:text="🎥 Isotropic 1:1 Dual-Stream Camera Pipeline"
                             android:textColor="@color/text_primary"
                             android:textSize="15sp"
                             android:textStyle="bold" />
@@ -643,7 +897,7 @@
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="3dp"
-                            android:text="แยกสตรีมกล้องความละเอียดสูงออกจากบัฟเฟอร์ AI ย่อส่วนเฉพาะจุดใน RAM (ไม่ส่งเฟรม 2K/4K เข้าโมเดลโดยตรง)"
+                            android:text="ย่อสตรีมภาพแบบรักษาสัดส่วนจริง 1:1 (Letterbox) ลง Volatile RAM ป้องกันภาพมือบีบเบี้ยวและทำให้การเล็งวงกลม 360° แม่นยำทุกทิศทาง"
                             android:textColor="@color/text_secondary"
                             android:textSize="11.5sp" />
 
@@ -736,7 +990,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="12dp"
-                            android:text="ขนาดบัฟเฟอร์ AI ในหน่วยความจำชั่วคราว (Volatile RAM ROI)"
+                            android:text="ขนาดบัฟเฟอร์ AI สัดส่วนจริง 1:1 (Volatile RAM)"
                             android:textColor="@color/text_primary"
                             android:textSize="12.5sp"
                             android:textStyle="bold" />
@@ -754,14 +1008,14 @@
                                 style="@style/Widget.Material3.Chip.Filter"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="192×192 RAM (เร็วสูงสุด)" />
+                                android:text="224×224 RAM (เร็วสมดุล)" />
 
                             <com.google.android.material.chip.Chip
                                 android:id="@+id/chipRoi256"
                                 style="@style/Widget.Material3.Chip.Filter"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="256×256 RAM (ระยะไกลแม่นยำ)" />
+                                android:text="256×256 RAM (ระยะไกลคมชัด)" />
                         </com.google.android.material.chip.ChipGroup>
 
                         <com.google.android.material.materialswitch.MaterialSwitch
@@ -787,7 +1041,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="🎛️ ปรับความไวท่าทางและโหมดนำทาง"
+                            android:text="🎛️ ปรับความไวการเลื่อนจอและการปรับเสียง"
                             android:textColor="@color/text_primary"
                             android:textSize="14.5sp"
                             android:textStyle="bold" />
@@ -835,7 +1089,7 @@
                                 android:layout_width="0dp"
                                 android:layout_height="wrap_content"
                                 android:layout_weight="1"
-                                android:text="ความไวท่ามือจีบปรับเสียง (Pinch Volume)"
+                                android:text="ความไวการลดเสียง / เพิ่มเสียง (Volume Speed)"
                                 android:textColor="@color/text_secondary"
                                 android:textSize="12sp" />
 
@@ -890,14 +1144,6 @@
                             android:textSize="13sp"
                             android:textStyle="bold" />
 
-                        <TextView
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="2dp"
-                            android:text="แสดงผลโดยตรงจากกล้องเพื่อกะระยะมือ ไม่มีการบันทึกลงไฟล์หรือแคชใดๆ"
-                            android:textColor="@color/text_secondary"
-                            android:textSize="11.5sp" />
-
                         <com.google.android.material.card.MaterialCardView
                             android:id="@+id/cardCalibrationPreview"
                             android:layout_width="match_parent"
@@ -919,7 +1165,7 @@
                 </LinearLayout>
 
                 <!-- ========================================================= -->
-                <!-- TAB 3: 360-DEGREE 15-APP RADIAL PIE LAUNCHER & 3x5 GRID   -->
+                <!-- TAB 4: ON-SCREEN 360° CIRCULAR APP WHEEL & SLOT PICKER    -->
                 <!-- ========================================================= -->
                 <LinearLayout
                     android:id="@+id/panelRadialApps"
@@ -928,7 +1174,6 @@
                     android:orientation="vertical"
                     android:visibility="gone">
 
-                    <!-- Interactive Live 360° Wheel Bento Card -->
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
@@ -940,7 +1185,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="🎡 วงล้อลัด 15 แอป (360° Fist Gesture)"
+                            android:text="🎡 วงกลมเลือกแอปกลางหน้าจอ (Spatial Joystick)"
                             android:textColor="@color/text_primary"
                             android:textSize="15.5sp"
                             android:textStyle="bold" />
@@ -950,15 +1195,53 @@
                             android:layout_height="wrap_content"
                             android:layout_marginTop="3dp"
                             android:gravity="center"
-                            android:text="กำมือ (ท่ากำมือ) เพื่อเรียกวงล้อ • เอียงมุมข้อมือเลือกช่อง 24° • คลายมือเพื่อเปิดแอปทันที"
+                            android:text="เมื่อทำท่าเรียกวงกลม วงล้อนี้จะเด้งขึ้นกลางหน้าจอ • เลื่อนมือขึ้น/ลง/ซ้าย/ขวาเหมือนจอยสติ๊กเพื่อชี้แอป • แบมือเพื่อเปิดทันที (แบมือตรงกลาง = ยกเลิก)"
                             android:textColor="@color/text_secondary"
                             android:textSize="11.5sp" />
+
+                        <!-- Slot Count Chips: 6 / 8 / 12 / 15 Apps -->
+                        <com.google.android.material.chip.ChipGroup
+                            android:id="@+id/chipGroupRadialCount"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="10dp"
+                            app:selectionRequired="true"
+                            app:singleSelection="true">
+
+                            <com.google.android.material.chip.Chip
+                                android:id="@+id/chipSlots6"
+                                style="@style/Widget.Material3.Chip.Filter"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="6 แอป" />
+
+                            <com.google.android.material.chip.Chip
+                                android:id="@+id/chipSlots8"
+                                style="@style/Widget.Material3.Chip.Filter"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="8 แอป (แนะนำ)" />
+
+                            <com.google.android.material.chip.Chip
+                                android:id="@+id/chipSlots12"
+                                style="@style/Widget.Material3.Chip.Filter"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="12 แอป" />
+
+                            <com.google.android.material.chip.Chip
+                                android:id="@+id/chipSlots15"
+                                style="@style/Widget.Material3.Chip.Filter"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="15 แอป" />
+                        </com.google.android.material.chip.ChipGroup>
 
                         <com.sdwinnie.airgesture.overlay.RadialAppSelectorView
                             android:id="@+id/liveRadialPreviewView"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="12dp" />
+                            android:layout_marginTop="10dp" />
 
                         <com.google.android.material.button.MaterialButton
                             android:id="@+id/btnCyclePreviewSlot"
@@ -968,7 +1251,7 @@
                             android:layout_marginTop="10dp"
                             android:insetTop="0dp"
                             android:insetBottom="0dp"
-                            android:text="🔄 หมุนทดสอบช่องถัดไป (Test 24° Step)"
+                            android:text="🔄 หมุนทดสอบช่องถัดไป"
                             android:textAllCaps="false"
                             android:textColor="@color/accent_cyan"
                             android:textSize="12sp"
@@ -986,10 +1269,11 @@
                         android:padding="14dp">
 
                         <TextView
+                            android:id="@+id/tvRadialGridTitle"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_marginHorizontal="4dp"
-                            android:text="📱 กำหนดแอปทั้ง 15 ช่อง (แตะช่องเพื่อเปลี่ยนแอป)"
+                            android:text="📱 กำหนดแอปในวงกลม (แตะช่องเพื่อเปลี่ยนแอป)"
                             android:textColor="@color/text_primary"
                             android:textSize="14sp"
                             android:textStyle="bold" />
@@ -1006,4 +1290,22 @@
             </FrameLayout>
         </androidx.core.widget.NestedScrollView>
     </LinearLayout>
+
+    <!-- In-App Centered Circular Wheel Fallback (pops up centered on screen even before Accessibility is enabled) -->
+    <FrameLayout
+        android:id="@+id/inAppCenteredWheelOverlay"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#8804070E"
+        android:clickable="false"
+        android:focusable="false"
+        android:visibility="gone">
+
+        <com.sdwinnie.airgesture.overlay.RadialAppSelectorView
+            android:id="@+id/inAppFloatingWheel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center" />
+    </FrameLayout>
+
 </FrameLayout>

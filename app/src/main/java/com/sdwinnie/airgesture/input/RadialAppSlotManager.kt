@@ -12,8 +12,7 @@ import com.sdwinnie.airgesture.security.AirLogger
 import com.sdwinnie.airgesture.security.PreferenceStore
 
 /**
- * Manages the 15 circular app shortcuts (24° per segment) for the Fist Gesture (ท่ากำมือ)
- * 360-degree Radial Pie Selector.
+ * Manages the circular app shortcuts (6, 8, 12, or 15 segments) for the On-Screen 360° Circular App Wheel.
  */
 class RadialAppSlotManager(
     private val context: Context,
@@ -45,16 +44,15 @@ class RadialAppSlotManager(
             .toList()
     }
 
-    /**
-     * Resolves all 15 radial slots (0..14). Auto-seeds unconfigured slots with installed launcher apps
-     * so the 15-App Radial Pie Menu works out of the box immediately upon installation.
-     */
-    fun loadResolvedSlots(): List<RadialAppSlot> {
+    fun loadResolvedSlots(
+        activeCount: Int = preferenceStore.loadConfig().radialSlotCount.count
+    ): List<RadialAppSlot> {
+        val total = activeCount.coerceIn(6, HandGeometry.MAX_RADIAL_SLOTS)
         val installed = queryInstalledLauncherApps()
         val installedMap = installed.associateBy { it.packageName }
-        val result = ArrayList<RadialAppSlot>(HandGeometry.RADIAL_SLOTS)
+        val result = ArrayList<RadialAppSlot>(total)
 
-        for (slotIdx in 0 until HandGeometry.RADIAL_SLOTS) {
+        for (slotIdx in 0 until total) {
             val savedPkg = preferenceStore.getRadialSlotPackage(slotIdx)
             val resolvedEntry = if (savedPkg != null && installedMap.containsKey(savedPkg)) {
                 installedMap[savedPkg]!!
@@ -65,14 +63,15 @@ class RadialAppSlotManager(
                 }
                 fallback
             } else {
-                InstalledAppEntry(packageName = "", label = "Slot ${slotIdx + 1}")
+                InstalledAppEntry(packageName = "", label = "ช่อง ${slotIdx + 1}")
             }
 
             result.add(
                 RadialAppSlot(
                     slotIndex = slotIdx,
                     packageName = resolvedEntry.packageName,
-                    label = resolvedEntry.label
+                    label = resolvedEntry.label,
+                    totalActiveSlots = total
                 )
             )
         }
@@ -90,8 +89,8 @@ class RadialAppSlotManager(
         return bmp
     }
 
-    fun launchSlot(slotIndex: Int): RadialAppSlot? {
-        val slots = loadResolvedSlots()
+    fun launchSlot(slotIndex: Int, activeCount: Int = preferenceStore.loadConfig().radialSlotCount.count): RadialAppSlot? {
+        val slots = loadResolvedSlots(activeCount)
         val slot = slots.getOrNull(slotIndex) ?: return null
         if (slot.packageName.isBlank()) return null
 
@@ -101,7 +100,7 @@ class RadialAppSlotManager(
 
         return runCatching {
             context.startActivity(launchIntent)
-            AirLogger.d("Launcher", "Launched radial slot $slotIndex -> ${slot.packageName}")
+            AirLogger.d("Launcher", "Launched circular slot $slotIndex -> ${slot.packageName}")
             slot
         }.getOrNull()
     }

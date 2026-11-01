@@ -3,44 +3,63 @@ package com.sdwinnie.airgesture.input
 import android.content.Context
 import android.media.AudioManager
 import android.os.Build
+import com.sdwinnie.airgesture.model.VolumeDirection
 import kotlin.math.roundToInt
 
 /**
- * Smooth Master System/Media Volume Controller for the Pinch Gesture (ท่ามือจีบ).
- * Maintains a sub-step floating-point volume accumulator so continuous vertical hand movements
- * modulate Android's discrete AudioManager volume steps fluidly without popping up the stock OS toast
- * (since Dynamic Island renders the live Volume Pill Slider).
+ * Smooth Master System/Media Volume Controller (v3.0) with Explicit Directional Status Tracking
+ * (`🔉 กำลังลดเสียง ▼`, `🔊 กำลังเพิ่มเสียง ▲`, `🔇 ปิดเสียง 0%`, `🔊 คงระดับเสียง`).
  */
 class SystemVolumeController(context: Context) {
+
+    data class VolumeStatusSnapshot(
+        val percent: Int,
+        val deltaPercent: Int,
+        val direction: VolumeDirection,
+        val isMuted: Boolean
+    )
 
     private val audioManager = context.applicationContext.getSystemService(Context.AUDIO_SERVICE) as AudioManager
     private val streamType = AudioManager.STREAM_MUSIC
 
     private var normalizedAccumulator: Float = readCurrentNormalizedVolume()
+    private var sessionStartPercent: Int = 50
+    private var lastDirection: VolumeDirection = VolumeDirection.STEADY
+    private var lastDeltaPercent: Int = 0
     private var sessionActive = false
 
-    fun beginPinchSession(): Int {
+    fun beginPinchSession(): VolumeStatusSnapshot {
         normalizedAccumulator = readCurrentNormalizedVolume()
+        val pct = (normalizedAccumulator * 100.0f).roundToInt().coerceIn(0, 100)
+        sessionStartPercent = pct
+        lastDeltaPercent = 0
+        lastDirection = if (pct == 0) VolumeDirection.MUTED else VolumeDirection.STEADY
         sessionActive = true
-        return currentVolumePercent()
+        return currentStatusSnapshot()
     }
 
     fun endPinchSession() {
         sessionActive = false
+        lastDirection = VolumeDirection.STEADY
+        lastDeltaPercent = 0
     }
 
     /**
      * Applies vertical normalized hand movement (+deltaUp increases volume, -deltaUp decreases volume).
-     * Returns updated volume percentage [0..100].
      */
-    fun applyPinchDelta(normalizedDeltaUp: Float, sensitivity: Float = 1.0f): Int {
+    fun applyPinchDelta(
+        normalizedDeltaUp: Float,
+        sensitivity: Float = 1.0f,
+        showSystemVolumeUi: Boolean = true
+    ): VolumeStatusSnapshot {
         if (!sessionActive) {
             beginPinchSession()
         }
 
-        // Full palm-scale vertical sweep (~1.35 * L_ref) spans 0% -> 100% smoothly
-        val gain = 0.72f * sensitivity.coerceIn(0.5f, 2.0f)
+        val prevPct = (normalizedAccumulator * 100.0f).roundToInt().coerceIn(0, 100)
+        val gain = 0.75f * sensitivity.coerceIn(0.5f, 2.0f)
         normalizedAccumulator = (normalizedAccumulator + normalizedDeltaUp * gain).coerceIn(0.0f, 1.0f)
+        val newPct = (normalizedAccumulator * 100.0f).roundToInt().coerceIn(0, 100)
 
         val maxVol = audioManager.getStreamMaxVolume(streamType).coerceAtLeast(1)
         val minVol = readMinVolume()
@@ -48,13 +67,37 @@ class SystemVolumeController(context: Context) {
 
         val currentIndex = audioManager.getStreamVolume(streamType)
         if (targetIndex != currentIndex) {
-            // flags = 0 suppresses stock Android volume popup because Dynamic Island renders the Volume Pill Slider
+            val flags = if (showSystemVolumeUi) AudioManager.FLAG_SHOW_UI else 0
             runCatching {
-                audioManager.setStreamVolume(streamType, targetIndex, 0)
+                audioManager.setStreamVolume(streamType, targetIndex, flags)
             }
         }
 
-        return (normalizedAccumulator * 100.0f).roundToInt().coerceIn(0, 100)
+        lastDeltaPercent = newPct - sessionStartPercent
+        lastDirection = when {
+            newPct == 0 && normalizedDeltaUp <= 0f -> VolumeDirection.MUTED
+            normalizedDeltaUp > 0.004f || newPct > prevPct -> VolumeDirection.UP
+            normalizedDeltaUp < -0.004f || newPct < prevPct -> VolumeDirection.DOWN
+            else -> lastDirection
+        }
+
+        return VolumeStatusSnapshot(
+            percent = newPct,
+            deltaPercent = lastDeltaPercent,
+            direction = lastDirection,
+            isMuted = newPct == 0
+        )
+    }
+
+    fun currentStatusSnapshot(): VolumeStatusSnapshot {
+        val pct = currentVolumePercent()
+        val dir = if (pct == 0) VolumeDirection.MUTED else lastDirection
+        return VolumeStatusSnapshot(
+            percent = pct,
+            deltaPercent = lastDeltaPercent,
+            direction = dir,
+            isMuted = pct == 0
+        )
     }
 
     fun currentVolumePercent(): Int {

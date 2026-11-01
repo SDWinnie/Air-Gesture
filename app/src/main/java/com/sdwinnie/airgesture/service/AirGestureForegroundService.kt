@@ -105,8 +105,9 @@ class AirGestureForegroundService : LifecycleService() {
             }
 
             ACTION_RELOAD_CONFIG -> {
+                activeConfig = preferenceStore.loadConfig()
+                AirGestureRuntimeBus.updateVisualConfig(activeConfig)
                 if (engineRunning) {
-                    activeConfig = preferenceStore.loadConfig()
                     if (!manuallyPaused) {
                         cameraController.applyUpdatedConfig(activeConfig)
                     }
@@ -150,6 +151,7 @@ class AirGestureForegroundService : LifecycleService() {
         engineRunning = true
         manuallyPaused = false
         activeConfig = preferenceStore.loadConfig()
+        AirGestureRuntimeBus.updateVisualConfig(activeConfig)
         gestureStateMachine.reset()
 
         thermalController.startMonitoring { thermalLevel ->
@@ -211,13 +213,18 @@ class AirGestureForegroundService : LifecycleService() {
     ) {
         if (manuallyPaused || !engineRunning) return
 
-        val step = gestureStateMachine.process(handFrame, nowMs)
+        val step = gestureStateMachine.process(handFrame, nowMs, activeConfig)
         val outcome = actionDispatcher.dispatchEvents(
             mode = step.mode,
             events = step.events,
             smoothedFrame = step.smoothedFrame,
+            posture = step.posture,
+            lockedHandLabel = step.lockedHandLabel,
             activeRadialSlot = gestureStateMachine.activeRadialSlot,
             activeRadialAngleDeg = gestureStateMachine.activeRadialAngleDeg,
+            activeRadialCursorX = gestureStateMachine.activeRadialCursorX,
+            activeRadialCursorY = gestureStateMachine.activeRadialCursorY,
+            activeRadialInCancelZone = gestureStateMachine.activeRadialInCancelZone,
             config = activeConfig,
             fps = instantFps,
             thermalWarning = thermalController.isThermalThrottling
@@ -226,10 +233,12 @@ class AirGestureForegroundService : LifecycleService() {
         AirGestureRuntimeBus.updateHudState(outcome.hudState)
 
         val postureText = when (step.mode) {
-            AirGestureStateMachine.Mode.DORMANT -> "โหมดประหยัดพลังงาน (รอฝ่ามือ)"
-            AirGestureStateMachine.Mode.PALM_ACTIVE -> if (handFrame != null) "ตรวจพบฝ่ามือ (Palm Active)" else "Dynamic Island พร้อมทำงาน"
-            AirGestureStateMachine.Mode.PINCH_VOLUME -> "ท่ามือจีบปรับเสียง (Pinch Volume)"
-            AirGestureStateMachine.Mode.FIST_RADIAL_MENU -> "วงล้อลัด 15 แอป (Fist Radial)"
+            AirGestureStateMachine.Mode.DORMANT -> "โหมดประหยัดพลังงาน (รอ 1 มือ)"
+            AirGestureStateMachine.Mode.PALM_ACTIVE ->
+                if (handFrame != null) "${step.posture.emoji} ${step.posture.thaiName} (${step.lockedHandLabel})"
+                else "พร้อมรับท่ามือ (${step.lockedHandLabel})"
+            AirGestureStateMachine.Mode.PINCH_VOLUME -> "${activeConfig.volumePreset.badgeEmoji} กำลังปรับเสียงระบบ"
+            AirGestureStateMachine.Mode.FIST_RADIAL_MENU -> "🎡 วงกลมเลือกแอปบนหน้าจอ"
         }
 
         AirGestureRuntimeBus.updateTelemetry { prev ->
@@ -237,6 +246,7 @@ class AirGestureForegroundService : LifecycleService() {
                 serviceRunning = true,
                 manualPaused = false,
                 delegateName = handTracker.activeDelegateLabel,
+                lockedHandLabel = step.lockedHandLabel,
                 inferenceFps = instantFps,
                 inferenceLatencyMs = inferenceLatencyMs,
                 thermalStatus = thermalController.currentThermalStatus,

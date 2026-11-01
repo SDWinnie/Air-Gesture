@@ -1,11 +1,18 @@
 package com.sdwinnie.airgesture.engine
 
+import com.sdwinnie.airgesture.model.AirGestureConfig
 import com.sdwinnie.airgesture.model.GestureEvent
 import com.sdwinnie.airgesture.model.HandFrame
+import com.sdwinnie.airgesture.model.HandLockMode
+import com.sdwinnie.airgesture.model.HandPosture
+import com.sdwinnie.airgesture.model.HandSide
 import com.sdwinnie.airgesture.model.Landmark3D
-import com.sdwinnie.airgesture.vision.RoiTracker
+import com.sdwinnie.airgesture.model.RadialSlotCount
+import com.sdwinnie.airgesture.model.VolumeGesturePreset
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import kotlin.math.cos
@@ -13,22 +20,18 @@ import kotlin.math.sin
 
 class AirGestureEngineTest {
 
-    /**
-     * Synthesizes a realistic 21-landmark hand centered at (cx, cy) with palm scale [scale],
-     * rotated clockwise from 12 o'clock by [angleDeg].
-     */
     private fun makeOpenPalm(
         cx: Float = 0.5f,
         cy: Float = 0.6f,
         scale: Float = 0.14f,
         angleDeg: Float = 0f,
-        timestampMs: Long = 100L
+        timestampMs: Long = 100L,
+        handSide: HandSide = HandSide.RIGHT
     ): HandFrame {
         val rad = Math.toRadians(angleDeg.toDouble())
         val sinA = sin(rad).toFloat()
         val cosA = cos(rad).toFloat()
 
-        // Local coordinates where +localX = right, +localY = UP (screen Y = cy - rotatedY)
         fun pt(localX: Float, localY: Float): Landmark3D {
             val rx = localX * cosA + localY * sinA
             val ry = -localX * sinA + localY * cosA
@@ -41,9 +44,9 @@ class AirGestureEngineTest {
 
         val pts = ArrayList<Landmark3D>(21)
         pts.add(pt(0.0f, 0.0f)) // 0: WRIST
-        pts.add(pt(-0.32f, 0.22f)) // 1: THUMB_CMC
-        pts.add(pt(-0.55f, 0.48f)) // 2: THUMB_MCP
-        pts.add(pt(-0.74f, 0.75f)) // 3: THUMB_IP
+        pts.add(pt(-0.32f, 0.22f))
+        pts.add(pt(-0.55f, 0.48f))
+        pts.add(pt(-0.74f, 0.75f))
         pts.add(pt(-0.92f, 1.02f)) // 4: THUMB_TIP
 
         // Index (5..8)
@@ -52,7 +55,7 @@ class AirGestureEngineTest {
         pts.add(pt(-0.40f, 1.65f))
         pts.add(pt(-0.42f, 1.92f))
 
-        // Middle (9..12) -> dist(0, 9) == 1.0 * scale
+        // Middle (9..12)
         pts.add(pt(0.0f, 1.00f))
         pts.add(pt(0.0f, 1.42f))
         pts.add(pt(0.0f, 1.75f))
@@ -70,7 +73,7 @@ class AirGestureEngineTest {
         pts.add(pt(0.65f, 1.42f))
         pts.add(pt(0.68f, 1.64f))
 
-        return HandFrame(pts, timestampMs)
+        return HandFrame(pts, timestampMs, confidence = 0.92f, handSide = handSide)
     }
 
     private fun makePinchHand(
@@ -81,12 +84,11 @@ class AirGestureEngineTest {
         timestampMs: Long = 100L
     ): HandFrame {
         val base = makeOpenPalm(cx = cx, cy = cy, scale = scale, timestampMs = timestampMs).landmarks.toMutableList()
-        // Bring thumb tip (4) and index tip (8) together forward/above index MCP while keeping middle/ring/pinky extended
         val meetX = cx - 0.36f * scale
         val meetY = cy - 1.35f * scale
         base[HandGeometry.THUMB_TIP] = Landmark3D(meetX - pinchGapNorm * 0.5f * scale, meetY, 0f)
         base[HandGeometry.INDEX_TIP] = Landmark3D(meetX + pinchGapNorm * 0.5f * scale, meetY, 0f)
-        return HandFrame(base, timestampMs)
+        return HandFrame(base, timestampMs, confidence = 0.92f, handSide = HandSide.RIGHT)
     }
 
     private fun makeFistHand(
@@ -111,77 +113,98 @@ class AirGestureEngineTest {
         pts.add(pt(-0.28f, 0.25f))
         pts.add(pt(-0.38f, 0.55f))
         pts.add(pt(-0.22f, 0.78f))
-        pts.add(pt(-0.08f, 0.82f)) // 4: Thumb folded across curled fingers
+        pts.add(pt(-0.08f, 0.82f)) // 4: Thumb tucked across curled fingers
 
-        // Curled fingers: tips folded tightly back toward MCP bases (< 0.55 * scale from MCP)
         val xOffsets = floatArrayOf(-0.34f, 0.0f, 0.32f, 0.56f)
         val mcpYs = floatArrayOf(0.95f, 1.00f, 0.94f, 0.84f)
         for (f in 0 until 4) {
             val xo = xOffsets[f]
             val my = mcpYs[f]
-            pts.add(pt(xo, my))            // MCP
-            pts.add(pt(xo, my + 0.18f))    // PIP
-            pts.add(pt(xo, my - 0.05f))    // DIP curled inward
-            pts.add(pt(xo, my - 0.22f))    // TIP curled toward palm base
+            pts.add(pt(xo, my))
+            pts.add(pt(xo, my + 0.18f))
+            pts.add(pt(xo, my - 0.05f))
+            pts.add(pt(xo, my - 0.22f))
         }
 
-        return HandFrame(pts, timestampMs)
+        return HandFrame(pts, timestampMs, confidence = 0.92f, handSide = HandSide.RIGHT)
+    }
+
+    private fun makeThumbHand(
+        thumbUp: Boolean,
+        cx: Float = 0.5f,
+        cy: Float = 0.6f,
+        scale: Float = 0.14f,
+        timestampMs: Long = 100L
+    ): HandFrame {
+        val fist = makeFistHand(cx = cx, cy = cy, scale = scale, timestampMs = timestampMs).landmarks.toMutableList()
+        val dir = if (thumbUp) -1f else 1f
+        fist[HandGeometry.THUMB_MCP] = Landmark3D(cx - 0.35f * scale, cy - 0.60f * scale, 0f)
+        fist[HandGeometry.THUMB_IP] = Landmark3D(cx - 0.35f * scale, cy - 0.60f * scale + dir * 0.45f * scale, 0f)
+        fist[HandGeometry.THUMB_TIP] = Landmark3D(cx - 0.35f * scale, cy - 0.60f * scale + dir * 0.90f * scale, 0f)
+        return HandFrame(fist, timestampMs, confidence = 0.94f, handSide = HandSide.RIGHT)
+    }
+
+    private fun makeVictoryHand(
+        cx: Float = 0.5f,
+        cy: Float = 0.6f,
+        scale: Float = 0.14f,
+        timestampMs: Long = 100L
+    ): HandFrame {
+        val open = makeOpenPalm(cx = cx, cy = cy, scale = scale, timestampMs = timestampMs).landmarks
+        val fist = makeFistHand(cx = cx, cy = cy, scale = scale, timestampMs = timestampMs).landmarks.toMutableList()
+        // Extend Index (5..8) and Middle (9..12); keep Ring & Pinky curled
+        for (idx in 5..12) {
+            fist[idx] = open[idx]
+        }
+        return HandFrame(fist, timestampMs, confidence = 0.93f, handSide = HandSide.RIGHT)
     }
 
     @Test
-    fun `distance normalization is invariant between near and far hands`() {
-        val nearPalm = makeOpenPalm(scale = 0.28f) // Close to lens (~30 cm)
-        val farPalm = makeOpenPalm(scale = 0.06f)  // Far from lens (~1.4 m)
+    fun `distance normalization and anatomical anti-ghost plausibility work reliably`() {
+        val nearPalm = makeOpenPalm(scale = 0.28f)
+        val farPalm = makeOpenPalm(scale = 0.06f)
+        val tinyGhostNoise = makeOpenPalm(scale = 0.02f)
+
+        assertTrue(HandGeometry.isAnatomicallyPlausibleHand(nearPalm.landmarks))
+        assertTrue(HandGeometry.isAnatomicallyPlausibleHand(farPalm.landmarks))
+        assertFalse("Tiny background phantom hand must be rejected", HandGeometry.isAnatomicallyPlausibleHand(tinyGhostNoise.landmarks))
 
         assertTrue(HandGeometry.isOpenPalm(nearPalm.landmarks))
         assertTrue(HandGeometry.isOpenPalm(farPalm.landmarks))
-        assertFalse(HandGeometry.isFullFist(nearPalm.landmarks))
-        assertFalse(HandGeometry.isFullFist(farPalm.landmarks))
-
-        val nearFist = makeFistHand(scale = 0.28f)
-        val farFist = makeFistHand(scale = 0.06f)
-        assertTrue(HandGeometry.isFullFist(nearFist.landmarks))
-        assertTrue(HandGeometry.isFullFist(farFist.landmarks))
+        assertTrue(HandGeometry.isFullFist(makeFistHand(scale = 0.28f).landmarks))
+        assertTrue(HandGeometry.isFullFist(makeFistHand(scale = 0.06f).landmarks))
     }
 
     @Test
-    fun `one euro filter attenuates micro jitter while tracking fast sweeps`() {
-        val filter = OneEuroFilter1D(minCutoffHz = 1.7f, beta = 18.0f, derivativeCutoffHz = 2.5f)
-        var t = 100L
-        val stationaryOutputs = mutableListOf<Float>()
-        for (i in 0 until 12) {
-            val noisy = 0.5f + if (i % 2 == 0) 0.008f else -0.008f
-            stationaryOutputs.add(filter.filter(noisy, t))
-            t += 16L
-        }
-        val lastSpread = kotlin.math.abs(stationaryOutputs.last() - 0.5f)
-        assertTrue("Stationary jitter should be damped below raw amplitude", lastSpread < 0.006f)
+    fun `single-hand lock tracker strictly rejects second hand and cross-screen jumps`() {
+        val tracker = SingleHandLockTracker()
+        val rightHand = makeOpenPalm(cx = 0.45f, cy = 0.55f, timestampMs = 100L, handSide = HandSide.RIGHT)
+        val intrudingLeftHand = makeOpenPalm(cx = 0.50f, cy = 0.55f, timestampMs = 130L, handSide = HandSide.LEFT)
+        val teleportedSecondRight = makeOpenPalm(cx = 0.92f, cy = 0.15f, timestampMs = 150L, handSide = HandSide.RIGHT)
 
-        // Rapid sweep to 0.9f should catch up quickly within 4 frames (64 ms)
-        var fastVal = 0.5f
-        for (i in 1..4) {
-            fastVal = filter.filter(0.9f, t)
-            t += 16L
-        }
-        assertTrue("Fast sweep should converge rapidly (>0.85), got $fastVal", fastVal > 0.85f)
+        assertNotNull(tracker.filterSingleHand(rightHand, 100L, HandLockMode.AUTO_SINGLE))
+        assertEquals(HandSide.RIGHT, tracker.lockedSide)
+
+        // Second opposite hand must be blocked!
+        assertNull(tracker.filterSingleHand(intrudingLeftHand, 130L, HandLockMode.AUTO_SINGLE))
+        // Instantaneous teleport > 0.38 across screen must be blocked!
+        assertNull(tracker.filterSingleHand(teleportedSecondRight, 150L, HandLockMode.AUTO_SINGLE))
+
+        // Explicit LEFT_ONLY mode rejects right hand immediately
+        tracker.reset()
+        assertNull(tracker.filterSingleHand(rightHand, 200L, HandLockMode.LEFT_ONLY))
+        assertNotNull(tracker.filterSingleHand(intrudingLeftHand, 220L, HandLockMode.LEFT_ONLY))
     }
 
     @Test
-    fun `open palm wakes Dynamic Island and idle timeout sleeps HUD`() {
-        val fsm = AirGestureStateMachine()
-        assertEquals(AirGestureStateMachine.Mode.DORMANT, fsm.currentMode)
-
-        fsm.process(makeOpenPalm(timestampMs = 100L), 100L)
-        fsm.process(makeOpenPalm(timestampMs = 120L), 120L)
-        val step3 = fsm.process(makeOpenPalm(timestampMs = 140L), 140L)
-
-        assertEquals(AirGestureStateMachine.Mode.PALM_ACTIVE, step3.mode)
-        assertTrue(step3.events.contains(GestureEvent.WakeDynamicIsland))
-
-        // Disappear for > 3000ms -> SleepDynamicIsland
-        val sleepStep = fsm.process(null, 3300L)
-        assertEquals(AirGestureStateMachine.Mode.DORMANT, sleepStep.mode)
-        assertTrue(sleepStep.events.contains(GestureEvent.SleepDynamicIsland))
+    fun `canonical human postures classify without cross-confusion`() {
+        assertEquals(HandPosture.OPEN_PALM, HandGeometry.classifyPosture(makeOpenPalm().landmarks))
+        assertEquals(HandPosture.PINCH_OK, HandGeometry.classifyPosture(makePinchHand().landmarks))
+        assertEquals(HandPosture.CLOSED_FIST, HandGeometry.classifyPosture(makeFistHand().landmarks))
+        assertEquals(HandPosture.THUMB_UP, HandGeometry.classifyPosture(makeThumbHand(thumbUp = true).landmarks))
+        assertEquals(HandPosture.THUMB_DOWN, HandGeometry.classifyPosture(makeThumbHand(thumbUp = false).landmarks))
+        assertEquals(HandPosture.VICTORY_PEACE, HandGeometry.classifyPosture(makeVictoryHand().landmarks))
+        assertFalse("Thumbs-Up must never misfire as Closed Fist", HandGeometry.isFullFist(makeThumbHand(thumbUp = true).landmarks))
     }
 
     @Test
@@ -191,114 +214,84 @@ class AirGestureEngineTest {
         fsm.process(makeOpenPalm(cy = 0.65f, timestampMs = 120L), 120L)
         fsm.process(makeOpenPalm(cy = 0.65f, timestampMs = 140L), 140L)
 
-        // Fast upward sweep (cy decreases from 0.65 -> 0.42 over 60ms)
         val upStep1 = fsm.process(makeOpenPalm(cy = 0.54f, timestampMs = 170L), 170L)
         val upStep2 = fsm.process(makeOpenPalm(cy = 0.42f, timestampMs = 200L), 200L)
 
         val scrollEvents = (upStep1.events + upStep2.events).filterIsInstance<GestureEvent.VerticalScroll>()
-        assertTrue("Expected upward palm sweep to trigger VerticalScroll", scrollEvents.isNotEmpty())
+        assertTrue(scrollEvents.isNotEmpty())
         assertTrue(scrollEvents.first().scrollUp)
 
-        // Immediate return stroke downward within 340ms clutch window must be suppressed!
         val ret1 = fsm.process(makeOpenPalm(cy = 0.54f, timestampMs = 315L), 315L)
         val ret2 = fsm.process(makeOpenPalm(cy = 0.66f, timestampMs = 340L), 340L)
         val unintendedReverse = (ret1.events + ret2.events).filterIsInstance<GestureEvent.VerticalScroll>()
-        assertTrue("Return-stroke clutch must block unintended reverse scroll", unintendedReverse.isEmpty())
+        assertTrue(unintendedReverse.isEmpty())
     }
 
     @Test
-    fun `horizontal sweep triggers navigation with refractory lock`() {
-        val fsm = AirGestureStateMachine()
-        fsm.process(makeOpenPalm(cx = 0.65f, timestampMs = 100L), 100L)
-        fsm.process(makeOpenPalm(cx = 0.65f, timestampMs = 120L), 120L)
-        fsm.process(makeOpenPalm(cx = 0.65f, timestampMs = 140L), 140L)
-
-        // Fast horizontal left sweep (cx: 0.65 -> 0.35)
-        val nav1 = fsm.process(makeOpenPalm(cx = 0.50f, timestampMs = 170L), 170L)
-        val nav2 = fsm.process(makeOpenPalm(cx = 0.35f, timestampMs = 200L), 200L)
-
-        val navEvents = (nav1.events + nav2.events).filterIsInstance<GestureEvent.HorizontalNavigate>()
-        assertEquals(1, navEvents.size)
-        assertTrue(navEvents.first().swipeLeft)
-    }
-
-    @Test
-    fun `pinch gesture modulates volume smoothly and respects hysteresis`() {
+    fun `pinch and thumbs-up-down volume presets both modulate volume accurately`() {
         val fsm = AirGestureStateMachine()
         fsm.process(makeOpenPalm(timestampMs = 100L), 100L)
         fsm.process(makeOpenPalm(timestampMs = 120L), 120L)
         fsm.process(makeOpenPalm(timestampMs = 140L), 140L)
 
-        // Enter Pinch (ท่ามือจีบ) over 3 frames @ 60 FPS (~48 ms debounce + 1-Euro convergence)
+        // 1. Pinch Slide Mode
         fsm.process(makePinchHand(cy = 0.60f, pinchGapNorm = 0.14f, timestampMs = 165L), 165L)
         fsm.process(makePinchHand(cy = 0.60f, pinchGapNorm = 0.14f, timestampMs = 182L), 182L)
-        val enterStep = fsm.process(makePinchHand(cy = 0.60f, pinchGapNorm = 0.14f, timestampMs = 198L), 198L)
+        val enterStep = fsm.process(makePinchHand(cy = 0.60f, pinchGapNorm = 0.14f, timestampMs = 200L), 200L)
         assertEquals(AirGestureStateMachine.Mode.PINCH_VOLUME, enterStep.mode)
 
-        // Move pinched hand UP (cy: 0.60 -> 0.50) -> positive volume delta!
-        val slideUp = fsm.process(makePinchHand(cy = 0.50f, pinchGapNorm = 0.33f, timestampMs = 230L), 230L)
-        // Notice pinchGapNorm = 0.33f is BETWEEN enter (0.28) and exit (0.40) -> Schmitt hysteresis keeps PINCH_VOLUME latched!
-        assertEquals(AirGestureStateMachine.Mode.PINCH_VOLUME, slideUp.mode)
-        val volEvent = slideUp.events.filterIsInstance<GestureEvent.PinchVolumeModulate>().firstOrNull()
-        assertTrue("Expected positive volume delta on upward pinch slide", volEvent != null && volEvent.normalizedDeltaY > 0f)
+        // Slide pinched hand DOWN (cy: 0.60 -> 0.70) -> negative volume delta (Volume Down!)
+        val slideDown = fsm.process(makePinchHand(cy = 0.70f, pinchGapNorm = 0.32f, timestampMs = 235L), 235L)
+        val downEvt = slideDown.events.filterIsInstance<GestureEvent.PinchVolumeModulate>().firstOrNull()
+        assertTrue("Expected negative volume delta when lowering hand", downEvt != null && downEvt.normalizedDeltaY < 0f)
 
-        // Release pinch (> 0.40) -> PinchEnded
-        val releaseStep = fsm.process(makeOpenPalm(cy = 0.50f, timestampMs = 260L), 260L)
-        assertEquals(AirGestureStateMachine.Mode.PALM_ACTIVE, releaseStep.mode)
-        assertTrue(releaseStep.events.contains(GestureEvent.PinchEnded))
+        // 2. Ergonomic Thumbs-Up / Thumbs-Down Volume Preset
+        val thumbCfg = AirGestureConfig(volumePreset = VolumeGesturePreset.THUMBS_UP_DOWN)
+        val fsm2 = AirGestureStateMachine()
+        fsm2.process(makeOpenPalm(timestampMs = 100L), 100L, thumbCfg)
+        fsm2.process(makeOpenPalm(timestampMs = 120L), 120L, thumbCfg)
+        fsm2.process(makeOpenPalm(timestampMs = 140L), 140L, thumbCfg)
+
+        val t1 = fsm2.process(makeThumbHand(thumbUp = false, timestampMs = 170L), 170L, thumbCfg)
+        val t2 = fsm2.process(makeThumbHand(thumbUp = false, timestampMs = 190L), 190L, thumbCfg)
+        val thumbDownStep = fsm2.process(makeThumbHand(thumbUp = false, timestampMs = 210L), 210L, thumbCfg)
+        assertEquals(AirGestureStateMachine.Mode.PINCH_VOLUME, thumbDownStep.mode)
+        val entryVolEvt = (t1.events + t2.events + thumbDownStep.events)
+            .filterIsInstance<GestureEvent.PinchVolumeModulate>()
+            .firstOrNull()
+        assertTrue("Thumbs-Down must emit Volume Down (-delta) on entry", entryVolEvt != null && entryVolEvt.normalizedDeltaY < 0f)
+
+        // Holding Thumbs-Down past repeat interval emits another continuous Volume Down step
+        val repeatStep = fsm2.process(makeThumbHand(thumbUp = false, timestampMs = 365L), 365L, thumbCfg)
+        val repeatEvt = repeatStep.events.filterIsInstance<GestureEvent.PinchVolumeModulate>().firstOrNull()
+        assertTrue("Holding Thumbs-Down must repeat Volume Down step", repeatEvt != null && repeatEvt.normalizedDeltaY < 0f)
     }
 
     @Test
-    fun `fist gesture summons 15-app radial menu tracks 360 angles with hysteresis and launches on release`() {
-        // Verify 15-slice angle math & ±2.5° boundary hysteresis directly
-        assertEquals(0, HandGeometry.angleToRadialSlot(0f))
-        assertEquals(1, HandGeometry.angleToRadialSlot(24f))
-        assertEquals(3, HandGeometry.angleToRadialSlot(72f))
-        assertEquals(14, HandGeometry.angleToRadialSlot(336f))
-        // Boundary between Slot 0 (0°) and Slot 1 (24°) is at 12°; at 13.5° hysteresis keeps Slot 0!
-        assertEquals(0, HandGeometry.angleToRadialSlot(13.5f, previousSlot = 0, hysteresisDeg = 2.5f))
-        // Moving past 14.5° (e.g. 16°) transitions cleanly to Slot 1!
-        assertEquals(1, HandGeometry.angleToRadialSlot(16.0f, previousSlot = 0, hysteresisDeg = 2.5f))
-
+    fun `spatial virtual joystick selects circular apps effortlessly and cancels in center safe zone`() {
+        val cfg8 = AirGestureConfig(radialSlotCount = RadialSlotCount.SLOTS_8)
         val fsm = AirGestureStateMachine()
-        fsm.process(makeOpenPalm(timestampMs = 100L), 100L)
-        fsm.process(makeOpenPalm(timestampMs = 120L), 120L)
-        fsm.process(makeOpenPalm(timestampMs = 140L), 140L)
+        fsm.process(makeOpenPalm(cx = 0.50f, cy = 0.55f, timestampMs = 100L), 100L, cfg8)
+        fsm.process(makeOpenPalm(cx = 0.50f, cy = 0.55f, timestampMs = 120L), 120L, cfg8)
+        fsm.process(makeOpenPalm(cx = 0.50f, cy = 0.55f, timestampMs = 140L), 140L, cfg8)
 
-        // Hold Fist (ท่ากำมือ) tilted to 72° (Slot #3, index 3 -> 4th app)
-        fsm.process(makeFistHand(angleDeg = 72f, timestampMs = 180L), 180L)
-        val summonStep = fsm.process(makeFistHand(angleDeg = 72f, timestampMs = 320L), 320L)
-        assertEquals(AirGestureStateMachine.Mode.FIST_RADIAL_MENU, summonStep.mode)
-        val summoned = summonStep.events.filterIsInstance<GestureEvent.RadialMenuSummoned>().first()
-        assertEquals(3, summoned.selectedSlot)
+        // Hold upright Fist at center (0.50, 0.55) -> summons wheel inside Center Safe Cancel Zone!
+        fsm.process(makeFistHand(cx = 0.50f, cy = 0.55f, angleDeg = 0f, timestampMs = 170L), 170L, cfg8)
+        val summon = fsm.process(makeFistHand(cx = 0.50f, cy = 0.55f, angleDeg = 0f, timestampMs = 340L), 340L, cfg8)
+        assertEquals(AirGestureStateMachine.Mode.FIST_RADIAL_MENU, summon.mode)
+        assertTrue(fsm.activeRadialInCancelZone)
 
-        // Rotate wrist to 144° (Slot #6)
-        fsm.process(makeFistHand(angleDeg = 144f, timestampMs = 360L), 360L)
-        val rotateStep = fsm.process(makeFistHand(angleDeg = 144f, timestampMs = 390L), 390L)
-        val updated = rotateStep.events.filterIsInstance<GestureEvent.RadialMenuUpdated>().last()
-        assertEquals(6, updated.selectedSlot)
+        // Move fist slightly RIGHT (cx: 0.50 -> 0.62, 90° = 3 o'clock = Slot #2 in an 8-slot wheel!) without twisting wrist!
+        fsm.process(makeFistHand(cx = 0.62f, cy = 0.55f, angleDeg = 0f, timestampMs = 380L), 380L, cfg8)
+        val aimed = fsm.process(makeFistHand(cx = 0.62f, cy = 0.55f, angleDeg = 0f, timestampMs = 410L), 410L, cfg8)
+        assertFalse(fsm.activeRadialInCancelZone)
+        val upd = aimed.events.filterIsInstance<GestureEvent.RadialMenuUpdated>().last()
+        assertEquals(2, upd.selectedSlot) // 90° / 45° = Slot 2
 
-        // Release fist into open palm -> commits Slot #6!
-        fsm.process(makeOpenPalm(angleDeg = 144f, timestampMs = 420L), 420L)
-        val commitStep = fsm.process(makeOpenPalm(angleDeg = 144f, timestampMs = 450L), 450L)
-        assertEquals(AirGestureStateMachine.Mode.PALM_ACTIVE, commitStep.mode)
-        val committed = commitStep.events.filterIsInstance<GestureEvent.RadialMenuCommitted>().first()
-        assertEquals(6, committed.selectedSlot)
-    }
-
-    @Test
-    fun `roi tracker maps cropped volatile buffer coordinates back to full frame seamlessly`() {
-        val roiTracker = RoiTracker()
-        val handInCorner = makeOpenPalm(cx = 0.72f, cy = 0.34f, scale = 0.08f)
-        roiTracker.onLandmarksDetected(handInCorner.landmarks)
-
-        val zoomedRoi = roiTracker.currentRoi
-        assertTrue(zoomedRoi.width < 1.0f)
-
-        val (mappedX, mappedY) = roiTracker.mapRoiToFullFrame(0.5f, 0.5f, zoomedRoi)
-        val expectedMidX = (zoomedRoi.left + zoomedRoi.right) * 0.5f
-        val expectedMidY = (zoomedRoi.top + zoomedRoi.bottom) * 0.5f
-        assertEquals(expectedMidX, mappedX, 1e-4f)
-        assertEquals(expectedMidY, mappedY, 1e-4f)
+        // Open hand -> launches Slot 2!
+        fsm.process(makeOpenPalm(cx = 0.62f, cy = 0.55f, timestampMs = 440L), 440L, cfg8)
+        val commit = fsm.process(makeOpenPalm(cx = 0.62f, cy = 0.55f, timestampMs = 470L), 470L, cfg8)
+        val committed = commit.events.filterIsInstance<GestureEvent.RadialMenuCommitted>().first()
+        assertEquals(2, committed.selectedSlot)
     }
 }

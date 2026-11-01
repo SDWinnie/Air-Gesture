@@ -12,19 +12,19 @@ import android.graphics.Shader
 import android.graphics.Typeface
 import android.util.AttributeSet
 import android.view.View
-import com.sdwinnie.airgesture.engine.HandGeometry
 import com.sdwinnie.airgesture.input.RadialAppSlotManager
+import com.sdwinnie.airgesture.model.HudPalmStyle
+import com.sdwinnie.airgesture.model.HudThemeColor
 import com.sdwinnie.airgesture.model.HudVisualState
 import com.sdwinnie.airgesture.model.Landmark3D
 import com.sdwinnie.airgesture.model.RadialAppSlot
+import com.sdwinnie.airgesture.model.VolumeDirection
 import kotlin.math.cos
 import kotlin.math.min
 import kotlin.math.sin
 
 /**
- * Adaptive Full-Window Floating HUD View rendered inside Android's Official Picture-in-Picture (PiP)
- * Floating Dynamic Island Window (zero SYSTEM_ALERT_WINDOW permission required!).
- * Automatically adapts to both wide capsule PiP (2.2:1) and square Radial Wheel PiP (1:1).
+ * Adaptive Floating HUD View rendered inside Android's Official Picture-in-Picture (PiP) Window.
  */
 class PipFloatingHudView @JvmOverloads constructor(
     context: Context,
@@ -35,9 +35,13 @@ class PipFloatingHudView @JvmOverloads constructor(
     private fun dp(v: Float): Float = v * density
 
     private var state: HudVisualState = HudVisualState.Dormant
+    private var palmStyle: HudPalmStyle = HudPalmStyle.SKELETON_21
+    private var themeColor: HudThemeColor = HudThemeColor.CYBER_CYAN
+    private var activeSlotCount: Int = 8
+
     private var slotManager: RadialAppSlotManager? = null
     private var slots: List<RadialAppSlot> = emptyList()
-    private var icons: Array<Bitmap?> = arrayOfNulls(HandGeometry.RADIAL_SLOTS)
+    private var icons: Array<Bitmap?> = emptyArray()
 
     private val cardRect = RectF()
     private val barRect = RectF()
@@ -60,13 +64,18 @@ class PipFloatingHudView @JvmOverloads constructor(
 
     private val titlePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.WHITE
-        textSize = dp(13.5f)
+        textSize = dp(13.0f)
         typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
     }
 
     private val subPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.parseColor("#9DB2D0")
         textSize = dp(10.5f)
+    }
+
+    private val emojiPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        textSize = dp(18f)
+        textAlign = Paint.Align.CENTER
     }
 
     private val bonePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -95,16 +104,28 @@ class PipFloatingHudView @JvmOverloads constructor(
         style = Paint.Style.FILL
     }
 
-    fun attachSlotManager(manager: RadialAppSlotManager) {
+    fun attachSlotManager(manager: RadialAppSlotManager, slotCount: Int = activeSlotCount) {
         slotManager = manager
-        refreshRadialSlots()
+        activeSlotCount = slotCount.coerceIn(6, 15)
+        refreshRadialSlots(activeSlotCount)
     }
 
-    fun refreshRadialSlots() {
+    fun applyVisualStyle(style: HudPalmStyle, theme: HudThemeColor, slotCount: Int) {
+        palmStyle = style
+        themeColor = theme
+        if (slotCount != activeSlotCount) {
+            refreshRadialSlots(slotCount)
+        } else {
+            postInvalidateOnAnimation()
+        }
+    }
+
+    fun refreshRadialSlots(slotCount: Int = activeSlotCount) {
+        activeSlotCount = slotCount.coerceIn(6, 15)
         val mgr = slotManager ?: return
-        val loaded = mgr.loadResolvedSlots()
+        val loaded = mgr.loadResolvedSlots(activeSlotCount)
         slots = loaded
-        val arr = arrayOfNulls<Bitmap>(HandGeometry.RADIAL_SLOTS)
+        val arr = arrayOfNulls<Bitmap>(loaded.size)
         for (i in loaded.indices) {
             arr[i] = mgr.getCachedAppIcon(loaded[i].packageName, 64)
         }
@@ -127,30 +148,37 @@ class PipFloatingHudView @JvmOverloads constructor(
         cardRect.set(pad, pad, w - pad, h - pad)
         val radius = dp(18f)
         canvas.drawRoundRect(cardRect, radius, radius, bgPaint)
+        val primaryTheme = Color.parseColor(themeColor.primaryHex)
 
         when (val st = state) {
             is HudVisualState.RadialSelectorActive -> {
-                borderPaint.color = Color.parseColor("#9E7BFF")
+                borderPaint.color = primaryTheme
                 canvas.drawRoundRect(cardRect, radius, radius, borderPaint)
-                drawCompactRadialWheel(canvas, w, h, st.angleDegrees, st.selectedSlot)
+                drawCompactRadialWheel(canvas, w, h, st)
             }
 
             is HudVisualState.VolumeSlider -> {
-                borderPaint.color = Color.parseColor("#00E676")
+                val volColor = when (st.direction) {
+                    VolumeDirection.MUTED -> Color.parseColor("#FF4D6D")
+                    VolumeDirection.DOWN -> Color.parseColor("#FFB300")
+                    VolumeDirection.UP -> Color.parseColor("#00E676")
+                    VolumeDirection.STEADY -> primaryTheme
+                }
+                borderPaint.color = volColor
                 canvas.drawRoundRect(cardRect, radius, radius, borderPaint)
-                drawPipVolumeBar(canvas, w, h, st.volumePercent)
+                drawPipVolumeBar(canvas, w, h, st, volColor)
             }
 
             is HudVisualState.PalmTracking -> {
                 val accent = when (st.accentHighlight) {
-                    HudVisualState.AccentKind.CYAN -> Color.parseColor("#00E5FF")
+                    HudVisualState.AccentKind.CYAN -> primaryTheme
                     HudVisualState.AccentKind.EMERALD -> Color.parseColor("#00E676")
-                    HudVisualState.AccentKind.VIOLET -> Color.parseColor("#9E7BFF")
+                    HudVisualState.AccentKind.VIOLET -> Color.parseColor("#A374FF")
                     HudVisualState.AccentKind.AMBER -> Color.parseColor("#FFB300")
                 }
                 borderPaint.color = accent
                 canvas.drawRoundRect(cardRect, radius, radius, borderPaint)
-                drawPipPalmCapsule(canvas, w, h, st.statusText, st.landmarks, st.fps, accent)
+                drawPipPalmCapsule(canvas, w, h, st, accent)
             }
 
             is HudVisualState.PausedNotice -> {
@@ -164,13 +192,13 @@ class PipFloatingHudView @JvmOverloads constructor(
             HudVisualState.Dormant -> {
                 borderPaint.color = Color.parseColor("#283A5A")
                 canvas.drawRoundRect(cardRect, radius, radius, borderPaint)
-                jointPaint.color = Color.parseColor("#00E676")
+                jointPaint.color = primaryTheme
                 canvas.drawCircle(dp(22f), h * 0.5f, dp(4f), jointPaint)
                 titlePaint.textAlign = Paint.Align.LEFT
                 titlePaint.color = Color.parseColor("#DCE7FA")
-                canvas.drawText("AIR GESTURE READY", dp(34f), h * 0.48f, titlePaint)
+                canvas.drawText("AIR GESTURE v3.0 READY", dp(34f), h * 0.46f, titlePaint)
                 subPaint.textAlign = Paint.Align.LEFT
-                canvas.drawText("ยกฝ่ามือ • จีบนิ้วปรับเสียง • กำมือ 15 แอป", dp(34f), h * 0.72f, subPaint)
+                canvas.drawText("ล็อก 1 มือ • ปรับเสียง • วงกลมเลือกแอป", dp(34f), h * 0.72f, subPaint)
             }
         }
     }
@@ -179,22 +207,23 @@ class PipFloatingHudView @JvmOverloads constructor(
         canvas: Canvas,
         w: Float,
         h: Float,
-        status: String,
-        landmarks: List<Landmark3D>,
-        fps: Float,
+        st: HudVisualState.PalmTracking,
         accent: Int
     ) {
-        val handR = min(h * 0.34f, dp(22f))
+        val handR = min(h * 0.34f, dp(20f))
         val handCx = dp(28f)
         val handCy = h * 0.5f
         bonePaint.color = accent
 
-        if (landmarks.size >= 21) {
+        if (palmStyle == HudPalmStyle.POSTURE_BADGE) {
+            canvas.drawCircle(handCx, handCy, handR * 0.85f, bonePaint)
+            canvas.drawText(st.postureEmoji, handCx, handCy + dp(6f), emojiPaint)
+        } else if (palmStyle == HudPalmStyle.SKELETON_21 && st.landmarks.size >= 21) {
             var minX = 1f
             var maxX = 0f
             var minY = 1f
             var maxY = 0f
-            for (p in landmarks) {
+            for (p in st.landmarks) {
                 if (p.x < minX) minX = p.x
                 if (p.x > maxX) maxX = p.x
                 if (p.y < minY) minY = p.y
@@ -205,8 +234,8 @@ class PipFloatingHudView @JvmOverloads constructor(
             val my = (minY + maxY) * 0.5f
             val sc = (handR * 1.8f) / span
             for (e in BONES) {
-                val a = landmarks[e[0]]
-                val b = landmarks[e[1]]
+                val a = st.landmarks[e[0]]
+                val b = st.landmarks[e[1]]
                 canvas.drawLine(
                     handCx + (a.x - mx) * sc,
                     handCy + (a.y - my) * sc,
@@ -216,37 +245,51 @@ class PipFloatingHudView @JvmOverloads constructor(
                 )
             }
         } else {
-            canvas.drawCircle(handCx, handCy, handR * 0.65f, bonePaint)
+            canvas.drawCircle(handCx, handCy, handR * 0.72f, bonePaint)
+            jointPaint.color = accent
+            canvas.drawCircle(handCx, handCy, dp(3.5f), jointPaint)
         }
 
         titlePaint.textAlign = Paint.Align.LEFT
         titlePaint.color = Color.WHITE
-        canvas.drawText(status, dp(56f), h * 0.48f, titlePaint)
+        canvas.drawText(st.statusText, dp(56f), h * 0.46f, titlePaint)
 
         subPaint.textAlign = Paint.Align.LEFT
-        canvas.drawText("100% Edge RAM • ${fps.toInt().coerceAtLeast(1)} FPS", dp(56f), h * 0.74f, subPaint)
+        canvas.drawText("ล็อก ${st.handSideLabel} • ${st.fps.toInt().coerceAtLeast(1)} FPS", dp(56f), h * 0.74f, subPaint)
     }
 
-    private fun drawPipVolumeBar(canvas: Canvas, w: Float, h: Float, pct: Int) {
+    private fun drawPipVolumeBar(
+        canvas: Canvas,
+        w: Float,
+        h: Float,
+        st: HudVisualState.VolumeSlider,
+        accent: Int
+    ) {
+        val statusText = when (st.direction) {
+            VolumeDirection.MUTED -> "🔇 ปิดเสียง (MUTE) 0%"
+            VolumeDirection.DOWN -> "🔉 กำลังลดเสียง ▼ ${st.volumePercent}%"
+            VolumeDirection.UP -> "🔊 กำลังเพิ่มเสียง ▲ ${st.volumePercent}%"
+            VolumeDirection.STEADY -> "🔊 ระดับเสียง • ${st.volumePercent}%"
+        }
         titlePaint.textAlign = Paint.Align.LEFT
-        titlePaint.color = Color.parseColor("#00E676")
-        canvas.drawText("🤏 VOLUME $pct%", dp(18f), h * 0.38f, titlePaint)
+        titlePaint.color = accent
+        canvas.drawText(statusText, dp(16f), h * 0.40f, titlePaint)
 
-        val left = dp(18f)
-        val right = w - dp(18f)
-        val top = h * 0.56f
+        val left = dp(16f)
+        val right = w - dp(16f)
+        val top = h * 0.58f
         val bottom = top + dp(10f)
         val r = dp(5f)
         barRect.set(left, top, right, bottom)
         canvas.drawRoundRect(barRect, r, r, trackPaint)
 
-        val fillW = (right - left) * (pct / 100f).coerceIn(0f, 1f)
+        val fillW = (right - left) * (st.volumePercent / 100f).coerceIn(0f, 1f)
         if (fillW > dp(3f)) {
             fillRect.set(left, top, left + fillW, bottom)
             fillPaint.shader = LinearGradient(
                 left, top, right, top,
-                Color.parseColor("#00E5FF"),
-                Color.parseColor("#00E676"),
+                Color.parseColor(themeColor.primaryHex),
+                accent,
                 Shader.TileMode.CLAMP
             )
             canvas.drawRoundRect(fillRect, r, r, fillPaint)
@@ -257,10 +300,13 @@ class PipFloatingHudView @JvmOverloads constructor(
         canvas: Canvas,
         w: Float,
         h: Float,
-        angleDeg: Float,
-        selectedSlot: Int
+        st: HudVisualState.RadialSelectorActive
     ) {
-        if (slots.isEmpty()) refreshRadialSlots()
+        if (slots.isEmpty() || st.totalSlots != activeSlotCount) {
+            refreshRadialSlots(st.totalSlots)
+        }
+        val count = slots.size.coerceAtLeast(1)
+        val slice = 360.0f / count
         val cx = w * 0.5f
         val cy = h * 0.5f
         val maxR = min(w, h) * 0.45f
@@ -270,35 +316,42 @@ class PipFloatingHudView @JvmOverloads constructor(
         outerRect.set(cx - maxR, cy - maxR, cx + maxR, cy + maxR)
         innerRect.set(cx - innerR, cy - innerR, cx + innerR, cy + innerR)
 
-        val slice = HandGeometry.SLICE_DEGREES
-        val startDeg = (selectedSlot * slice) - slice * 0.5f - 90f
-        wedgePath.reset()
-        wedgePath.arcTo(outerRect, startDeg, slice, true)
-        wedgePath.arcTo(innerRect, startDeg + slice, -slice, false)
-        wedgePath.close()
-        canvas.drawPath(wedgePath, wedgeFillPaint)
+        if (!st.inCancelZone) {
+            val startDeg = (st.selectedSlot * slice) - slice * 0.5f - 90f
+            wedgePath.reset()
+            wedgePath.arcTo(outerRect, startDeg, slice, true)
+            wedgePath.arcTo(innerRect, startDeg + slice, -slice, false)
+            wedgePath.close()
+            canvas.drawPath(wedgePath, wedgeFillPaint)
+        }
 
-        for (i in 0 until HandGeometry.RADIAL_SLOTS) {
+        for (i in 0 until count) {
             val cRad = Math.toRadians(((i * slice) - 90f).toDouble())
             val ix = cx + (orbitR * cos(cRad)).toFloat()
             val iy = cy + (orbitR * sin(cRad)).toFloat()
-            val iconSz = if (i == selectedSlot) maxR * 0.14f else maxR * 0.105f
+            val iconSz = if (!st.inCancelZone && i == st.selectedSlot) maxR * 0.15f else maxR * 0.11f
             val bmp = icons.getOrNull(i)
             if (bmp != null && !bmp.isRecycled) {
                 iconRect.set(ix - iconSz, iy - iconSz, ix + iconSz, iy + iconSz)
                 canvas.drawBitmap(bmp, null, iconRect, null)
             } else {
-                jointPaint.color = if (i == selectedSlot) Color.parseColor("#00E5FF") else Color.parseColor("#475C82")
+                jointPaint.color = if (i == st.selectedSlot) Color.parseColor(themeColor.primaryHex) else Color.parseColor("#475C82")
                 canvas.drawCircle(ix, iy, iconSz * 0.5f, jointPaint)
             }
         }
 
-        val focusedName = slots.getOrNull(selectedSlot)?.label?.take(10) ?: "#${selectedSlot + 1}"
         titlePaint.textAlign = Paint.Align.CENTER
         titlePaint.color = Color.WHITE
-        canvas.drawText(focusedName, cx, cy + dp(2f), titlePaint)
-        subPaint.textAlign = Paint.Align.CENTER
-        canvas.drawText("${angleDeg.toInt()}° • คลายมือเปิด", cx, cy + dp(15f), subPaint)
+        if (st.inCancelZone) {
+            canvas.drawText("⭕ เลื่อนมือ", cx, cy + dp(2f), titlePaint)
+            subPaint.textAlign = Paint.Align.CENTER
+            canvas.drawText("แบมือ = ยกเลิก", cx, cy + dp(15f), subPaint)
+        } else {
+            val focusedName = slots.getOrNull(st.selectedSlot)?.label?.take(10) ?: "#${st.selectedSlot + 1}"
+            canvas.drawText(focusedName, cx, cy + dp(2f), titlePaint)
+            subPaint.textAlign = Paint.Align.CENTER
+            canvas.drawText("แบมือเพื่อเปิด", cx, cy + dp(15f), subPaint)
+        }
     }
 
     companion object {

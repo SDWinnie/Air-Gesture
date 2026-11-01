@@ -1,37 +1,27 @@
-# Air Gesture v2.0 — System Architecture & Security Specification
+# Air Gesture v3.0 — System Architecture & Ergonomic Vision Specification
 
-## 1. Decoupled Dual-Stream Volatile Vision Pipeline
+## 1. Isotropic 1:1 Single-Hand Vision Pipeline
 ```
 Camera2 Hardware ISP (480p / 720p / 1080p / 2K / 4K @ 60 or 120 FPS)
    ├── Stream A (Optional GPU SurfaceTexture) ──► Zero-CPU-Readback Calibration View
-   └── Stream B (YUV_420_888 ImageReader, maxImages=2, Lock-Free Drop-Oldest)
+   └── Stream B (YUV_420_888 ImageReader, maxImages=2)
           │
           ▼
-   [VolatileRoiDownscaler] ──► Single-pass ROI crop + upright rotation + mirror
-          │                    into isolated 192×192 or 256×256 ARGB volatile RAM bitmap
-          │                    (separate U/V plane strides, zero shared-recycle hazard)
+   [VolatileRoiDownscaler v3.0] ──► Isotropic 1:1 Letterbox into 224×224 or 256×256 volatile RAM
+          │                         (Zero aspect-ratio squashing, zero double-ROI oscillation)
           ▼
-   [MediaPipeHandTracker]  ──► SHA-256 RAM-verified hand_landmarker.task (XNNPACK CPU SIMD)
+   [MediaPipeHandTracker v3.0]  ──► Strict numHands=1, conf >= 0.64, physical Left/Right normalization
           │
           ▼
-   [LandmarkBankOneEuroFilter + HandGeometry Scale Normalizer (L_ref)]
+   [SingleHandLockTracker + HandGeometry Anatomical Plausibility & PIP Joint-Angle Classifier]
           │
           ▼
-   [AirGestureStateMachine] ──► Hysteresis & Return-Stroke Clutch Protected FSM
+   [AirGestureStateMachine v3.0] ──► Configurable MediaPipe Canonical Postures + Spatial Virtual Joystick
           │
-   ┌──────┴──────────────────────────────────────┐
-   ▼                                             ▼
-[TouchlessActionDispatcher]               [AirGestureRuntimeBus -> Official PiP & Bento UI]
-• AirAccessibilityService (Scroll/Nav)    • In-App Live Dynamic Island Showcase Dock
-• SystemVolumeController (Pinch Volume)   • Official Android PiP Floating Dynamic Island (2.2:1)
-• RadialAppSlotManager (15 Apps)          • Seamless PiP Resize (1:1) 360° 15-App Radial Wheel
+   ┌──────┴──────────────────────────────────────────────┐
+   ▼                                                     ▼
+[TouchlessActionDispatcher]                     [AccessibilityScreenOverlay (TYPE_ACCESSIBILITY_OVERLAY)]
+• Smooth Vertical Scroll & Back/Recents         • Top-Edge Dynamic Island & Directional Volume Status Pill
+• Directional Volume (🔉 ลดเสียง ▼ / 🔊 เพิ่ม ▲)  • Centered On-Screen 360° Circular App Wheel (6/8/12/15 Apps)
+• 6/8/12/15-App Circular Launcher               • Customizable Palm Graphics & 5 Neon Themes (Zero SYSTEM_ALERT_WINDOW)
 ```
-
-## 2. Crash-Proof & Google Play Protect Hardened Architecture (v2.0)
-- **Zero Overlay Tapjacking Posture**: `SYSTEM_ALERT_WINDOW`, `TYPE_APPLICATION_OVERLAY`, and `FOREGROUND_SERVICE_SPECIAL_USE` are completely absent from both `AndroidManifest.xml` and `classes.dex`. Floating HUD visuals use Android's official **Picture-in-Picture (`supportsPictureInPicture="true"`)** windowing contract (`2.2:1` Dynamic Island capsule & `1:1` 360° Radial Wheel).
-- **Crash-Hardened Foreground Lifecycle**: Runs strictly as `foregroundServiceType="camera"` with `START_NOT_STICKY` (eliminating Android 14–16 background camera FGS restart crash loops), headless-safe `DisplayManager.getDisplay(DEFAULT_DISPLAY)`, XNNPACK SIMD CPU inference (avoiding background `HandlerThread` EGL/GPU driver `SIGABRT`), and `useLegacyPackaging = true` for 16KB memory-page compatibility.
-- **Verifiable Zero-Trust Privacy**:
-  - `android.permission.INTERNET` and `ACCESS_NETWORK_STATE` are stripped via `tools:node="remove"` (kernel-enforced UID socket block).
-  - `accessibility_service_config.xml` enforces `android:canRetrieveWindowContent="false"` and `android:accessibilityEventTypes=""`.
-  - `SecuritySelfAuditor` performs live on-device inspection of installed `PackageInfo` permissions, zero-media cache footprint, and SHA-256 `DirectByteBuffer` model integrity.
-  - Signed with **APK Signature Scheme v1 + v2 + v3 + v4**.

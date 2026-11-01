@@ -8,16 +8,17 @@ import com.google.mediapipe.tasks.core.Delegate
 import com.google.mediapipe.tasks.vision.core.RunningMode
 import com.google.mediapipe.tasks.vision.handlandmarker.HandLandmarker
 import com.sdwinnie.airgesture.model.HandFrame
+import com.sdwinnie.airgesture.model.HandSide
 import com.sdwinnie.airgesture.model.Landmark3D
 import com.sdwinnie.airgesture.security.AirLogger
 import com.sdwinnie.airgesture.security.ModelIntegrityVerifier
 import kotlin.math.max
 
 /**
- * Crash-Hardened 100% On-Device MediaPipe HandLandmarker Wrapper (v2.0).
- * - Uses CPU XNNPACK ARM NEON SIMD delegate exclusively in background service threads to eliminate
- *   native C++ EGL/OpenGL SIGABRT driver crashes across Xiaomi HyperOS, Samsung, and Pixel devices.
- * - Deterministically disposes per-frame MPImage & Bitmap wrappers without recycling shared state.
+ * High-Precision Single-Hand MediaPipe HandLandmarker Wrapper (v3.0).
+ * - Strictly configured for 1 Hand (`setNumHands(1)`) with hardened confidence thresholds
+ *   (0.64 detection / 0.64 presence / 0.60 tracking) to eliminate ghost detections on faces or objects.
+ * - Normalizes physical Left/Right handedness across mirrored selfie and rear cameras.
  */
 class MediaPipeHandTracker(private val context: Context) {
 
@@ -43,14 +44,14 @@ class MediaPipeHandTracker(private val context: Context) {
                 .setBaseOptions(baseOptions)
                 .setRunningMode(RunningMode.VIDEO)
                 .setNumHands(1)
-                .setMinHandDetectionConfidence(0.48f)
-                .setMinHandPresenceConfidence(0.48f)
-                .setMinTrackingConfidence(0.46f)
+                .setMinHandDetectionConfidence(0.64f)
+                .setMinHandPresenceConfidence(0.64f)
+                .setMinTrackingConfidence(0.60f)
                 .build()
 
             handLandmarker = HandLandmarker.createFromOptions(context, options)
-            activeDelegateLabel = "XNNPACK SIMD"
-            AirLogger.d("Vision", "MediaPipe HandLandmarker ready on XNNPACK SIMD")
+            activeDelegateLabel = "XNNPACK 1-Hand"
+            AirLogger.d("Vision", "MediaPipe HandLandmarker v3.0 ready (Strict 1-Hand Lock)")
             true
         } catch (t: Throwable) {
             activeDelegateLabel = "Init Error"
@@ -60,15 +61,14 @@ class MediaPipeHandTracker(private val context: Context) {
     }
 
     @Synchronized
-    fun detectInVolatileRoi(
-        roiBitmap: Bitmap,
-        roiSnapshot: RoiTracker.NormalizedRect,
-        roiTracker: RoiTracker,
+    fun detectSingleHand(
+        isotropicBitmap: Bitmap,
+        isMirroredSelfie: Boolean,
         frameTimestampMs: Long
     ): HandFrame? {
         val landmarker = handLandmarker
-        if (landmarker == null || roiBitmap.isRecycled) {
-            if (!roiBitmap.isRecycled) roiBitmap.recycle()
+        if (landmarker == null || isotropicBitmap.isRecycled) {
+            if (!isotropicBitmap.isRecycled) isotropicBitmap.recycle()
             return null
         }
 
@@ -76,27 +76,44 @@ class MediaPipeHandTracker(private val context: Context) {
         lastMonotonicTimestampMs = safeTimestampMs
 
         var mpImageClosed = false
-        val mpImage = BitmapImageBuilder(roiBitmap).build()
+        val mpImage = BitmapImageBuilder(isotropicBitmap).build()
         return try {
             val result = landmarker.detectForVideo(mpImage, safeTimestampMs)
             val allHands = result?.landmarks()
             if (allHands.isNullOrEmpty() || allHands[0].size < 21) {
-                roiTracker.onHandMissed()
                 null
             } else {
                 val rawHand = allHands[0]
-                val fullFramePoints = ArrayList<Landmark3D>(21)
+                val isotropicPoints = ArrayList<Landmark3D>(21)
                 for (i in 0 until 21) {
                     val lm = rawHand[i]
-                    val (fx, fy) = roiTracker.mapRoiToFullFrame(lm.x(), lm.y(), roiSnapshot)
-                    fullFramePoints.add(Landmark3D(x = fx, y = fy, z = lm.z()))
+                    isotropicPoints.add(
+                        Landmark3D(
+                            x = lm.x().coerceIn(0f, 1f),
+                            y = lm.y().coerceIn(0f, 1f),
+                            z = lm.z()
+                        )
+                    )
                 }
-                roiTracker.onLandmarksDetected(fullFramePoints)
-                val score = result.handedness()?.firstOrNull()?.firstOrNull()?.score() ?: 0.9f
+
+                val handednessCategory = result.handedness()?.firstOrNull()?.firstOrNull()
+                val score = handednessCategory?.score() ?: 0.85f
+                val rawName = handednessCategory?.categoryName()?.trim().orEmpty()
+
+                // MediaPipe classifies un-mirrored camera perspective; selfie-mirrored image flips Left<->Right
+                val physicalSide = when {
+                    rawName.equals("Left", ignoreCase = true) ->
+                        if (isMirroredSelfie) HandSide.RIGHT else HandSide.LEFT
+                    rawName.equals("Right", ignoreCase = true) ->
+                        if (isMirroredSelfie) HandSide.LEFT else HandSide.RIGHT
+                    else -> HandSide.UNKNOWN
+                }
+
                 HandFrame(
-                    landmarks = fullFramePoints,
+                    landmarks = isotropicPoints,
                     timestampMs = safeTimestampMs,
-                    confidence = score
+                    confidence = score,
+                    handSide = physicalSide
                 )
             }
         } catch (t: Throwable) {
@@ -107,8 +124,8 @@ class MediaPipeHandTracker(private val context: Context) {
                 mpImage.close()
                 mpImageClosed = true
             }
-            if (!mpImageClosed && !roiBitmap.isRecycled) {
-                runCatching { roiBitmap.recycle() }
+            if (!mpImageClosed && !isotropicBitmap.isRecycled) {
+                runCatching { isotropicBitmap.recycle() }
             }
         }
     }

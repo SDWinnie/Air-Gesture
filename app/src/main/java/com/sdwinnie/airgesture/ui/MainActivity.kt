@@ -28,16 +28,24 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.sdwinnie.airgesture.R
 import com.sdwinnie.airgesture.databinding.ActivityMainBinding
 import com.sdwinnie.airgesture.databinding.ItemSecurityAuditBinding
-import com.sdwinnie.airgesture.engine.HandGeometry
 import com.sdwinnie.airgesture.input.RadialAppSlotManager
 import com.sdwinnie.airgesture.model.AirGestureConfig
+import com.sdwinnie.airgesture.model.BackTriggerPreset
 import com.sdwinnie.airgesture.model.CameraResolution
+import com.sdwinnie.airgesture.model.HandLockMode
 import com.sdwinnie.airgesture.model.HorizontalNavMode
+import com.sdwinnie.airgesture.model.HudPalmStyle
+import com.sdwinnie.airgesture.model.HudThemeColor
 import com.sdwinnie.airgesture.model.HudVisualState
 import com.sdwinnie.airgesture.model.RadialAppSlot
+import com.sdwinnie.airgesture.model.RadialSlotCount
+import com.sdwinnie.airgesture.model.RadialTriggerPreset
+import com.sdwinnie.airgesture.model.ScrollGesturePreset
 import com.sdwinnie.airgesture.model.TargetFps
 import com.sdwinnie.airgesture.model.TelemetrySnapshot
 import com.sdwinnie.airgesture.model.VisionBufferSize
+import com.sdwinnie.airgesture.model.VolumeDirection
+import com.sdwinnie.airgesture.model.VolumeGesturePreset
 import com.sdwinnie.airgesture.security.PreferenceStore
 import com.sdwinnie.airgesture.security.SecuritySelfAuditor
 import com.sdwinnie.airgesture.service.AirAccessibilityService
@@ -45,12 +53,15 @@ import com.sdwinnie.airgesture.service.AirGestureForegroundService
 import com.sdwinnie.airgesture.service.AirGestureRuntimeBus
 import kotlinx.coroutines.launch
 import java.util.Locale
+import kotlin.math.cos
 import kotlin.math.roundToInt
+import kotlin.math.sin
 
 class MainActivity : AppCompatActivity() {
 
     private enum class DashboardTab {
         CONTROL,
+        GESTURES,
         CAMERA_AI,
         RADIAL_APPS
     }
@@ -97,15 +108,20 @@ class MainActivity : AppCompatActivity() {
         preferenceStore = PreferenceStore(this)
         radialSlotManager = RadialAppSlotManager(this, preferenceStore)
         currentConfig = preferenceStore.loadConfig()
+        AirGestureRuntimeBus.updateVisualConfig(currentConfig)
 
-        binding.pipHudView.attachSlotManager(radialSlotManager)
-        binding.liveRadialPreviewView.attachSlotManager(radialSlotManager)
+        val count = currentConfig.radialSlotCount.count
+        binding.pipHudView.attachSlotManager(radialSlotManager, count)
+        binding.liveRadialPreviewView.attachSlotManager(radialSlotManager, count)
+        binding.inAppFloatingWheel.attachSlotManager(radialSlotManager, count)
 
         setupSegmentedTabs()
         setupPermissionAndControlActions()
+        setupGestureAndVisualStudioControls()
         setupPipelineConfigControls()
         setupCalibrationPreviewSurface()
         setupRadialSlotsGrid()
+        applyVisualCustomizationsToViews()
         refreshSecurityAudit()
         applyPipLayoutState(isInPictureInPictureMode)
         syncPipParams(squareWheel = false, serviceActive = AirGestureRuntimeBus.telemetry.value.serviceRunning)
@@ -114,18 +130,23 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        AirGestureRuntimeBus.setDashboardForeground(!isInPictureInPictureMode)
         applyPipLayoutState(isInPictureInPictureMode)
         refreshPermissionChecklist()
         refreshSecurityAudit()
-        radialSlotAdapter.submitList(radialSlotManager.loadResolvedSlots())
-        binding.liveRadialPreviewView.refreshSlots()
-        binding.pipHudView.refreshRadialSlots()
+        refreshAllRadialViews()
+    }
+
+    override fun onPause() {
+        AirGestureRuntimeBus.setDashboardForeground(false)
+        super.onPause()
     }
 
     override fun onUserLeaveHint() {
         super.onUserLeaveHint()
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S &&
             AirGestureRuntimeBus.telemetry.value.serviceRunning &&
+            !AirAccessibilityService.isEnabledInSettings(this) &&
             !isInPictureInPictureMode
         ) {
             enterFloatingPipHud(showToastOnFail = false)
@@ -137,10 +158,12 @@ class MainActivity : AppCompatActivity() {
         newConfig: Configuration
     ) {
         super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
+        AirGestureRuntimeBus.setDashboardForeground(!isInPictureInPictureMode && lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED))
         applyPipLayoutState(isInPictureInPictureMode)
     }
 
     override fun onDestroy() {
+        AirGestureRuntimeBus.setDashboardForeground(false)
         AirGestureRuntimeBus.bindCalibrationPreviewSurface(null)
         activePreviewSurface?.release()
         activePreviewSurface = null
@@ -150,10 +173,14 @@ class MainActivity : AppCompatActivity() {
     private fun applyPipLayoutState(inPip: Boolean) {
         binding.pipHudView.visibility = if (inPip) View.VISIBLE else View.GONE
         binding.dashboardRoot.visibility = if (inPip) View.GONE else View.VISIBLE
+        if (inPip) {
+            binding.inAppCenteredWheelOverlay.visibility = View.GONE
+        }
     }
 
     private fun setupSegmentedTabs() {
         binding.tabControl.setOnClickListener { switchTab(DashboardTab.CONTROL) }
+        binding.tabGestures.setOnClickListener { switchTab(DashboardTab.GESTURES) }
         binding.tabCameraAi.setOnClickListener { switchTab(DashboardTab.CAMERA_AI) }
         binding.tabRadialApps.setOnClickListener { switchTab(DashboardTab.RADIAL_APPS) }
         switchTab(DashboardTab.CONTROL)
@@ -161,20 +188,22 @@ class MainActivity : AppCompatActivity() {
 
     private fun switchTab(tab: DashboardTab) {
         binding.panelControl.visibility = if (tab == DashboardTab.CONTROL) View.VISIBLE else View.GONE
+        binding.panelGestures.visibility = if (tab == DashboardTab.GESTURES) View.VISIBLE else View.GONE
         binding.panelCameraAi.visibility = if (tab == DashboardTab.CAMERA_AI) View.VISIBLE else View.GONE
         binding.panelRadialApps.visibility = if (tab == DashboardTab.RADIAL_APPS) View.VISIBLE else View.GONE
 
         val primaryText = ContextCompat.getColor(this, R.color.text_primary)
         val secondaryText = ContextCompat.getColor(this, R.color.text_secondary)
 
-        binding.tabControl.setBackgroundResource(if (tab == DashboardTab.CONTROL) R.drawable.bg_tab_selected else 0)
-        binding.tabControl.setTextColor(if (tab == DashboardTab.CONTROL) primaryText else secondaryText)
+        fun styleTab(tv: android.widget.TextView, selected: Boolean) {
+            tv.setBackgroundResource(if (selected) R.drawable.bg_tab_selected else 0)
+            tv.setTextColor(if (selected) primaryText else secondaryText)
+        }
 
-        binding.tabCameraAi.setBackgroundResource(if (tab == DashboardTab.CAMERA_AI) R.drawable.bg_tab_selected else 0)
-        binding.tabCameraAi.setTextColor(if (tab == DashboardTab.CAMERA_AI) primaryText else secondaryText)
-
-        binding.tabRadialApps.setBackgroundResource(if (tab == DashboardTab.RADIAL_APPS) R.drawable.bg_tab_selected else 0)
-        binding.tabRadialApps.setTextColor(if (tab == DashboardTab.RADIAL_APPS) primaryText else secondaryText)
+        styleTab(binding.tabControl, tab == DashboardTab.CONTROL)
+        styleTab(binding.tabGestures, tab == DashboardTab.GESTURES)
+        styleTab(binding.tabCameraAi, tab == DashboardTab.CAMERA_AI)
+        styleTab(binding.tabRadialApps, tab == DashboardTab.RADIAL_APPS)
 
         binding.mainScrollView.smoothScrollTo(0, 0)
     }
@@ -206,7 +235,7 @@ class MainActivity : AppCompatActivity() {
 
         binding.btnRefreshAudit.setOnClickListener {
             refreshSecurityAudit()
-            Toast.makeText(this, "ตรวจสอบความปลอดภัยไบนารีเรียบร้อย", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "สแกนไบนารีและความปลอดภัยสำเร็จ", Toast.LENGTH_SHORT).show()
         }
 
         binding.btnToggleEngine.setOnClickListener {
@@ -226,6 +255,183 @@ class MainActivity : AppCompatActivity() {
                 attemptStartEngine(enterPipAfterStart = true)
             }
         }
+    }
+
+    private fun setupGestureAndVisualStudioControls() {
+        refreshGestureStudioLabels()
+
+        binding.btnPickHandLock.setOnClickListener {
+            showEnumSingleChoiceDialog(
+                title = "เลือกโหมดล็อกจับ 1 มือ (Single-Hand Lock)",
+                entries = HandLockMode.entries,
+                current = currentConfig.handLockMode,
+                labelOf = { it.displayName }
+            ) { chosen ->
+                persistAndReloadConfig(currentConfig.copy(handLockMode = chosen))
+                refreshGestureStudioLabels()
+            }
+        }
+
+        binding.btnPickScrollPreset.setOnClickListener {
+            showEnumSingleChoiceDialog(
+                title = "เลือกท่าเลื่อนหน้าจอขึ้น / ลง",
+                entries = ScrollGesturePreset.entries,
+                current = currentConfig.scrollPreset,
+                labelOf = { it.displayName }
+            ) { chosen ->
+                persistAndReloadConfig(currentConfig.copy(scrollPreset = chosen))
+                refreshGestureStudioLabels()
+            }
+        }
+
+        binding.btnPickVolumePreset.setOnClickListener {
+            showEnumSingleChoiceDialog(
+                title = "เลือกท่าลดเสียง / เพิ่มเสียง",
+                entries = VolumeGesturePreset.entries,
+                current = currentConfig.volumePreset,
+                labelOf = { it.displayName }
+            ) { chosen ->
+                persistAndReloadConfig(currentConfig.copy(volumePreset = chosen))
+                refreshGestureStudioLabels()
+            }
+        }
+
+        binding.btnPickRadialPreset.setOnClickListener {
+            showEnumSingleChoiceDialog(
+                title = "เลือกท่าเปิดวงกลมเลือกแอปกลางหน้าจอ",
+                entries = RadialTriggerPreset.entries,
+                current = currentConfig.radialPreset,
+                labelOf = { it.displayName }
+            ) { chosen ->
+                persistAndReloadConfig(currentConfig.copy(radialPreset = chosen))
+                refreshGestureStudioLabels()
+            }
+        }
+
+        binding.btnPickBackPreset.setOnClickListener {
+            showEnumSingleChoiceDialog(
+                title = "เลือกท่าย้อนกลับ / สลับแอป",
+                entries = BackTriggerPreset.entries,
+                current = currentConfig.backPreset,
+                labelOf = { it.displayName }
+            ) { chosen ->
+                persistAndReloadConfig(currentConfig.copy(backPreset = chosen))
+                refreshGestureStudioLabels()
+            }
+        }
+
+        binding.btnPickPalmStyle.setOnClickListener {
+            showEnumSingleChoiceDialog(
+                title = "เลือกรูปฝ่ามือและไอคอนบน Dynamic Island",
+                entries = HudPalmStyle.entries,
+                current = currentConfig.hudPalmStyle,
+                labelOf = { it.displayName }
+            ) { chosen ->
+                persistAndReloadConfig(currentConfig.copy(hudPalmStyle = chosen))
+                applyVisualCustomizationsToViews()
+                refreshGestureStudioLabels()
+                // Live preview wake on the in-app Dynamic Island Dock
+                binding.liveDynamicIslandView.updateState(
+                    HudVisualState.PalmTracking(
+                        statusText = "ตัวอย่างรูปฝ่ามือ HUD",
+                        postureEmoji = currentConfig.scrollPreset.badgeEmoji,
+                        handSideLabel = "1 มือ",
+                        landmarks = emptyList(),
+                        fps = 60f
+                    )
+                )
+            }
+        }
+
+        binding.btnPickThemeColor.setOnClickListener {
+            showEnumSingleChoiceDialog(
+                title = "เลือกสีธีม HUD & วงกลมเลือกแอป",
+                entries = HudThemeColor.entries,
+                current = currentConfig.hudThemeColor,
+                labelOf = { it.displayName }
+            ) { chosen ->
+                persistAndReloadConfig(currentConfig.copy(hudThemeColor = chosen))
+                applyVisualCustomizationsToViews()
+                refreshGestureStudioLabels()
+            }
+        }
+
+        binding.switchShowSystemVolumeUi.isChecked = currentConfig.showSystemVolumeUi
+        binding.switchShowSystemVolumeUi.setOnCheckedChangeListener { _, isChecked ->
+            if (suppressConfigListeners) return@setOnCheckedChangeListener
+            persistAndReloadConfig(currentConfig.copy(showSystemVolumeUi = isChecked))
+        }
+
+        binding.btnPreviewVolumeDown.setOnClickListener {
+            binding.liveDynamicIslandView.updateState(
+                HudVisualState.VolumeSlider(
+                    volumePercent = 34,
+                    deltaStepPercent = -8,
+                    direction = VolumeDirection.DOWN,
+                    isMuted = false
+                )
+            )
+        }
+
+        binding.btnPreviewVolumeUp.setOnClickListener {
+            binding.liveDynamicIslandView.updateState(
+                HudVisualState.VolumeSlider(
+                    volumePercent = 76,
+                    deltaStepPercent = 10,
+                    direction = VolumeDirection.UP,
+                    isMuted = false
+                )
+            )
+        }
+    }
+
+    private fun <T> showEnumSingleChoiceDialog(
+        title: String,
+        entries: List<T>,
+        current: T,
+        labelOf: (T) -> String,
+        onSelected: (T) -> Unit
+    ) {
+        val labels = entries.map(labelOf).toTypedArray()
+        val checkedIdx = entries.indexOf(current).coerceAtLeast(0)
+        MaterialAlertDialogBuilder(this)
+            .setTitle(title)
+            .setSingleChoiceItems(labels, checkedIdx) { dialog, which ->
+                dialog.dismiss()
+                onSelected(entries[which])
+            }
+            .setNegativeButton("ยกเลิก", null)
+            .show()
+    }
+
+    @SuppressLint("SetTextI18n")
+    private fun refreshGestureStudioLabels() {
+        binding.btnPickHandLock.text = currentConfig.handLockMode.displayName
+        binding.btnPickScrollPreset.text = currentConfig.scrollPreset.displayName
+        binding.btnPickVolumePreset.text = currentConfig.volumePreset.displayName
+        binding.btnPickRadialPreset.text = currentConfig.radialPreset.displayName
+        binding.btnPickBackPreset.text = currentConfig.backPreset.displayName
+        binding.btnPickPalmStyle.text = currentConfig.hudPalmStyle.displayName
+        binding.btnPickThemeColor.text = "สีธีม: ${currentConfig.hudThemeColor.displayName}"
+
+        binding.tvActiveGestureSummary.text =
+            "• ล็อกมือ: ${currentConfig.handLockMode.displayName}\n" +
+                "• เลื่อนจอ: ${currentConfig.scrollPreset.displayName}\n" +
+                "• ลด/เพิ่มเสียง: ${currentConfig.volumePreset.displayName}\n" +
+                "• วงกลมเลือกแอป (${currentConfig.radialSlotCount.count} แอป): ${currentConfig.radialPreset.displayName}\n" +
+                "• ย้อนกลับ: ${currentConfig.backPreset.displayName}\n" +
+                "• รูป HUD: ${currentConfig.hudPalmStyle.displayName} (${currentConfig.hudThemeColor.displayName})"
+    }
+
+    private fun applyVisualCustomizationsToViews() {
+        val style = currentConfig.hudPalmStyle
+        val theme = currentConfig.hudThemeColor
+        val count = currentConfig.radialSlotCount.count
+
+        binding.liveDynamicIslandView.applyVisualStyle(style, theme)
+        binding.pipHudView.applyVisualStyle(style, theme, count)
+        binding.liveRadialPreviewView.applyThemeColor(theme)
+        binding.inAppFloatingWheel.applyThemeColor(theme)
     }
 
     private fun attemptStartEngine(enterPipAfterStart: Boolean) {
@@ -271,7 +477,8 @@ class MainActivity : AppCompatActivity() {
         val isRadial = AirGestureRuntimeBus.hudState.value is HudVisualState.RadialSelectorActive
         val params = buildPipParams(
             squareWheel = isRadial,
-            serviceActive = AirGestureRuntimeBus.telemetry.value.serviceRunning
+            serviceActive = AirGestureRuntimeBus.telemetry.value.serviceRunning &&
+                !AirAccessibilityService.isEnabledInSettings(this)
         )
 
         val entered = runCatching {
@@ -293,7 +500,8 @@ class MainActivity : AppCompatActivity() {
             .setAspectRatio(ratio)
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            builder.setAutoEnterEnabled(serviceActive)
+            // Auto-enter PiP only if Accessibility On-Screen HUD is NOT already active
+            builder.setAutoEnterEnabled(serviceActive && !AirAccessibilityService.isEnabledInSettings(this))
             builder.setSeamlessResizeEnabled(true)
         }
         return builder.build()
@@ -356,6 +564,13 @@ class MainActivity : AppCompatActivity() {
             VisionBufferSize.ROI_256 -> binding.chipRoi256.isChecked = true
         }
 
+        when (currentConfig.radialSlotCount) {
+            RadialSlotCount.SLOTS_6 -> binding.chipSlots6.isChecked = true
+            RadialSlotCount.SLOTS_8 -> binding.chipSlots8.isChecked = true
+            RadialSlotCount.SLOTS_12 -> binding.chipSlots12.isChecked = true
+            RadialSlotCount.SLOTS_15 -> binding.chipSlots15.isChecked = true
+        }
+
         val snappedScroll = ((currentConfig.scrollSensitivity * 10f).roundToInt() / 10f).coerceIn(0.5f, 2.0f)
         val snappedVol = ((currentConfig.volumeSensitivity * 10f).roundToInt() / 10f).coerceIn(0.5f, 2.0f)
         binding.sliderScrollSens.value = snappedScroll
@@ -401,6 +616,19 @@ class MainActivity : AppCompatActivity() {
                 VisionBufferSize.ROI_192
             }
             persistAndReloadConfig(currentConfig.copy(visionBufferSize = roi))
+        }
+
+        binding.chipGroupRadialCount.setOnCheckedStateChangeListener { _, checkedIds ->
+            if (suppressConfigListeners) return@setOnCheckedStateChangeListener
+            val slotCount = when (checkedIds.firstOrNull()) {
+                R.id.chipSlots6 -> RadialSlotCount.SLOTS_6
+                R.id.chipSlots12 -> RadialSlotCount.SLOTS_12
+                R.id.chipSlots15 -> RadialSlotCount.SLOTS_15
+                else -> RadialSlotCount.SLOTS_8
+            }
+            persistAndReloadConfig(currentConfig.copy(radialSlotCount = slotCount))
+            refreshGestureStudioLabels()
+            refreshAllRadialViews()
         }
 
         binding.switchFrontCamera.setOnCheckedChangeListener { _, isChecked ->
@@ -482,26 +710,52 @@ class MainActivity : AppCompatActivity() {
     private fun persistAndReloadConfig(updated: AirGestureConfig) {
         currentConfig = updated
         preferenceStore.saveConfig(updated)
+        AirGestureRuntimeBus.updateVisualConfig(updated)
         AirGestureForegroundService.notifyConfigUpdated(this)
+    }
+
+    @SuppressLint("SetTextI18n")
+    private fun refreshAllRadialViews() {
+        val count = currentConfig.radialSlotCount.count
+        binding.tvRadialGridTitle.text = "📱 กำหนดแอปในวงกลมทั้ง $count ช่อง (แตะช่องเพื่อเปลี่ยนแอป)"
+        radialSlotAdapter.submitList(radialSlotManager.loadResolvedSlots(count))
+        binding.liveRadialPreviewView.refreshSlots(count)
+        binding.inAppFloatingWheel.refreshSlots(count)
+        binding.pipHudView.refreshRadialSlots(count)
     }
 
     private fun setupRadialSlotsGrid() {
         radialSlotAdapter = RadialSlotAdapter(radialSlotManager) { clickedSlot ->
             previewTestSlotIndex = clickedSlot.slotIndex
+            val rad = Math.toRadians((clickedSlot.centerAngleDegrees - 90f).toDouble())
             binding.liveRadialPreviewView.updateSelection(
-                clickedSlot.centerAngleDegrees,
-                clickedSlot.slotIndex
+                angleDegrees = clickedSlot.centerAngleDegrees,
+                selectedSlot = clickedSlot.slotIndex,
+                totalSlots = currentConfig.radialSlotCount.count,
+                normCursorX = (cos(rad) * 0.75).toFloat(),
+                normCursorY = (sin(rad) * 0.75).toFloat(),
+                cancelZone = false
             )
             showAppPickerForRadialSlot(clickedSlot)
         }
         binding.rvRadialSlots.layoutManager = GridLayoutManager(this, 3)
         binding.rvRadialSlots.adapter = radialSlotAdapter
-        radialSlotAdapter.submitList(radialSlotManager.loadResolvedSlots())
+        refreshAllRadialViews()
 
         binding.btnCyclePreviewSlot.setOnClickListener {
-            previewTestSlotIndex = (previewTestSlotIndex + 1) % HandGeometry.RADIAL_SLOTS
-            val angle = previewTestSlotIndex * HandGeometry.SLICE_DEGREES
-            binding.liveRadialPreviewView.updateSelection(angle, previewTestSlotIndex)
+            val total = currentConfig.radialSlotCount.count
+            previewTestSlotIndex = (previewTestSlotIndex + 1) % total
+            val sliceDeg = 360.0f / total
+            val angle = previewTestSlotIndex * sliceDeg
+            val rad = Math.toRadians((angle - 90f).toDouble())
+            binding.liveRadialPreviewView.updateSelection(
+                angleDegrees = angle,
+                selectedSlot = previewTestSlotIndex,
+                totalSlots = total,
+                normCursorX = (cos(rad) * 0.78).toFloat(),
+                normCursorY = (sin(rad) * 0.78).toFloat(),
+                cancelZone = false
+            )
         }
     }
 
@@ -518,9 +772,7 @@ class MainActivity : AppCompatActivity() {
             .setItems(labels) { _, which ->
                 val chosen = installedApps[which]
                 preferenceStore.setRadialSlotPackage(slot.slotIndex, chosen.packageName)
-                radialSlotAdapter.submitList(radialSlotManager.loadResolvedSlots())
-                binding.liveRadialPreviewView.refreshSlots()
-                binding.liveRadialPreviewView.updateSelection(slot.centerAngleDegrees, slot.slotIndex)
+                refreshAllRadialViews()
                 AirGestureForegroundService.notifySlotsUpdated(this)
             }
             .setNegativeButton("ยกเลิก", null)
@@ -568,7 +820,31 @@ class MainActivity : AppCompatActivity() {
                         binding.pipHudView.renderState(hud)
 
                         if (hud is HudVisualState.RadialSelectorActive) {
-                            binding.liveRadialPreviewView.updateSelection(hud.angleDegrees, hud.selectedSlot)
+                            binding.liveRadialPreviewView.updateSelection(
+                                angleDegrees = hud.angleDegrees,
+                                selectedSlot = hud.selectedSlot,
+                                totalSlots = hud.totalSlots,
+                                normCursorX = hud.cursorNormX,
+                                normCursorY = hud.cursorNormY,
+                                cancelZone = hud.inCancelZone
+                            )
+
+                            // If Accessibility On-Screen HUD is not enabled yet, pop up the centered circle inside the app!
+                            if (!AirGestureRuntimeBus.accessibilityConnected.value && !isInPictureInPictureMode) {
+                                binding.inAppFloatingWheel.updateSelection(
+                                    angleDegrees = hud.angleDegrees,
+                                    selectedSlot = hud.selectedSlot,
+                                    totalSlots = hud.totalSlots,
+                                    normCursorX = hud.cursorNormX,
+                                    normCursorY = hud.cursorNormY,
+                                    cancelZone = hud.inCancelZone
+                                )
+                                binding.inAppCenteredWheelOverlay.visibility = View.VISIBLE
+                            } else {
+                                binding.inAppCenteredWheelOverlay.visibility = View.GONE
+                            }
+                        } else {
+                            binding.inAppCenteredWheelOverlay.visibility = View.GONE
                         }
 
                         val wantSquare = hud is HudVisualState.RadialSelectorActive
@@ -582,9 +858,7 @@ class MainActivity : AppCompatActivity() {
                 }
                 launch {
                     AirGestureRuntimeBus.radialSlotsVersion.collect {
-                        binding.pipHudView.refreshRadialSlots()
-                        binding.liveRadialPreviewView.refreshSlots()
-                        radialSlotAdapter.submitList(radialSlotManager.loadResolvedSlots())
+                        refreshAllRadialViews()
                     }
                 }
                 launch {
@@ -624,20 +898,17 @@ class MainActivity : AppCompatActivity() {
         }
 
         binding.tvLastAction.text = t.lastActionSummary
+        binding.tvTelemetryHandLock.text = t.lockedHandLabel
         binding.tvTelemetryStream.text = t.activeStreamSummary
-        binding.tvTelemetryAiBuffer.text = "${t.visionBufferSummary} (${t.delegateName})"
+        binding.tvTelemetryAiBuffer.text = "${t.visionBufferSummary} • 1:1"
+        val thermLabel = if (t.thermalStatus >= 2) "Warm" else "Cool"
         binding.tvTelemetryPerf.text = String.format(
             Locale.US,
-            "%.1f ms • %.0f fps",
+            "%.1f ms • %.0f fps • %s",
             t.inferenceLatencyMs,
-            t.inferenceFps
+            t.inferenceFps,
+            thermLabel
         )
-
-        binding.tvTelemetryThermal.text = when {
-            t.thermalStatus >= 3 -> "Throttled (${t.thermalStatus}) • Eco 12fps"
-            t.thermalStatus == 2 -> "Warm (2) • Cap 30fps"
-            else -> "Cool (${t.thermalStatus}) • Full Speed"
-        }
     }
 
     @SuppressLint("SetTextI18n")
@@ -651,12 +922,12 @@ class MainActivity : AppCompatActivity() {
         binding.btnDisclosure.text = if (disclosureOk) "ดูข้อมูล" else "อ่านและยอมรับ"
 
         binding.tvStatusCamera.text =
-            if (cameraOk) "✅ 2. กล้องถ่ายรูป (Volatile RAM Ready)" else "⚪ 2. กล้องถ่ายรูป (จำเป็น)"
+            if (cameraOk) "✅ 2. กล้องถ่ายรูป (ล็อกจับ 1 มือพร้อม)" else "⚪ 2. กล้องถ่ายรูป (จำเป็น)"
         binding.btnGrantCamera.isEnabled = !cameraOk
         binding.btnGrantCamera.text = if (cameraOk) "พร้อมแล้ว" else "อนุญาตกล้อง"
 
         binding.tvStatusA11y.text =
-            if (a11yOk) "✅ 3. Touchless Scroll & Back/Recents" else "⚪ 3. Touchless Scroll (ตัวเลือกเสริม)"
+            if (a11yOk) "✅ 3. เลื่อนจอ & วงกลมแอปกลางหน้าจอ (พร้อม)" else "⚪ 3. เลื่อนจอ & วงกลมแอปกลางจอ (แนะนำเปิด)"
         binding.btnGrantA11y.text = if (a11yOk) "ตั้งค่า" else "เปิดใช้งาน"
     }
 

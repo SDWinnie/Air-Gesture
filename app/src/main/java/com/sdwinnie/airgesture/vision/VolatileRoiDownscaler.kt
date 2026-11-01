@@ -4,14 +4,14 @@ import android.graphics.Bitmap
 import android.media.Image
 
 /**
- * Crash-Hardened Decoupled Dual-Stream Volatile-RAM ROI Cropper & Downscaler (v2.0).
+ * Isotropic 1:1 Aspect-Ratio Volatile-RAM Downscaler (v3.0).
  *
- * - High-resolution Camera2 frames (1080p / 2K / 4K) are NEVER converted in full.
- * - Samples ONLY targetDim × targetDim pixels (192×192 or 256×256) inside the tracked ROI.
- * - Produces an isolated per-frame volatile Bitmap from pre-allocated scratch RAM so
- *   MediaPipe's MPImage.close() lifecycle can NEVER recycle a shared buffer across frames.
+ * - Fixes the 1.78× vertical squashing distortion of portrait camera streams by letterboxing
+ *   the full upright camera FOV into a true 1:1 square volatile RAM buffer (224×224 or 256×256).
+ * - Eliminates moving-ROI coordinate oscillation against MediaPipe's internal RunningMode.VIDEO tracker.
+ * - Produces an isolated per-frame volatile Bitmap from pre-allocated scratch RAM.
  */
-class VolatileRoiDownscaler(initialDimension: Int = 192) {
+class VolatileRoiDownscaler(initialDimension: Int = 224) {
 
     var targetDimension: Int = initialDimension
         private set
@@ -27,9 +27,8 @@ class VolatileRoiDownscaler(initialDimension: Int = 192) {
     }
 
     @Synchronized
-    fun cropAndDownscaleToVolatileBitmap(
+    fun downscaleIsotropicToVolatileBitmap(
         image: Image,
-        roi: RoiTracker.NormalizedRect,
         uprightRotationDeg: Int,
         mirrorHorizontally: Boolean
     ): Bitmap? {
@@ -57,20 +56,28 @@ class VolatileRoiDownscaler(initialDimension: Int = 192) {
         val vLimit = vBuffer.limit()
         if (yLimit <= 0 || uLimit <= 0 || vLimit <= 0) return null
 
-        val invDim = 1.0f / dim.toFloat()
-        val roiLeft = roi.left
-        val roiTop = roi.top
-        val roiW = roi.width
-        val roiH = roi.height
         val rot = ((uprightRotationDeg % 360) + 360) % 360
+        val uprightW = if (rot == 90 || rot == 270) srcH else srcW
+        val uprightH = if (rot == 90 || rot == 270) srcW else srcH
+        val maxSide = maxOf(uprightW, uprightH).toFloat().coerceAtLeast(1f)
+
+        val scaledW = ((dim * (uprightW.toFloat() / maxSide)).toInt()).coerceIn(1, dim)
+        val scaledH = ((dim * (uprightH.toFloat() / maxSide)).toInt()).coerceIn(1, dim)
+        val padLeft = (dim - scaledW) shr 1
+        val padTop = (dim - scaledH) shr 1
+
+        val invScaledW = 1.0f / scaledW.toFloat()
+        val invScaledH = 1.0f / scaledH.toFloat()
 
         val out = argbScratch
-        var outIdx = 0
+        out.fill(-0x1000000) // Opaque black letterbox padding (0xFF000000)
 
-        for (oy in 0 until dim) {
-            val uy = (roiTop + (oy + 0.5f) * invDim * roiH).coerceIn(0f, 0.9999f)
-            for (ox in 0 until dim) {
-                var ux = (roiLeft + (ox + 0.5f) * invDim * roiW).coerceIn(0f, 0.9999f)
+        for (oy in 0 until scaledH) {
+            val uy = ((oy + 0.5f) * invScaledH).coerceIn(0f, 0.9999f)
+            val rowOffset = (padTop + oy) * dim + padLeft
+
+            for (ox in 0 until scaledW) {
+                var ux = ((ox + 0.5f) * invScaledW).coerceIn(0f, 0.9999f)
                 if (mirrorHorizontally) {
                     ux = (1.0f - ux).coerceIn(0f, 0.9999f)
                 }
@@ -118,11 +125,10 @@ class VolatileRoiDownscaler(initialDimension: Int = 192) {
                 if (g < 0) g = 0 else if (g > 255) g = 255
                 if (b < 0) b = 0 else if (b > 255) b = 255
 
-                out[outIdx++] = (-0x1000000) or (r shl 16) or (g shl 8) or b
+                out[rowOffset + ox] = (-0x1000000) or (r shl 16) or (g shl 8) or b
             }
         }
 
-        // Creates an isolated immutable volatile Bitmap (144 KB for 192×192) safely owned by MPImage
         return Bitmap.createBitmap(out, dim, dim, Bitmap.Config.ARGB_8888)
     }
 

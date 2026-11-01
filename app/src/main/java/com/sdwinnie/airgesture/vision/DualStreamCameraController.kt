@@ -50,8 +50,7 @@ class DualStreamCameraController(
     private val cameraManager = context.applicationContext.getSystemService(Context.CAMERA_SERVICE) as CameraManager
     private val displayManager = context.applicationContext.getSystemService(Context.DISPLAY_SERVICE) as DisplayManager
 
-    private val roiTracker = RoiTracker()
-    private val downscaler = VolatileRoiDownscaler(192)
+    private val downscaler = VolatileRoiDownscaler(224)
 
     private var cameraThread: HandlerThread? = null
     private var cameraHandler: Handler? = null
@@ -108,7 +107,6 @@ class DualStreamCameraController(
         activeConfig = config
         previewSurface = optionalPreviewSurface?.takeIf { it.isValid }
         downscaler.ensureDimension(config.visionBufferSize.dimension)
-        roiTracker.reset()
         cameraYieldedToOtherApp = false
         trackerReady.set(false)
         isRunning.set(true)
@@ -172,7 +170,6 @@ class DualStreamCameraController(
 
         closeCameraResources()
         downscaler.wipeVolatileMemory()
-        roiTracker.reset()
 
         visionThread?.quitSafely()
         runCatching { visionThread?.join(350L) }
@@ -361,20 +358,17 @@ class DualStreamCameraController(
                 lastInferenceStartMs = nowMs
 
                 val t0Ns = SystemClock.elapsedRealtimeNanos()
-                val roiSnapshot = roiTracker.currentRoi
                 val uprightRot = computeUprightRotationDegrees()
 
-                val volatileBitmap = downscaler.cropAndDownscaleToVolatileBitmap(
+                val volatileBitmap = downscaler.downscaleIsotropicToVolatileBitmap(
                     image = image,
-                    roi = roiSnapshot,
                     uprightRotationDeg = uprightRot,
                     mirrorHorizontally = isFrontFacing
                 ) ?: return
 
-                val handFrame = handTracker.detectInVolatileRoi(
-                    roiBitmap = volatileBitmap,
-                    roiSnapshot = roiSnapshot,
-                    roiTracker = roiTracker,
+                val handFrame = handTracker.detectSingleHand(
+                    isotropicBitmap = volatileBitmap,
+                    isMirroredSelfie = isFrontFacing,
                     frameTimestampMs = nowMs
                 )
 

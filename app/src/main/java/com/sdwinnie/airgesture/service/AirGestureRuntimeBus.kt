@@ -1,6 +1,7 @@
 package com.sdwinnie.airgesture.service
 
 import android.view.Surface
+import com.sdwinnie.airgesture.model.AirGestureConfig
 import com.sdwinnie.airgesture.model.HudVisualState
 import com.sdwinnie.airgesture.model.TelemetrySnapshot
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -9,7 +10,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 
 /**
- * In-memory volatile runtime bus connecting the Foreground Service, Accessibility Service,
+ * In-memory volatile runtime bus connecting the Foreground Service, Accessibility Service On-Screen HUD,
  * Quick Settings Tile, In-App Dynamic Island Showcase, and Floating PiP Dynamic Island Window.
  * Zero disk persistence.
  */
@@ -20,6 +21,12 @@ object AirGestureRuntimeBus {
 
     private val _hudState = MutableStateFlow<HudVisualState>(HudVisualState.Dormant)
     val hudState: StateFlow<HudVisualState> = _hudState.asStateFlow()
+
+    private val _visualConfig = MutableStateFlow(AirGestureConfig())
+    val visualConfig: StateFlow<AirGestureConfig> = _visualConfig.asStateFlow()
+
+    private val _dashboardForeground = MutableStateFlow(false)
+    val dashboardForeground: StateFlow<Boolean> = _dashboardForeground.asStateFlow()
 
     private val _accessibilityConnected = MutableStateFlow(false)
     val accessibilityConnected: StateFlow<Boolean> = _accessibilityConnected.asStateFlow()
@@ -39,6 +46,14 @@ object AirGestureRuntimeBus {
 
     fun updateHudState(state: HudVisualState) {
         _hudState.value = state
+    }
+
+    fun updateVisualConfig(config: AirGestureConfig) {
+        _visualConfig.value = config
+    }
+
+    fun setDashboardForeground(inForeground: Boolean) {
+        _dashboardForeground.value = inForeground
     }
 
     fun notifyRadialSlotsChanged() {

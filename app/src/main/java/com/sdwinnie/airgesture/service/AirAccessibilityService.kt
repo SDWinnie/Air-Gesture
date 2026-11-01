@@ -13,19 +13,29 @@ import android.util.DisplayMetrics
 import android.view.WindowManager
 import android.view.accessibility.AccessibilityEvent
 import com.sdwinnie.airgesture.model.HorizontalNavMode
+import com.sdwinnie.airgesture.overlay.AccessibilityScreenOverlay
 import com.sdwinnie.airgesture.security.AirLogger
+import com.sdwinnie.airgesture.security.PreferenceStore
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.launch
 
 /**
- * Touchless Gesture & Global Action Injector for Android 14, 15, and 16+ (No Root / No ADB).
+ * Touchless Gesture Injector & Official TYPE_ACCESSIBILITY_OVERLAY Host (v3.0).
  *
- * Privacy Hardened (see res/xml/accessibility_service_config.xml):
+ * Privacy Hardened (res/xml/accessibility_service_config.xml):
  * - canPerformGestures="true"
  * - canRetrieveWindowContent="false" (Strictly incapable of reading screen text or UI trees)
- * - accessibilityEventTypes=""
+ * - Zero SYSTEM_ALERT_WINDOW permission required in AndroidManifest.xml
  */
 class AirAccessibilityService : AccessibilityService() {
 
     private val mainHandler = Handler(Looper.getMainLooper())
+    private var serviceScope: CoroutineScope? = null
+    private var screenOverlay: AccessibilityScreenOverlay? = null
 
     @Volatile
     private var lastStrokeEndMs: Long = 0L
@@ -34,16 +44,57 @@ class AirAccessibilityService : AccessibilityService() {
         super.onServiceConnected()
         activeInstance = this
         AirGestureRuntimeBus.setAccessibilityConnected(true)
-        AirLogger.d("A11y", "AirAccessibilityService connected (touchless gesture injection ready)")
+
+        val prefs = PreferenceStore(this)
+        AirGestureRuntimeBus.updateVisualConfig(prefs.loadConfig())
+
+        val overlay = AccessibilityScreenOverlay(this).also {
+            it.attachIfNeeded()
+        }
+        screenOverlay = overlay
+
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+        serviceScope = scope
+
+        scope.launch {
+            combine(
+                AirGestureRuntimeBus.hudState,
+                AirGestureRuntimeBus.telemetry,
+                AirGestureRuntimeBus.dashboardForeground
+            ) { hud, telemetry, dashFg ->
+                Triple(hud, telemetry.serviceRunning, dashFg)
+            }.collect { (hud, running, dashFg) ->
+                overlay.render(
+                    hudState = hud,
+                    engineRunning = running,
+                    dashboardInForeground = dashFg
+                )
+            }
+        }
+
+        scope.launch {
+            AirGestureRuntimeBus.visualConfig.collect { cfg ->
+                overlay.applyConfig(cfg)
+            }
+        }
+
+        scope.launch {
+            AirGestureRuntimeBus.radialSlotsVersion.collect {
+                overlay.refreshSlots(AirGestureRuntimeBus.visualConfig.value.radialSlotCount.count)
+            }
+        }
+
+        AirLogger.d("A11y", "AirAccessibilityService v3.0 connected (touchless scroll & circular HUD ready)")
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
-        // Intentionally no-op: Air Gesture subscribes to zero screen events and never reads window content.
+        // Intentionally no-op: zero screen event reading.
     }
 
     override fun onInterrupt() = Unit
 
     override fun onUnbind(intent: android.content.Intent?): Boolean {
+        teardownOverlayAndScope()
         if (activeInstance === this) {
             activeInstance = null
         }
@@ -52,6 +103,7 @@ class AirAccessibilityService : AccessibilityService() {
     }
 
     override fun onDestroy() {
+        teardownOverlayAndScope()
         if (activeInstance === this) {
             activeInstance = null
         }
@@ -59,10 +111,17 @@ class AirAccessibilityService : AccessibilityService() {
         super.onDestroy()
     }
 
-    /**
-     * Injects a smooth inertial vertical scroll stroke adapted to the current screen bounds
-     * (works seamlessly across Phones, Tablets, Foldables, Portrait & Landscape).
-     */
+    private fun teardownOverlayAndScope() {
+        serviceScope?.cancel()
+        serviceScope = null
+        screenOverlay?.detach()
+        screenOverlay = null
+    }
+
+    fun performQuickBack(): Boolean {
+        return performGlobalAction(GLOBAL_ACTION_BACK)
+    }
+
     fun injectSmoothVerticalScroll(
         handMovedUp: Boolean,
         normalizedSpeed: Float,
@@ -75,19 +134,17 @@ class AirAccessibilityService : AccessibilityService() {
 
         val (screenW, screenH) = currentScreenDimensions()
         val centerX = screenW * 0.52f
-        val speedFactor = ((normalizedSpeed / 4.2f) * sensitivity).coerceIn(0.65f, 1.55f)
-        val travelFraction = (0.28f * speedFactor).coerceIn(0.20f, 0.48f)
+        val speedFactor = ((normalizedSpeed / 4.0f) * sensitivity).coerceIn(0.65f, 1.60f)
+        val travelFraction = (0.30f * speedFactor).coerceIn(0.20f, 0.50f)
         val halfTravel = (screenH * travelFraction) * 0.5f
         val midY = screenH * 0.52f
 
         val startY: Float
         val endY: Float
         if (handMovedUp) {
-            // Upward swipe stroke scrolls feed downward (natural scrolling)
             startY = (midY + halfTravel).coerceIn(screenH * 0.15f, screenH * 0.88f)
             endY = (midY - halfTravel).coerceIn(screenH * 0.12f, screenH * 0.85f)
         } else {
-            // Downward swipe stroke scrolls feed upward
             startY = (midY - halfTravel).coerceIn(screenH * 0.12f, screenH * 0.85f)
             endY = (midY + halfTravel).coerceIn(screenH * 0.15f, screenH * 0.88f)
         }
@@ -95,7 +152,6 @@ class AirAccessibilityService : AccessibilityService() {
         val durationMs = (185L / speedFactor.coerceIn(0.8f, 1.35f)).toLong().coerceIn(130L, 220L)
         val path = Path().apply {
             moveTo(centerX, startY)
-            // Slight organic curve prevents synthetic straight-line rejection in custom webviews
             quadTo(centerX + 6f, (startY + endY) * 0.5f, centerX, endY)
         }
 
@@ -118,36 +174,33 @@ class AirAccessibilityService : AccessibilityService() {
         )
     }
 
-    /**
-     * Executes horizontal open-palm navigation action: Back, Recents, or Quick-Switch previous app.
-     */
     fun performHorizontalAction(swipeLeft: Boolean, mode: HorizontalNavMode): String {
         return when (mode) {
             HorizontalNavMode.BACK_ONLY -> {
                 performGlobalAction(GLOBAL_ACTION_BACK)
-                "← BACK"
+                "← ย้อนกลับ (Back)"
             }
 
             HorizontalNavMode.BACK_AND_RECENTS -> {
                 if (swipeLeft) {
                     performGlobalAction(GLOBAL_ACTION_BACK)
-                    "← BACK"
+                    "← ย้อนกลับ (Back)"
                 } else {
                     performGlobalAction(GLOBAL_ACTION_RECENTS)
-                    "RECENTS →"
+                    "สลับแอป (Recents) →"
                 }
             }
 
             HorizontalNavMode.BACK_AND_QUICK_SWITCH -> {
                 if (swipeLeft) {
                     performGlobalAction(GLOBAL_ACTION_BACK)
-                    "← BACK"
+                    "← ย้อนกลับ (Back)"
                 } else {
                     performGlobalAction(GLOBAL_ACTION_RECENTS)
                     mainHandler.postDelayed({
                         performGlobalAction(GLOBAL_ACTION_RECENTS)
                     }, 180L)
-                    "SWITCH APP ⇄"
+                    "สลับแอปก่อนหน้า ⇄"
                 }
             }
         }

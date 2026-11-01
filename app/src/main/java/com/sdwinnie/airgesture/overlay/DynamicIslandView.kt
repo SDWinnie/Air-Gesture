@@ -5,21 +5,24 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.LinearGradient
 import android.graphics.Paint
+import android.graphics.Path
 import android.graphics.RectF
 import android.graphics.Shader
 import android.graphics.Typeface
 import android.util.AttributeSet
 import android.view.View
+import com.sdwinnie.airgesture.model.HudPalmStyle
+import com.sdwinnie.airgesture.model.HudThemeColor
 import com.sdwinnie.airgesture.model.HudVisualState
 import com.sdwinnie.airgesture.model.Landmark3D
+import com.sdwinnie.airgesture.model.VolumeDirection
 import kotlin.math.abs
 
 /**
- * Hardware-accelerated Dynamic Island HUD Capsule.
- * Displays:
- * 1. Compact dormant pill when idle
- * 2. Live 21-joint hand skeleton silhouette + active gesture telemetry when palm wakes
- * 3. Smooth morphing Volume Pill Slider during Pinch Gesture (ท่ามือจีบ)
+ * Hardware-accelerated Dynamic Island & Volume Status HUD Capsule (v3.0).
+ * - User-customizable Palm Visual Styles (21-Joint Skeleton, Glowing Palm Silhouette, Posture Emoji Badge, Spatial Orb).
+ * - User-customizable Neon Theme Colors.
+ * - Explicit Directional Volume Status Banner (`🔉 กำลังลดเสียง ▼`, `🔊 กำลังเพิ่มเสียง ▲`, `🔇 ปิดเสียง 0%`).
  */
 class DynamicIslandView @JvmOverloads constructor(
     context: Context,
@@ -29,31 +32,32 @@ class DynamicIslandView @JvmOverloads constructor(
     private val density = resources.displayMetrics.density
     private fun dp(v: Float): Float = v * density
 
-    private val containerWidthPx = dp(288f).toInt()
-    private val containerHeightPx = dp(60f).toInt()
+    private val containerWidthPx = dp(312f).toInt()
+    private val containerHeightPx = dp(64f).toInt()
 
     private var visualState: HudVisualState = HudVisualState.Dormant
+    private var palmStyle: HudPalmStyle = HudPalmStyle.SKELETON_21
+    private var themeColor: HudThemeColor = HudThemeColor.CYBER_CYAN
 
-    // Smoothly interpolated pill dimensions
     private var currentPillWidth = dp(48f)
     private var currentPillHeight = dp(8f)
     private var targetPillWidth = dp(48f)
     private var targetPillHeight = dp(8f)
-
     private var displayedVolumePct = 50f
 
     private val pillRect = RectF()
     private val sliderTrackRect = RectF()
     private val sliderFillRect = RectF()
+    private val palmEmblemPath = Path()
 
     private val bgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.FILL
-        color = Color.parseColor("#F2090D16")
+        color = Color.parseColor("#F5080D18")
     }
 
     private val borderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
-        strokeWidth = dp(1.5f)
+        strokeWidth = dp(1.7f)
         color = Color.parseColor("#00E5FF")
     }
 
@@ -64,14 +68,19 @@ class DynamicIslandView @JvmOverloads constructor(
     }
 
     private val subPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.parseColor("#8FA3C0")
+        color = Color.parseColor("#93A7C7")
         textSize = dp(10.0f)
-        typeface = Typeface.create(Typeface.MONOSPACE, Typeface.NORMAL)
+        typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+    }
+
+    private val emojiPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        textSize = dp(17f)
+        textAlign = Paint.Align.CENTER
     }
 
     private val bonePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
-        strokeWidth = dp(1.4f)
+        strokeWidth = dp(1.5f)
         strokeCap = Paint.Cap.ROUND
         color = Color.parseColor("#00E5FF")
     }
@@ -83,35 +92,43 @@ class DynamicIslandView @JvmOverloads constructor(
 
     private val trackPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.FILL
-        color = Color.parseColor("#2A364F")
+        color = Color.parseColor("#23304A")
     }
 
     private val fillPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.FILL
     }
 
+    fun applyVisualStyle(style: HudPalmStyle, theme: HudThemeColor) {
+        if (palmStyle != style || themeColor != theme) {
+            palmStyle = style
+            themeColor = theme
+            postInvalidateOnAnimation()
+        }
+    }
+
     fun updateState(newState: HudVisualState) {
         visualState = newState
         when (newState) {
             HudVisualState.Dormant -> {
-                targetPillWidth = dp(46f)
-                targetPillHeight = dp(7.5f)
+                targetPillWidth = dp(48f)
+                targetPillHeight = dp(8f)
             }
             is HudVisualState.PalmTracking -> {
-                targetPillWidth = dp(246f)
-                targetPillHeight = dp(44f)
-            }
-            is HudVisualState.VolumeSlider -> {
                 targetPillWidth = dp(268f)
                 targetPillHeight = dp(46f)
             }
+            is HudVisualState.VolumeSlider -> {
+                targetPillWidth = dp(296f)
+                targetPillHeight = dp(52f)
+            }
             is HudVisualState.RadialSelectorActive -> {
-                targetPillWidth = dp(224f)
-                targetPillHeight = dp(38f)
+                targetPillWidth = dp(254f)
+                targetPillHeight = dp(42f)
             }
             is HudVisualState.PausedNotice -> {
-                targetPillWidth = dp(218f)
-                targetPillHeight = dp(36f)
+                targetPillWidth = dp(228f)
+                targetPillHeight = dp(38f)
             }
         }
         postInvalidateOnAnimation()
@@ -126,32 +143,30 @@ class DynamicIslandView @JvmOverloads constructor(
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
 
-        // Spring-like smooth interpolation
         var needsNextFrame = false
-        currentPillWidth += (targetPillWidth - currentPillWidth) * 0.28f
-        currentPillHeight += (targetPillHeight - currentPillHeight) * 0.28f
+        currentPillWidth += (targetPillWidth - currentPillWidth) * 0.30f
+        currentPillHeight += (targetPillHeight - currentPillHeight) * 0.30f
         if (abs(targetPillWidth - currentPillWidth) > 0.6f || abs(targetPillHeight - currentPillHeight) > 0.6f) {
             needsNextFrame = true
         }
 
         val cx = width * 0.5f
-        val topOffset = dp(6f)
+        val topOffset = dp(5f)
         val halfW = currentPillWidth * 0.5f
         pillRect.set(cx - halfW, topOffset, cx + halfW, topOffset + currentPillHeight)
         val cornerRadius = currentPillHeight * 0.5f
 
         val accentColor = resolveAccentColor(visualState)
         borderPaint.color = accentColor
-        borderPaint.alpha = if (visualState is HudVisualState.Dormant) 110 else 235
+        borderPaint.alpha = if (visualState is HudVisualState.Dormant) 115 else 240
 
         canvas.drawRoundRect(pillRect, cornerRadius, cornerRadius, bgPaint)
         canvas.drawRoundRect(pillRect, cornerRadius, cornerRadius, borderPaint)
 
-        // Wait until capsule expands sufficiently before drawing interior HUD widgets
-        if (currentPillWidth < dp(120f)) {
+        if (currentPillWidth < dp(126f)) {
             if (visualState is HudVisualState.Dormant) {
-                jointPaint.color = Color.parseColor("#00E676")
-                canvas.drawCircle(cx, pillRect.centerY(), dp(2.0f), jointPaint)
+                jointPaint.color = Color.parseColor(themeColor.primaryHex)
+                canvas.drawCircle(cx, pillRect.centerY(), dp(2.2f), jointPaint)
             }
             if (needsNextFrame) postInvalidateOnAnimation()
             return
@@ -161,86 +176,194 @@ class DynamicIslandView @JvmOverloads constructor(
             HudVisualState.Dormant -> Unit
 
             is HudVisualState.PalmTracking -> {
-                drawHandMiniSilhouette(canvas, pillRect.left + dp(24f), pillRect.centerY(), dp(14f), st.landmarks, accentColor)
+                drawCustomizablePalmGraphic(
+                    canvas = canvas,
+                    centerX = pillRect.left + dp(25f),
+                    centerY = pillRect.centerY(),
+                    radiusPx = dp(14f),
+                    landmarks = st.landmarks,
+                    emoji = st.postureEmoji,
+                    accentColor = accentColor
+                )
 
-                titlePaint.color = Color.parseColor("#F4F8FF")
+                titlePaint.textAlign = Paint.Align.LEFT
+                titlePaint.color = Color.parseColor("#F5F9FF")
                 canvas.drawText(
                     st.statusText,
-                    pillRect.left + dp(46f),
-                    pillRect.centerY() + dp(4.2f),
+                    pillRect.left + dp(47f),
+                    pillRect.centerY() - dp(1.5f),
                     titlePaint
                 )
 
-                val fpsLabel = if (st.thermalWarning) "THERM" else "${st.fps.toInt().coerceAtLeast(1)}fps"
-                subPaint.color = if (st.thermalWarning) Color.parseColor("#FFB300") else Color.parseColor("#7CE8FF")
-                val tw = subPaint.measureText(fpsLabel)
+                val metaLabel = if (st.thermalWarning) {
+                    "โหมดลดความร้อน"
+                } else {
+                    "ล็อก ${st.handSideLabel} • ${st.fps.toInt().coerceAtLeast(1)} FPS"
+                }
+                subPaint.textAlign = Paint.Align.LEFT
+                subPaint.color = if (st.thermalWarning) Color.parseColor("#FFB300") else Color.parseColor("#8CA6CA")
                 canvas.drawText(
-                    fpsLabel,
-                    pillRect.right - tw - dp(14f),
-                    pillRect.centerY() + dp(3.5f),
+                    metaLabel,
+                    pillRect.left + dp(47f),
+                    pillRect.centerY() + dp(12.5f),
                     subPaint
                 )
             }
 
             is HudVisualState.VolumeSlider -> {
-                displayedVolumePct += (st.volumePercent.toFloat() - displayedVolumePct) * 0.38f
+                displayedVolumePct += (st.volumePercent.toFloat() - displayedVolumePct) * 0.40f
                 if (abs(st.volumePercent - displayedVolumePct) > 0.4f) {
                     needsNextFrame = true
                 }
 
-                // Speaker badge on left
-                titlePaint.color = Color.parseColor("#00E5FF")
-                val iconLabel = if (st.isMuted || st.volumePercent == 0) "MUTE" else "VOL"
-                canvas.drawText(iconLabel, pillRect.left + dp(16f), pillRect.centerY() + dp(4.2f), titlePaint)
+                val statusTitle: String
+                val barStartColor: Int
+                val barEndColor: Int
+                when (st.direction) {
+                    VolumeDirection.MUTED -> {
+                        statusTitle = "🔇 ปิดเสียงแล้ว (MUTE)"
+                        barStartColor = Color.parseColor("#FF4D6D")
+                        barEndColor = Color.parseColor("#FF758F")
+                    }
+                    VolumeDirection.DOWN -> {
+                        statusTitle = "🔉 กำลังลดเสียง ▼"
+                        barStartColor = Color.parseColor("#FFB300")
+                        barEndColor = Color.parseColor("#FF5C77")
+                    }
+                    VolumeDirection.UP -> {
+                        statusTitle = "🔊 กำลังเพิ่มเสียง ▲"
+                        barStartColor = Color.parseColor(themeColor.primaryHex)
+                        barEndColor = Color.parseColor("#00E676")
+                    }
+                    VolumeDirection.STEADY -> {
+                        statusTitle = "🔊 ระดับเสียงปัจจุบัน •"
+                        barStartColor = Color.parseColor(themeColor.primaryHex)
+                        barEndColor = Color.parseColor(themeColor.secondaryHex)
+                    }
+                }
 
-                // Slider bar in middle
-                val trackLeft = pillRect.left + dp(58f)
-                val trackRight = pillRect.right - dp(54f)
-                val trackHalfH = dp(4.5f)
-                val cy = pillRect.centerY()
-                sliderTrackRect.set(trackLeft, cy - trackHalfH, trackRight, cy + trackHalfH)
-                canvas.drawRoundRect(sliderTrackRect, trackHalfH, trackHalfH, trackPaint)
+                // Top Row: Clear Thai Direction Status (Left) + Bold Percentage & Delta (Right)
+                titlePaint.textAlign = Paint.Align.LEFT
+                titlePaint.color = barEndColor
+                canvas.drawText(statusTitle, pillRect.left + dp(18f), pillRect.top + dp(20f), titlePaint)
+
+                val deltaSuffix = when {
+                    st.deltaStepPercent > 0 -> " (+${st.deltaStepPercent}%)"
+                    st.deltaStepPercent < 0 -> " (${st.deltaStepPercent}%)"
+                    else -> ""
+                }
+                val pctStr = "${st.volumePercent}%$deltaSuffix"
+                titlePaint.textAlign = Paint.Align.RIGHT
+                titlePaint.color = Color.WHITE
+                canvas.drawText(pctStr, pillRect.right - dp(18f), pillRect.top + dp(20f), titlePaint)
+                titlePaint.textAlign = Paint.Align.LEFT
+
+                // Bottom Row: Wide Glowing Progress Bar
+                val trackLeft = pillRect.left + dp(18f)
+                val trackRight = pillRect.right - dp(18f)
+                val barTop = pillRect.top + dp(31f)
+                val barBottom = barTop + dp(9f)
+                val barR = dp(4.5f)
+                sliderTrackRect.set(trackLeft, barTop, trackRight, barBottom)
+                canvas.drawRoundRect(sliderTrackRect, barR, barR, trackPaint)
 
                 val fillRatio = (displayedVolumePct / 100f).coerceIn(0f, 1f)
                 val fillRight = trackLeft + (trackRight - trackLeft) * fillRatio
-                if (fillRight > trackLeft + dp(2f)) {
-                    sliderFillRect.set(trackLeft, cy - trackHalfH, fillRight, cy + trackHalfH)
+                if (fillRight > trackLeft + dp(3f)) {
+                    sliderFillRect.set(trackLeft, barTop, fillRight, barBottom)
                     fillPaint.shader = LinearGradient(
-                        trackLeft,
-                        cy,
-                        trackRight,
-                        cy,
-                        Color.parseColor("#00E5FF"),
-                        Color.parseColor("#00E676"),
+                        trackLeft, barTop, trackRight, barTop,
+                        barStartColor, barEndColor,
                         Shader.TileMode.CLAMP
                     )
-                    canvas.drawRoundRect(sliderFillRect, trackHalfH, trackHalfH, fillPaint)
+                    canvas.drawRoundRect(sliderFillRect, barR, barR, fillPaint)
                 }
-
-                // Numeric percentage on right
-                val pctStr = "${st.volumePercent}%"
-                titlePaint.color = Color.parseColor("#F4F8FF")
-                val pw = titlePaint.measureText(pctStr)
-                canvas.drawText(pctStr, pillRect.right - pw - dp(14f), cy + dp(4.2f), titlePaint)
             }
 
             is HudVisualState.RadialSelectorActive -> {
-                val label = "RADIAL #${st.selectedSlot + 1} • RELEASE TO OPEN"
-                titlePaint.color = Color.parseColor("#E5DEFF")
-                val lw = titlePaint.measureText(label)
-                canvas.drawText(label, cx - lw * 0.5f, pillRect.centerY() + dp(4.0f), titlePaint)
+                val label = if (st.inCancelZone) {
+                    "⭕ เลื่อนมือเลือกแอปในวงกลม"
+                } else {
+                    "🎡 ช่อง #${st.selectedSlot + 1}/${st.totalSlots} • แบมือเพื่อเปิด"
+                }
+                titlePaint.textAlign = Paint.Align.CENTER
+                titlePaint.color = Color.parseColor("#F3ECFF")
+                canvas.drawText(label, cx, pillRect.centerY() + dp(4.2f), titlePaint)
+                titlePaint.textAlign = Paint.Align.LEFT
             }
 
             is HudVisualState.PausedNotice -> {
+                titlePaint.textAlign = Paint.Align.CENTER
                 titlePaint.color = Color.parseColor("#FFD54F")
-                val lw = titlePaint.measureText(st.reason)
-                canvas.drawText(st.reason, cx - lw * 0.5f, pillRect.centerY() + dp(4.0f), titlePaint)
+                canvas.drawText(st.reason, cx, pillRect.centerY() + dp(4.2f), titlePaint)
+                titlePaint.textAlign = Paint.Align.LEFT
             }
         }
 
         if (needsNextFrame) {
             postInvalidateOnAnimation()
         }
+    }
+
+    private fun drawCustomizablePalmGraphic(
+        canvas: Canvas,
+        centerX: Float,
+        centerY: Float,
+        radiusPx: Float,
+        landmarks: List<Landmark3D>,
+        emoji: String,
+        accentColor: Int
+    ) {
+        when (palmStyle) {
+            HudPalmStyle.SKELETON_21 -> {
+                drawHandMiniSilhouette(canvas, centerX, centerY, radiusPx, landmarks, accentColor)
+            }
+            HudPalmStyle.GLOWING_PALM -> {
+                drawStylizedGlowingPalm(canvas, centerX, centerY, radiusPx, accentColor)
+            }
+            HudPalmStyle.POSTURE_BADGE -> {
+                jointPaint.color = Color.argb(45, Color.red(accentColor), Color.green(accentColor), Color.blue(accentColor))
+                canvas.drawCircle(centerX, centerY, radiusPx, jointPaint)
+                bonePaint.color = accentColor
+                canvas.drawCircle(centerX, centerY, radiusPx, bonePaint)
+                canvas.drawText(emoji, centerX, centerY + dp(6f), emojiPaint)
+            }
+            HudPalmStyle.MINIMAL_ORB -> {
+                bonePaint.color = accentColor
+                canvas.drawCircle(centerX, centerY, radiusPx * 0.86f, bonePaint)
+                jointPaint.color = Color.argb(90, Color.red(accentColor), Color.green(accentColor), Color.blue(accentColor))
+                canvas.drawCircle(centerX, centerY, radiusPx * 0.56f, jointPaint)
+                jointPaint.color = accentColor
+                canvas.drawCircle(centerX, centerY, dp(3.2f), jointPaint)
+            }
+        }
+    }
+
+    private fun drawStylizedGlowingPalm(
+        canvas: Canvas,
+        cx: Float,
+        cy: Float,
+        r: Float,
+        accentColor: Int
+    ) {
+        jointPaint.color = Color.argb(42, Color.red(accentColor), Color.green(accentColor), Color.blue(accentColor))
+        canvas.drawCircle(cx, cy, r, jointPaint)
+
+        bonePaint.color = accentColor
+        bonePaint.strokeWidth = dp(2.0f)
+        // Stylized 5-finger human palm rays + palm base arc
+        val palmBaseY = cy + r * 0.25f
+        canvas.drawCircle(cx, palmBaseY, r * 0.34f, bonePaint)
+        val fingerAngles = floatArrayOf(-52f, -24f, 0f, 22f, 44f)
+        val fingerLengths = floatArrayOf(0.58f, 0.80f, 0.90f, 0.82f, 0.66f)
+        for (i in fingerAngles.indices) {
+            val rad = Math.toRadians((fingerAngles[i] - 90f).toDouble())
+            val len = r * fingerLengths[i]
+            val tx = cx + (len * kotlin.math.cos(rad)).toFloat()
+            val ty = palmBaseY + (len * kotlin.math.sin(rad)).toFloat()
+            canvas.drawLine(cx, palmBaseY - r * 0.1f, tx, ty, bonePaint)
+        }
+        bonePaint.strokeWidth = dp(1.5f)
     }
 
     private fun drawHandMiniSilhouette(
@@ -253,10 +376,7 @@ class DynamicIslandView @JvmOverloads constructor(
     ) {
         bonePaint.color = accentColor
         if (landmarks.size < 21) {
-            // Stylized palm pulse ring fallback
-            canvas.drawCircle(centerX, centerY, radiusPx * 0.62f, bonePaint)
-            jointPaint.color = accentColor
-            canvas.drawCircle(centerX, centerY, dp(2.5f), jointPaint)
+            drawStylizedGlowingPalm(canvas, centerX, centerY, radiusPx, accentColor)
             return
         }
 
@@ -284,24 +404,30 @@ class DynamicIslandView @JvmOverloads constructor(
             canvas.drawLine(mapX(a), mapY(a), mapX(b), mapY(b), bonePaint)
         }
 
-        jointPaint.color = Color.parseColor("#00E676")
+        jointPaint.color = Color.parseColor(themeColor.secondaryHex)
         for (tipIdx in FINGERTIP_INDICES) {
             val pt = landmarks[tipIdx]
-            canvas.drawCircle(mapX(pt), mapY(pt), dp(1.5f), jointPaint)
+            canvas.drawCircle(mapX(pt), mapY(pt), dp(1.6f), jointPaint)
         }
     }
 
     private fun resolveAccentColor(state: HudVisualState): Int {
+        val primaryTheme = Color.parseColor(themeColor.primaryHex)
         return when (state) {
             HudVisualState.Dormant -> Color.parseColor("#354766")
             is HudVisualState.PalmTracking -> when (state.accentHighlight) {
-                HudVisualState.AccentKind.CYAN -> Color.parseColor("#00E5FF")
+                HudVisualState.AccentKind.CYAN -> primaryTheme
                 HudVisualState.AccentKind.EMERALD -> Color.parseColor("#00E676")
-                HudVisualState.AccentKind.VIOLET -> Color.parseColor("#9E7BFF")
+                HudVisualState.AccentKind.VIOLET -> Color.parseColor("#A374FF")
                 HudVisualState.AccentKind.AMBER -> Color.parseColor("#FFB300")
             }
-            is HudVisualState.VolumeSlider -> Color.parseColor("#00E676")
-            is HudVisualState.RadialSelectorActive -> Color.parseColor("#9E7BFF")
+            is HudVisualState.VolumeSlider -> when (state.direction) {
+                VolumeDirection.MUTED -> Color.parseColor("#FF4D6D")
+                VolumeDirection.DOWN -> Color.parseColor("#FFB300")
+                VolumeDirection.UP -> Color.parseColor("#00E676")
+                VolumeDirection.STEADY -> primaryTheme
+            }
+            is HudVisualState.RadialSelectorActive -> primaryTheme
             is HudVisualState.PausedNotice -> Color.parseColor("#FFB300")
         }
     }
