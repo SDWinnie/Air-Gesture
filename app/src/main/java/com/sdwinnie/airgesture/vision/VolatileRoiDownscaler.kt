@@ -4,14 +4,12 @@ import android.graphics.Bitmap
 import android.media.Image
 
 /**
- * Decoupled Dual-Stream Volatile-RAM ROI Cropper & Downscaler.
+ * Crash-Hardened Decoupled Dual-Stream Volatile-RAM ROI Cropper & Downscaler (v2.0).
  *
- * CRITICAL ARCHITECTURE GUARANTEE:
- * - High-resolution Camera2 frames (1080p / 2K / 4K) are NEVER converted in full or passed to AI.
- * - Samples ONLY targetDim × targetDim pixels (192×192 = 36,864 px or 256×256 = 65,536 px)
- *   directly from the YUV_420_888 hardware ByteBuffers inside the active ROI, performing
- *   sensor rotation, mirror alignment, and YUV->ARGB conversion in a single zero-allocation pass.
- * - Zero disk/cache/file writes. Explicit volatile memory wipe on service pause/stop.
+ * - High-resolution Camera2 frames (1080p / 2K / 4K) are NEVER converted in full.
+ * - Samples ONLY targetDim × targetDim pixels (192×192 or 256×256) inside the tracked ROI.
+ * - Produces an isolated per-frame volatile Bitmap from pre-allocated scratch RAM so
+ *   MediaPipe's MPImage.close() lifecycle can NEVER recycle a shared buffer across frames.
  */
 class VolatileRoiDownscaler(initialDimension: Int = 192) {
 
@@ -19,50 +17,45 @@ class VolatileRoiDownscaler(initialDimension: Int = 192) {
         private set
 
     private var argbScratch = IntArray(initialDimension * initialDimension)
-    private var reusableBitmap: Bitmap = Bitmap.createBitmap(
-        initialDimension,
-        initialDimension,
-        Bitmap.Config.ARGB_8888
-    )
 
     @Synchronized
     fun ensureDimension(dimension: Int) {
-        if (dimension == targetDimension && !reusableBitmap.isRecycled) return
+        if (dimension == targetDimension && argbScratch.size == dimension * dimension) return
         argbScratch.fill(0)
-        reusableBitmap.eraseColor(0)
         targetDimension = dimension
         argbScratch = IntArray(dimension * dimension)
-        reusableBitmap = Bitmap.createBitmap(dimension, dimension, Bitmap.Config.ARGB_8888)
     }
 
-    /**
-     * Crops [roi] in upright screen space from [image], applies [uprightRotationDeg] (0, 90, 180, 270)
-     * and [mirrorHorizontally], and writes into the reusable volatile [Bitmap] of size targetDimension².
-     */
     @Synchronized
     fun cropAndDownscaleToVolatileBitmap(
         image: Image,
         roi: RoiTracker.NormalizedRect,
         uprightRotationDeg: Int,
         mirrorHorizontally: Boolean
-    ): Bitmap {
+    ): Bitmap? {
+        val planes = image.planes
+        if (planes == null || planes.size < 3) return null
+
         val dim = targetDimension
         val srcW = image.width
         val srcH = image.height
-        val planes = image.planes
+        if (srcW <= 1 || srcH <= 1) return null
 
-        val yBuffer = planes[0].buffer
-        val uBuffer = planes[1].buffer
-        val vBuffer = planes[2].buffer
+        val yBuffer = planes[0].buffer ?: return null
+        val uBuffer = planes[1].buffer ?: return null
+        val vBuffer = planes[2].buffer ?: return null
 
         val yRowStride = planes[0].rowStride
         val yPixelStride = planes[0].pixelStride
-        val uvRowStride = planes[1].rowStride
-        val uvPixelStride = planes[1].pixelStride
+        val uRowStride = planes[1].rowStride
+        val uPixelStride = planes[1].pixelStride
+        val vRowStride = planes[2].rowStride
+        val vPixelStride = planes[2].pixelStride
 
         val yLimit = yBuffer.limit()
         val uLimit = uBuffer.limit()
         val vLimit = vBuffer.limit()
+        if (yLimit <= 0 || uLimit <= 0 || vLimit <= 0) return null
 
         val invDim = 1.0f / dim.toFloat()
         val roiLeft = roi.left
@@ -82,7 +75,6 @@ class VolatileRoiDownscaler(initialDimension: Int = 192) {
                     ux = (1.0f - ux).coerceIn(0f, 0.9999f)
                 }
 
-                // Map upright normalized (ux, uy) back to raw camera sensor (nsx, nsy)
                 val nsx: Float
                 val nsy: Float
                 when (rot) {
@@ -107,10 +99,11 @@ class VolatileRoiDownscaler(initialDimension: Int = 192) {
                 val sx = (nsx * srcW).toInt().coerceIn(0, srcW - 1)
                 val sy = (nsy * srcH).toInt().coerceIn(0, srcH - 1)
 
+                val hvX = sx shr 1
+                val hvY = sy shr 1
                 val yIndex = (sy * yRowStride + sx * yPixelStride).coerceIn(0, yLimit - 1)
-                val uvIndex = ((sy shr 1) * uvRowStride + (sx shr 1) * uvPixelStride)
-                val uIndex = uvIndex.coerceIn(0, uLimit - 1)
-                val vIndex = uvIndex.coerceIn(0, vLimit - 1)
+                val uIndex = (hvY * uRowStride + hvX * uPixelStride).coerceIn(0, uLimit - 1)
+                val vIndex = (hvY * vRowStride + hvX * vPixelStride).coerceIn(0, vLimit - 1)
 
                 val yVal = (yBuffer.get(yIndex).toInt() and 0xFF) - 16
                 val uVal = (uBuffer.get(uIndex).toInt() and 0xFF) - 128
@@ -129,15 +122,12 @@ class VolatileRoiDownscaler(initialDimension: Int = 192) {
             }
         }
 
-        reusableBitmap.setPixels(out, 0, dim, 0, 0, dim, dim)
-        return reusableBitmap
+        // Creates an isolated immutable volatile Bitmap (144 KB for 192×192) safely owned by MPImage
+        return Bitmap.createBitmap(out, dim, dim, Bitmap.Config.ARGB_8888)
     }
 
     @Synchronized
     fun wipeVolatileMemory() {
         argbScratch.fill(0)
-        if (!reusableBitmap.isRecycled) {
-            reusableBitmap.eraseColor(0)
-        }
     }
 }

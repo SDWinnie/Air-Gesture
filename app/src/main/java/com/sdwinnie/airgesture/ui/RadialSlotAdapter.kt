@@ -45,10 +45,10 @@ class RadialSlotAdapter(
         @SuppressLint("SetTextI18n")
         fun bind(slot: RadialAppSlot) {
             binding.tvSlotAngleBadge.text = "#${slot.slotIndex + 1} • ${slot.centerAngleDegrees.toInt()}°"
-            binding.tvSlotAppName.text = slot.label
-            binding.tvSlotPackage.text = slot.packageName.ifBlank { "Tap to assign app" }
+            binding.tvSlotAppName.text = slot.label.ifBlank { "ว่าง" }
+            binding.tvSlotTapHint.text = if (slot.packageName.isBlank()) "แตะเลือกแอป" else "แตะเปลี่ยน"
 
-            val iconBmp = slotManager.getCachedAppIcon(slot.packageName, 72)
+            val iconBmp = slotManager.getCachedAppIcon(slot.packageName, 96)
             if (iconBmp != null) {
                 binding.ivSlotAppIcon.setImageBitmap(iconBmp)
             } else {

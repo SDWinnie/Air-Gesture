@@ -22,7 +22,6 @@ import com.sdwinnie.airgesture.input.TouchlessActionDispatcher
 import com.sdwinnie.airgesture.model.AirGestureConfig
 import com.sdwinnie.airgesture.model.HandFrame
 import com.sdwinnie.airgesture.model.HudVisualState
-import com.sdwinnie.airgesture.overlay.OverlayHudManager
 import com.sdwinnie.airgesture.security.AirLogger
 import com.sdwinnie.airgesture.security.PreferenceStore
 import com.sdwinnie.airgesture.ui.MainActivity
@@ -31,8 +30,11 @@ import com.sdwinnie.airgesture.vision.MediaPipeHandTracker
 import com.sdwinnie.airgesture.vision.ThermalAndDutyController
 
 /**
- * Persistent Background Touchless Vision & HUD Service for Android 14, 15, and 16+.
- * Runs with explicit foregroundServiceType="camera|specialUse" and zero disk/network usage.
+ * Crash-Hardened Camera Foreground Service (v2.0) for Android 14, 15, and 16+.
+ * - Uses official foregroundServiceType="camera" ONLY (zero SPECIAL_USE heuristic flags).
+ * - Uses START_NOT_STICKY so OS memory kills never enter an unauthorized background FGS crash loop.
+ * - Broadcasts live HUD states to both In-App Dynamic Island & Official Android PiP Floating Island
+ *   (zero SYSTEM_ALERT_WINDOW overlay permission required).
  */
 class AirGestureForegroundService : LifecycleService() {
 
@@ -40,7 +42,6 @@ class AirGestureForegroundService : LifecycleService() {
     private lateinit var radialSlotManager: RadialAppSlotManager
     private lateinit var volumeController: SystemVolumeController
     private lateinit var actionDispatcher: TouchlessActionDispatcher
-    private lateinit var overlayHudManager: OverlayHudManager
     private lateinit var thermalController: ThermalAndDutyController
     private lateinit var handTracker: MediaPipeHandTracker
     private lateinit var cameraController: DualStreamCameraController
@@ -63,7 +64,6 @@ class AirGestureForegroundService : LifecycleService() {
         radialSlotManager = RadialAppSlotManager(this, preferenceStore)
         volumeController = SystemVolumeController(this)
         actionDispatcher = TouchlessActionDispatcher(volumeController, radialSlotManager)
-        overlayHudManager = OverlayHudManager(this, radialSlotManager)
         thermalController = ThermalAndDutyController(this)
         handTracker = MediaPipeHandTracker(this)
 
@@ -85,7 +85,13 @@ class AirGestureForegroundService : LifecycleService() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         super.onStartCommand(intent, flags, startId)
 
-        when (intent?.action) {
+        if (intent == null) {
+            // Do not attempt unauthorized background camera FGS restart
+            stopSelf()
+            return START_NOT_STICKY
+        }
+
+        when (intent.action) {
             ACTION_STOP -> {
                 shutdownAndStop()
                 return START_NOT_STICKY
@@ -95,7 +101,7 @@ class AirGestureForegroundService : LifecycleService() {
                 if (engineRunning) {
                     toggleManualPause()
                 }
-                return START_STICKY
+                return START_NOT_STICKY
             }
 
             ACTION_RELOAD_CONFIG -> {
@@ -108,29 +114,28 @@ class AirGestureForegroundService : LifecycleService() {
                         it.copy(visionBufferSummary = activeConfig.visionBufferSize.displayName)
                     }
                 }
-                return START_STICKY
+                return START_NOT_STICKY
             }
 
             ACTION_REFRESH_SLOTS -> {
-                overlayHudManager.notifyRadialSlotsChanged()
-                return START_STICKY
+                AirGestureRuntimeBus.notifyRadialSlotsChanged()
+                return START_NOT_STICKY
             }
         }
 
-        // Verify mandatory Prominent Disclosure + Camera grant before entering camera FGS
         val hasCameraPermission = ContextCompat.checkSelfPermission(
             this,
             Manifest.permission.CAMERA
         ) == PackageManager.PERMISSION_GRANTED
 
         if (!preferenceStore.isProminentDisclosureAccepted || !hasCameraPermission) {
-            AirLogger.w("Service", "Missing disclosure consent or CAMERA permission; aborting FGS start")
-            stopSelf()
+            AirLogger.w("Service", "Missing disclosure consent or CAMERA permission")
+            shutdownAndStop()
             return START_NOT_STICKY
         }
 
         if (!promoteToForeground(pausedByOtherCamera = false)) {
-            stopSelf()
+            shutdownAndStop()
             return START_NOT_STICKY
         }
 
@@ -138,7 +143,7 @@ class AirGestureForegroundService : LifecycleService() {
             startTouchlessPipeline()
         }
 
-        return START_STICKY
+        return START_NOT_STICKY
     }
 
     private fun startTouchlessPipeline() {
@@ -151,8 +156,7 @@ class AirGestureForegroundService : LifecycleService() {
             AirGestureRuntimeBus.updateTelemetry { it.copy(thermalStatus = thermalLevel) }
         }
 
-        overlayHudManager.attachOverlaysIfPermitted()
-        overlayHudManager.updateHudState(HudVisualState.Dormant)
+        AirGestureRuntimeBus.updateHudState(HudVisualState.Dormant)
 
         cameraController.start(
             config = activeConfig,
@@ -165,8 +169,8 @@ class AirGestureForegroundService : LifecycleService() {
                 manualPaused = false,
                 visionBufferSummary = activeConfig.visionBufferSize.displayName,
                 thermalStatus = thermalController.currentThermalStatus,
-                currentPosture = "Armed (Show Palm)",
-                lastActionSummary = "Waiting for open palm..."
+                currentPosture = "พร้อมรับท่าทาง (ยกฝ่ามือ)",
+                lastActionSummary = "แสดงฝ่ามือหน้ากล้องเพื่อปลุก Dynamic Island"
             )
         }
     }
@@ -176,23 +180,23 @@ class AirGestureForegroundService : LifecycleService() {
         if (manuallyPaused) {
             cameraController.stop()
             gestureStateMachine.reset()
-            overlayHudManager.updateHudState(HudVisualState.PausedNotice("AIR GESTURE PAUSED"))
+            AirGestureRuntimeBus.updateHudState(HudVisualState.PausedNotice("PAUSED BY USER"))
             AirGestureRuntimeBus.updateTelemetry {
                 it.copy(
                     manualPaused = true,
-                    activeStreamSummary = "Paused by user",
+                    activeStreamSummary = "Paused",
                     inferenceFps = 0f,
-                    currentPosture = "Paused"
+                    currentPosture = "พักการทำงานชั่วคราว"
                 )
             }
         } else {
             activeConfig = preferenceStore.loadConfig()
-            overlayHudManager.updateHudState(HudVisualState.Dormant)
+            AirGestureRuntimeBus.updateHudState(HudVisualState.Dormant)
             cameraController.start(activeConfig, AirGestureRuntimeBus.liveCalibrationSurface)
             AirGestureRuntimeBus.updateTelemetry {
                 it.copy(
                     manualPaused = false,
-                    currentPosture = "Armed (Show Palm)"
+                    currentPosture = "พร้อมรับท่าทาง (ยกฝ่ามือ)"
                 )
             }
         }
@@ -219,13 +223,13 @@ class AirGestureForegroundService : LifecycleService() {
             thermalWarning = thermalController.isThermalThrottling
         )
 
-        overlayHudManager.updateHudState(outcome.hudState)
+        AirGestureRuntimeBus.updateHudState(outcome.hudState)
 
         val postureText = when (step.mode) {
-            AirGestureStateMachine.Mode.DORMANT -> "Dormant (Sentry)"
-            AirGestureStateMachine.Mode.PALM_ACTIVE -> if (handFrame != null) "Open Palm Tracked" else "Island Awake"
-            AirGestureStateMachine.Mode.PINCH_VOLUME -> "Pinch Volume (ท่ามือจีบ)"
-            AirGestureStateMachine.Mode.FIST_RADIAL_MENU -> "Fist Radial 15 (ท่ากำมือ)"
+            AirGestureStateMachine.Mode.DORMANT -> "โหมดประหยัดพลังงาน (รอฝ่ามือ)"
+            AirGestureStateMachine.Mode.PALM_ACTIVE -> if (handFrame != null) "ตรวจพบฝ่ามือ (Palm Active)" else "Dynamic Island พร้อมทำงาน"
+            AirGestureStateMachine.Mode.PINCH_VOLUME -> "ท่ามือจีบปรับเสียง (Pinch Volume)"
+            AirGestureStateMachine.Mode.FIST_RADIAL_MENU -> "วงล้อลัด 15 แอป (Fist Radial)"
         }
 
         AirGestureRuntimeBus.updateTelemetry { prev ->
@@ -245,10 +249,10 @@ class AirGestureForegroundService : LifecycleService() {
     private fun handleStreamStateChanged(streamSummary: String, cameraYielded: Boolean) {
         if (cameraYielded) {
             gestureStateMachine.reset()
-            overlayHudManager.updateHudState(HudVisualState.PausedNotice("CAMERA IN USE • YIELDED"))
+            AirGestureRuntimeBus.updateHudState(HudVisualState.PausedNotice("CAMERA IN USE • YIELDED"))
             promoteToForeground(pausedByOtherCamera = true)
         } else if (engineRunning && !manuallyPaused) {
-            overlayHudManager.updateHudState(HudVisualState.Dormant)
+            AirGestureRuntimeBus.updateHudState(HudVisualState.Dormant)
             promoteToForeground(pausedByOtherCamera = false)
         }
 
@@ -262,20 +266,19 @@ class AirGestureForegroundService : LifecycleService() {
 
     private fun promoteToForeground(pausedByOtherCamera: Boolean): Boolean {
         val notification = buildForegroundNotification(pausedByOtherCamera)
-        val fgsType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA or ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
-        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+        val fgsType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA
         } else {
             0
         }
 
-        return runCatching {
+        return try {
             ServiceCompat.startForeground(this, NOTIFICATION_ID, notification, fgsType)
             true
-        }.onFailure { err ->
-            AirLogger.e("Service", "Unable to enter foreground service state", err)
-        }.getOrDefault(false)
+        } catch (t: Throwable) {
+            AirLogger.e("Service", "Unable to start camera foreground service", t)
+            false
+        }
     }
 
     private fun buildForegroundNotification(pausedByOtherCamera: Boolean): Notification {
@@ -301,7 +304,7 @@ class AirGestureForegroundService : LifecycleService() {
         )
 
         val bodyText = when {
-            manuallyPaused -> "Paused by user • Tap Resume to re-arm touchless gestures"
+            manuallyPaused -> "พักการทำงานชั่วคราว • แตะ Resume เพื่อทำงานต่อ"
             pausedByOtherCamera -> getString(R.string.notif_paused_camera_text)
             else -> getString(R.string.notif_running_text)
         }
@@ -343,10 +346,10 @@ class AirGestureForegroundService : LifecycleService() {
         engineRunning = false
         manuallyPaused = false
         AirGestureRuntimeBus.onPreviewSurfaceChanged = null
-        thermalController.stopMonitoring()
-        cameraController.stop()
-        handTracker.close()
-        overlayHudManager.detachOverlays()
+        runCatching { thermalController.stopMonitoring() }
+        runCatching { cameraController.stop() }
+        runCatching { handTracker.close() }
+        AirGestureRuntimeBus.updateHudState(HudVisualState.Dormant)
 
         AirGestureRuntimeBus.updateTelemetry {
             it.copy(
@@ -357,12 +360,12 @@ class AirGestureForegroundService : LifecycleService() {
                 delegateName = "Idle",
                 inferenceFps = 0f,
                 inferenceLatencyMs = 0f,
-                currentPosture = "Dormant",
-                lastActionSummary = "Service stopped"
+                currentPosture = "พร้อมเริ่มงาน (Standby)",
+                lastActionSummary = "กดปุ่มเปิดระบบเพื่อเริ่มสั่งงานไร้สัมผัส"
             )
         }
 
-        ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
+        runCatching { ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE) }
         stopSelf()
     }
 
@@ -370,9 +373,8 @@ class AirGestureForegroundService : LifecycleService() {
         if (engineRunning) {
             shutdownAndStop()
         } else {
-            overlayHudManager.detachOverlays()
-            cameraController.stop()
-            handTracker.close()
+            runCatching { cameraController.stop() }
+            runCatching { handTracker.close() }
         }
         super.onDestroy()
     }
@@ -388,25 +390,32 @@ class AirGestureForegroundService : LifecycleService() {
         const val ACTION_REFRESH_SLOTS = "com.sdwinnie.airgesture.action.REFRESH_SLOTS"
 
         fun startService(context: Context) {
-            val intent = Intent(context, AirGestureForegroundService::class.java).setAction(ACTION_START)
-            ContextCompat.startForegroundService(context, intent)
+            runCatching {
+                val intent = Intent(context, AirGestureForegroundService::class.java).setAction(ACTION_START)
+                ContextCompat.startForegroundService(context, intent)
+            }.onFailure { err ->
+                AirLogger.e("ServiceStart", "Failed to start foreground service", err)
+            }
         }
 
         fun stopService(context: Context) {
-            val intent = Intent(context, AirGestureForegroundService::class.java).setAction(ACTION_STOP)
-            context.startService(intent)
+            if (!AirGestureRuntimeBus.telemetry.value.serviceRunning) return
+            runCatching {
+                val intent = Intent(context, AirGestureForegroundService::class.java).setAction(ACTION_STOP)
+                context.startService(intent)
+            }
         }
 
         fun notifyConfigUpdated(context: Context) {
             if (!AirGestureRuntimeBus.telemetry.value.serviceRunning) return
-            val intent = Intent(context, AirGestureForegroundService::class.java).setAction(ACTION_RELOAD_CONFIG)
-            context.startService(intent)
+            runCatching {
+                val intent = Intent(context, AirGestureForegroundService::class.java).setAction(ACTION_RELOAD_CONFIG)
+                context.startService(intent)
+            }
         }
 
         fun notifySlotsUpdated(context: Context) {
-            if (!AirGestureRuntimeBus.telemetry.value.serviceRunning) return
-            val intent = Intent(context, AirGestureForegroundService::class.java).setAction(ACTION_REFRESH_SLOTS)
-            context.startService(intent)
+            AirGestureRuntimeBus.notifyRadialSlotsChanged()
         }
     }
 }

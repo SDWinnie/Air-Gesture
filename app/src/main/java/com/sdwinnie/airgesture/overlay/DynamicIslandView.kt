@@ -8,19 +8,23 @@ import android.graphics.Paint
 import android.graphics.RectF
 import android.graphics.Shader
 import android.graphics.Typeface
+import android.util.AttributeSet
 import android.view.View
 import com.sdwinnie.airgesture.model.HudVisualState
 import com.sdwinnie.airgesture.model.Landmark3D
 import kotlin.math.abs
 
 /**
- * Hardware-accelerated Dynamic Island HUD Capsule rendered at the top screen edge.
+ * Hardware-accelerated Dynamic Island HUD Capsule.
  * Displays:
  * 1. Compact dormant pill when idle
  * 2. Live 21-joint hand skeleton silhouette + active gesture telemetry when palm wakes
  * 3. Smooth morphing Volume Pill Slider during Pinch Gesture (ท่ามือจีบ)
  */
-class DynamicIslandView(context: Context) : View(context) {
+class DynamicIslandView @JvmOverloads constructor(
+    context: Context,
+    attrs: AttributeSet? = null
+) : View(context, attrs) {
 
     private val density = resources.displayMetrics.density
     private fun dp(v: Float): Float = v * density
@@ -114,7 +118,9 @@ class DynamicIslandView(context: Context) : View(context) {
     }
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
-        setMeasuredDimension(containerWidthPx, containerHeightPx)
+        val measuredW = resolveSize(containerWidthPx, widthMeasureSpec)
+        val measuredH = resolveSize(containerHeightPx, heightMeasureSpec)
+        setMeasuredDimension(measuredW, measuredH)
     }
 
     override fun onDraw(canvas: Canvas) {

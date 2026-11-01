@@ -8,6 +8,7 @@ import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.RectF
 import android.graphics.Typeface
+import android.util.AttributeSet
 import android.view.View
 import com.sdwinnie.airgesture.engine.HandGeometry
 import com.sdwinnie.airgesture.input.RadialAppSlotManager
@@ -21,15 +22,22 @@ import kotlin.math.sin
  * - Highlights the segment targeted by the user's Wrist-to-Palm angle vector.
  * - Releasing the fist launches the focused app.
  */
-class RadialAppSelectorView(
+class RadialAppSelectorView @JvmOverloads constructor(
     context: Context,
-    private val slotManager: RadialAppSlotManager
-) : View(context) {
+    attrs: AttributeSet? = null
+) : View(context, attrs) {
+
+    private var slotManager: RadialAppSlotManager? = null
+
+    fun attachSlotManager(manager: RadialAppSlotManager) {
+        slotManager = manager
+        refreshSlots()
+    }
 
     private val density = resources.displayMetrics.density
     private fun dp(v: Float): Float = v * density
 
-    private val wheelSizePx = dp(344f).toInt()
+    private val defaultWheelSizePx = dp(308f).toInt()
     private val iconPx = dp(32f).toInt().coerceAtLeast(48)
 
     private var slots: List<RadialAppSlot> = emptyList()
@@ -109,11 +117,12 @@ class RadialAppSelectorView(
     }
 
     fun refreshSlots() {
-        val loaded = slotManager.loadResolvedSlots()
+        val mgr = slotManager ?: return
+        val loaded = mgr.loadResolvedSlots()
         slots = loaded
         val icons = arrayOfNulls<Bitmap>(HandGeometry.RADIAL_SLOTS)
         for (i in loaded.indices) {
-            icons[i] = slotManager.getCachedAppIcon(loaded[i].packageName, iconPx)
+            icons[i] = mgr.getCachedAppIcon(loaded[i].packageName, iconPx)
         }
         slotIcons = icons
         invalidate()
@@ -129,7 +138,13 @@ class RadialAppSelectorView(
     }
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
-        setMeasuredDimension(wheelSizePx, wheelSizePx)
+        val availW = MeasureSpec.getSize(widthMeasureSpec)
+        val target = if (MeasureSpec.getMode(widthMeasureSpec) != MeasureSpec.UNSPECIFIED && availW > 0) {
+            minOf(availW, defaultWheelSizePx)
+        } else {
+            defaultWheelSizePx
+        }
+        setMeasuredDimension(target, target)
     }
 
     override fun onDraw(canvas: Canvas) {
@@ -137,9 +152,10 @@ class RadialAppSelectorView(
 
         val cx = width * 0.5f
         val cy = height * 0.5f
-        val outerR = dp(162f)
-        val innerR = dp(64f)
-        val orbitR = dp(115f)
+        val halfMin = minOf(width, height) * 0.5f
+        val outerR = (halfMin - dp(6f)).coerceAtLeast(dp(90f))
+        val innerR = outerR * 0.40f
+        val orbitR = outerR * 0.71f
 
         outerArcRect.set(cx - outerR, cy - outerR, cx + outerR, cy + outerR)
         innerArcRect.set(cx - innerR, cy - innerR, cx + innerR, cy + innerR)

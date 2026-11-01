@@ -1,4 +1,4 @@
-# Air Gesture — System Architecture & Engineering Specification
+# Air Gesture v2.0 — System Architecture & Security Specification
 
 ## 1. Decoupled Dual-Stream Volatile Vision Pipeline
 ```
@@ -8,9 +8,10 @@ Camera2 Hardware ISP (480p / 720p / 1080p / 2K / 4K @ 60 or 120 FPS)
           │
           ▼
    [VolatileRoiDownscaler] ──► Single-pass ROI crop + upright rotation + mirror
-          │                    into pre-allocated 192×192 or 256×256 ARGB RAM buffer
+          │                    into isolated 192×192 or 256×256 ARGB volatile RAM bitmap
+          │                    (separate U/V plane strides, zero shared-recycle hazard)
           ▼
-   [MediaPipeHandTracker]  ──► SHA-256 RAM-verified hand_landmarker.task (GPU / CPU SIMD)
+   [MediaPipeHandTracker]  ──► SHA-256 RAM-verified hand_landmarker.task (XNNPACK CPU SIMD)
           │
           ▼
    [LandmarkBankOneEuroFilter + HandGeometry Scale Normalizer (L_ref)]
@@ -18,18 +19,19 @@ Camera2 Hardware ISP (480p / 720p / 1080p / 2K / 4K @ 60 or 120 FPS)
           ▼
    [AirGestureStateMachine] ──► Hysteresis & Return-Stroke Clutch Protected FSM
           │
-   ┌──────┴───────────────────────────────┐
-   ▼                                      ▼
-[TouchlessActionDispatcher]        [OverlayHudManager]
-• AirAccessibilityService          • Top-Edge Dynamic Island Capsule
-• SystemVolumeController           • Volume Pill Slider (Pinch)
-• RadialAppSlotManager (15 Apps)   • 360° 15-App Radial Pie Menu (Fist)
+   ┌──────┴──────────────────────────────────────┐
+   ▼                                             ▼
+[TouchlessActionDispatcher]               [AirGestureRuntimeBus -> Official PiP & Bento UI]
+• AirAccessibilityService (Scroll/Nav)    • In-App Live Dynamic Island Showcase Dock
+• SystemVolumeController (Pinch Volume)   • Official Android PiP Floating Dynamic Island (2.2:1)
+• RadialAppSlotManager (15 Apps)          • Seamless PiP Resize (1:1) 360° 15-App Radial Wheel
 ```
 
-## 2. Android 14, 15 & 16+ OS Enforcement Compliance
-- **Foreground Service Types**: Runs as `camera|specialUse` with explicit `PROPERTY_SPECIAL_USE_FGS_SUBTYPE` declaration and automatic `CameraDevice.StateCallback.onDisconnected` + `AvailabilityCallback` yield/resume when foreground camera apps open.
-- **Untrusted-Touch Passthrough Compliance**: Both `TYPE_APPLICATION_OVERLAY` windows use compact `WRAP_CONTENT` bounds, `FLAG_NOT_TOUCHABLE | FLAG_NOT_FOCUSABLE`, and `alpha <= InputManager.maximumObscuringOpacityForTouch`, guaranteeing zero tap-jacking touch occlusion on Android 12–16+.
-- **Play Protect Privacy Posture**:
-  - `android.permission.INTERNET` is **completely omitted** from `AndroidManifest.xml` (kernel UID socket block) alongside a zero-cleartext `network_security_config.xml`.
-  - `accessibility_service_config.xml` sets `android:canRetrieveWindowContent="false"` and `android:accessibilityEventTypes=""`, proving statically that Air Gesture cannot read screen text, passwords, or UI hierarchies.
-  - Bundled `hand_landmarker.task` is SHA-256 verified inside a `DirectByteBuffer` in volatile RAM prior to native execution.
+## 2. Crash-Proof & Google Play Protect Hardened Architecture (v2.0)
+- **Zero Overlay Tapjacking Posture**: `SYSTEM_ALERT_WINDOW`, `TYPE_APPLICATION_OVERLAY`, and `FOREGROUND_SERVICE_SPECIAL_USE` are completely absent from both `AndroidManifest.xml` and `classes.dex`. Floating HUD visuals use Android's official **Picture-in-Picture (`supportsPictureInPicture="true"`)** windowing contract (`2.2:1` Dynamic Island capsule & `1:1` 360° Radial Wheel).
+- **Crash-Hardened Foreground Lifecycle**: Runs strictly as `foregroundServiceType="camera"` with `START_NOT_STICKY` (eliminating Android 14–16 background camera FGS restart crash loops), headless-safe `DisplayManager.getDisplay(DEFAULT_DISPLAY)`, XNNPACK SIMD CPU inference (avoiding background `HandlerThread` EGL/GPU driver `SIGABRT`), and `useLegacyPackaging = true` for 16KB memory-page compatibility.
+- **Verifiable Zero-Trust Privacy**:
+  - `android.permission.INTERNET` and `ACCESS_NETWORK_STATE` are stripped via `tools:node="remove"` (kernel-enforced UID socket block).
+  - `accessibility_service_config.xml` enforces `android:canRetrieveWindowContent="false"` and `android:accessibilityEventTypes=""`.
+  - `SecuritySelfAuditor` performs live on-device inspection of installed `PackageInfo` permissions, zero-media cache footprint, and SHA-256 `DirectByteBuffer` model integrity.
+  - Signed with **APK Signature Scheme v1 + v2 + v3 + v4**.

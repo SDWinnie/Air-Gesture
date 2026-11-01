@@ -2,18 +2,18 @@
     <string name="app_name">Air Gesture</string>
     <string name="tile_label">Air Gesture</string>
     <string name="notif_channel_name">Air Gesture Touchless Engine</string>
-    <string name="notif_channel_desc">Persistent foreground status for 100% on-device touchless hand gesture tracking</string>
-    <string name="notif_running_title">Air Gesture Active (100% On-Device)</string>
-    <string name="notif_running_text">Touchless Palm, Pinch Volume &amp; 15-App Radial HUD ready • Zero storage/cloud</string>
-    <string name="notif_paused_camera_text">Paused automatically — Camera currently in use by another app</string>
-    <string name="notif_action_pause">Pause</string>
-    <string name="notif_action_resume">Resume</string>
-    <string name="notif_action_stop">Stop</string>
+    <string name="notif_channel_desc">100% On-Device Edge-AI hand gesture tracking status</string>
+    <string name="notif_running_title">Air Gesture v2.0 • 100% On-Device</string>
+    <string name="notif_running_text">แบมือปลุก • จีบนิ้วปรับเสียง • กำมือเลือก 15 แอป (Zero Cloud/Storage)</string>
+    <string name="notif_paused_camera_text">พักอัตโนมัติ — กล้องกำลังถูกใช้งานโดยแอปอื่น</string>
+    <string name="notif_action_pause">พักชั่วคราว</string>
+    <string name="notif_action_resume">ทำงานต่อ</string>
+    <string name="notif_action_stop">ปิดระบบ</string>
 
-    <string name="accessibility_service_description">Air Gesture Touchless Input Engine: Injects smooth touchless scroll gestures and Back/Recents navigation from your hand movements. Privacy Hardened: Screen reading (canRetrieveWindowContent) is strictly disabled and the app has zero internet access.</string>
+    <string name="accessibility_service_description">Air Gesture v2.0 Touchless Input Engine: จำลองการปัดเลื่อนหน้าจอ (Scroll Up/Down) และคำสั่งย้อนกลับ/สลับแอปจากท่าทางมือแบบไร้สัมผัส ปลอดภัย 100%: ปิดการอ่านเนื้อหาบนหน้าจอ (canRetrieveWindowContent=false), ไม่ใช้ SYSTEM_ALERT_WINDOW Overlay และไม่มีสิทธิ์เชื่อมต่ออินเทอร์เน็ต (Zero Internet Permission)</string>
 
-    <string name="disclosure_title">การเปิดเผยข้อมูลสำคัญด้านความเป็นส่วนตัว (Prominent Disclosure)</string>
-    <string name="disclosure_body">ก่อนเปิดใช้งานระบบสั่งงานไร้สัมผัส Air Gesture โปรดอ่านรายละเอียดการใช้สิทธิ์อย่างโปร่งใสตามมาตรฐาน Google Play Protect:\n\n1. สิทธิ์กล้องถ่ายรูป (Camera — Volatile RAM Only):\nใช้ประมวลผลโครงกระดูกมือ (แบมือ, จีบนิ้วปรับเสียง, กำมือเลือก 15 แอป) ในหน่วยความจำชั่วคราว (RAM 192×192 / 256×256) เท่านั้น ไม่มีการบันทึกภาพหรือวิดีโอลงพื้นที่เก็บข้อมูลถาวร (SSD/SD Card/Cache) เด็ดขาด\n\n2. สิทธิ์การช่วยเหลือพิเศษ (AccessibilityService — Touchless Input Only):\nใช้เพื่อจำลองการเลื่อนหน้าจอ (dispatchGesture) และคำสั่งย้อนกลับ/สลับแอปเท่านั้น โดยปิดสิทธิ์อ่านเนื้อหาหน้าจอ (canRetrieveWindowContent=\"false\") 100% แอปจึงไม่สามารถอ่านข้อความ รหัสผ่าน หรือข้อมูลส่วนตัวบนหน้าจอได้\n\n3. ออฟไลน์ 100% (Zero Internet Permission):\nแอปไม่ได้ขอสิทธิ์เชื่อมต่ออินเทอร์เน็ต ข้อมูลทั้งหมดจึงไม่สามารถส่งออกนอกเครื่องได้ในระดับระบบปฏิบัติการ</string>
-    <string name="disclosure_accept">ยอมรับและดำเนินการต่อ (Accept)</string>
-    <string name="disclosure_decline">ปฏิเสธ (Decline)</string>
+    <string name="disclosure_title">การเปิดเผยข้อมูลความปลอดภัยและความเป็นส่วนตัว (Prominent Disclosure)</string>
+    <string name="disclosure_body">Air Gesture v2.0 ออกแบบตามมาตรฐานความปลอดภัย Google Play Protect 100% On-Device:\n\n1. สิทธิ์กล้องถ่ายรูป (Volatile RAM Only):\nประมวลผลโครงกระดูกมือ 21 จุดในหน่วยความจำชั่วคราว (RAM 192×192 / 256×256) เท่านั้น ไม่มีการบันทึกภาพหรือวิดีโอลงพื้นที่เก็บข้อมูลถาวร (0 ไฟล์ในเครื่อง)\n\n2. แคปซูลลอยตัวมาตรฐาน Android PiP (Zero Overlay Tapjacking):\nใช้หน้าต่างลอย Picture-in-Picture มาตรฐานของ Android แทนการขอสิทธิ์วาดทับแอปอื่น (SYSTEM_ALERT_WINDOW) เพื่อป้องกันความเสี่ยงด้าน Tapjacking 100%\n\n3. สิทธิ์การช่วยเหลือพิเศษ (Touchless Scroll Only — ตัวเลือกเสริม):\nใช้จำลองการเลื่อนหน้าจอและปุ่มย้อนกลับเท่านั้น โดยปิดสิทธิ์อ่านเนื้อหาหน้าจอ (canRetrieveWindowContent=\"false\") ถาวร แอปจึงไม่สามารถอ่านข้อความหรือรหัสผ่านบนจอได้\n\n4. ออฟไลน์ 100% (Zero Internet Socket):\nไบนารี APK ไม่มีสิทธิ์ INTERNET ข้อมูลทั้งหมดจึงไม่สามารถส่งออกนอกเครื่องได้ในระดับระบบปฏิบัติการ</string>
+    <string name="disclosure_accept">ยอมรับและเปิดใช้งาน (Accept)</string>
+    <string name="disclosure_decline">ยกเลิก</string>
 </resources>

@@ -12,14 +12,14 @@ val localProps = Properties().apply {
 
 android {
     namespace = "com.sdwinnie.airgesture"
-    compileSdk = 36
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "com.sdwinnie.airgesture"
         minSdk = 26
-        targetSdk = 36
-        versionCode = 1
-        versionName = "1.0.0"
+        targetSdk = 35
+        versionCode = 2
+        versionName = "2.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -88,7 +88,8 @@ android {
 
     packaging {
         jniLibs {
-            useLegacyPackaging = false
+            // Ensures clean native .so extraction on Android 14/15/16 (including 16KB page-size devices)
+            useLegacyPackaging = true
         }
     }
 
@@ -106,6 +107,7 @@ dependencies {
     implementation("androidx.recyclerview:recyclerview:1.4.0")
     implementation("androidx.cardview:cardview:1.0.0")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.7")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.7")
     implementation("androidx.lifecycle:lifecycle-service:2.8.7")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.1")
 

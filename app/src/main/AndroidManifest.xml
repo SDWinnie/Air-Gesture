@@ -3,10 +3,12 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <!--
-        100% EDGE-AI PRIVACY GUARANTEE:
-        Explicitly strip INTERNET, ACCESS_NETWORK_STATE, and legacy storage permissions
-        even if any transitive AAR (such as MediaPipe Tasks Core) declares them in its library manifest.
-        The Linux/Android kernel strictly blocks socket creation for this UID.
+        100% EDGE-AI & GOOGLE PLAY PROTECT HARDENED POSTURE (v2.0):
+        1. Strip INTERNET & ACCESS_NETWORK_STATE from all transitive AARs (0 network sockets).
+        2. Zero SYSTEM_ALERT_WINDOW (Eliminates Overlay+Accessibility tapjacking heuristic;
+           uses official Android Picture-in-Picture Floating Dynamic Island HUD instead).
+        3. Zero FOREGROUND_SERVICE_SPECIAL_USE (Uses standard official camera FGS type only).
+        4. Zero storage permissions.
     -->
     <uses-permission
         android:name="android.permission.INTERNET"
@@ -14,22 +16,14 @@
     <uses-permission
         android:name="android.permission.ACCESS_NETWORK_STATE"
         tools:node="remove" />
-    <uses-permission
-        android:name="android.permission.READ_EXTERNAL_STORAGE"
-        tools:node="remove" />
-    <uses-permission
-        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
-        tools:node="remove" />
 
     <uses-feature
         android:name="android.hardware.camera.any"
-        android:required="true" />
+        android:required="false" />
 
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CAMERA" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
-    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <!-- Play-Store Compliant Launcher App Discovery for the 15-App Radial Pie Selector -->
@@ -51,31 +45,30 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.AirGesture"
-        tools:targetApi="36">
+        tools:targetApi="35">
 
         <activity
             android:name=".ui.MainActivity"
-            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize"
+            android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation|density"
             android:exported="true"
-            android:launchMode="singleTop">
+            android:launchMode="singleTask"
+            android:resizeableActivity="true"
+            android:supportsPictureInPicture="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
 
-        <!-- Android 14, 15, and 16+ Persistent Camera + SpecialUse Foreground Service -->
+        <!-- Official Camera Foreground Service (Zero SpecialUse Flag, Survives Task Swipe) -->
         <service
             android:name=".service.AirGestureForegroundService"
             android:enabled="true"
             android:exported="false"
-            android:foregroundServiceType="camera|specialUse">
-            <property
-                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
-                android:value="Real-time 100% on-device volatile-RAM touchless hand gesture engine driving Dynamic Island HUD, radial launcher, and assistive OS navigation without disk recording or network egress." />
-        </service>
+            android:foregroundServiceType="camera"
+            android:stopWithTask="false" />
 
-        <!-- Touchless Gesture & Navigation Injector (canRetrieveWindowContent=false) -->
+        <!-- Optional Touchless Scroll & Back/Recents Injector (canRetrieveWindowContent=false) -->
         <service
             android:name=".service.AirAccessibilityService"
             android:enabled="true"
