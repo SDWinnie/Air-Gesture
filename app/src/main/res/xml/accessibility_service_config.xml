@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Google Play Protect Compliant Touchless Input Accessibility Configuration:
+    - canPerformGestures="true": Required strictly to inject touchless scroll strokes via dispatchGesture().
+    - canRetrieveWindowContent="false": HARD PRIVACY GUARANTEE — Air Gesture CANNOT read screen text,
+      passwords, notifications, or UI hierarchies of any app.
+    - accessibilityEventTypes="": Subscribes to ZERO window/text accessibility events.
+    - isAccessibilityTool="true": Declares official assistive touchless navigation purpose for Android 14-16+.
+-->
+<accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
+    android:accessibilityEventTypes=""
+    android:accessibilityFeedbackType="feedbackGeneric"
+    android:accessibilityFlags="flagDefault"
+    android:canPerformGestures="true"
+    android:canRetrieveWindowContent="false"
+    android:description="@string/accessibility_service_description"
+    android:isAccessibilityTool="true"
+    android:notificationTimeout="100"
+    android:settingsActivity="com.sdwinnie.airgesture.ui.MainActivity" />

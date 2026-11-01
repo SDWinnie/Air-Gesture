@@ -1,0 +1,11 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <style name="Theme.AirGesture" parent="Theme.Material3.Dark.NoActionBar">
+        <item name="colorPrimary">@color/accent_cyan</item>
+        <item name="colorSecondary">@color/accent_emerald</item>
+        <item name="colorTertiary">@color/accent_violet</item>
+        <item name="android:windowBackground">@color/bg_obsidian</item>
+        <item name="android:statusBarColor">@color/bg_obsidian</item>
+        <item name="android:navigationBarColor">@color/bg_obsidian</item>
+        <item name="android:windowLightStatusBar" tools:targetApi="m">false</item>
+    </style>
+</resources>

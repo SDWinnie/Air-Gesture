@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    100% Edge-AI Network Lockdown:
+    1. AndroidManifest.xml declares ZERO android.permission.INTERNET (OS kernel blocks socket creation).
+    2. Defense-in-depth: Cleartext traffic disabled globally and empty trust-anchors reject all TLS egress.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors />
+    </base-config>
+</network-security-config>

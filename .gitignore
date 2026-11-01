@@ -1,0 +1,22 @@
+# Gradle & Android Build Outputs
+.gradle/
+.kotlin/
+build/
+app/build/
+local.properties
+
+# Private Signing Keystores (Never commit private keys)
+keystore/
+*.jks
+*.keystore
+
+# IDE & OS Files
+.idea/
+*.iml
+.DS_Store
+Thumbs.db
+
+# Release Artifacts (Uploaded via GitHub Releases, not tracked in git tree)
+*.apk
+*.apk.idsig
+*.aab

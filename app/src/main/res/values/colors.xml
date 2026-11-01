@@ -1,0 +1,14 @@
+<resources>
+    <color name="bg_obsidian">#090C12</color>
+    <color name="surface_card">#121722</color>
+    <color name="surface_elevated">#1A2232</color>
+    <color name="stroke_subtle">#263248</color>
+    <color name="accent_cyan">#00E5FF</color>
+    <color name="accent_emerald">#00E676</color>
+    <color name="accent_violet">#7C4DFF</color>
+    <color name="accent_amber">#FFB300</color>
+    <color name="accent_coral">#FF5252</color>
+    <color name="text_primary">#F3F6FC</color>
+    <color name="text_secondary">#9BA8C0</color>
+    <color name="ic_launcher_background">#0B101B</color>
+</resources>

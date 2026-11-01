@@ -1,0 +1,19 @@
+<resources>
+    <string name="app_name">Air Gesture</string>
+    <string name="tile_label">Air Gesture</string>
+    <string name="notif_channel_name">Air Gesture Touchless Engine</string>
+    <string name="notif_channel_desc">Persistent foreground status for 100% on-device touchless hand gesture tracking</string>
+    <string name="notif_running_title">Air Gesture Active (100% On-Device)</string>
+    <string name="notif_running_text">Touchless Palm, Pinch Volume &amp; 15-App Radial HUD ready • Zero storage/cloud</string>
+    <string name="notif_paused_camera_text">Paused automatically — Camera currently in use by another app</string>
+    <string name="notif_action_pause">Pause</string>
+    <string name="notif_action_resume">Resume</string>
+    <string name="notif_action_stop">Stop</string>
+
+    <string name="accessibility_service_description">Air Gesture Touchless Input Engine: Injects smooth touchless scroll gestures and Back/Recents navigation from your hand movements. Privacy Hardened: Screen reading (canRetrieveWindowContent) is strictly disabled and the app has zero internet access.</string>
+
+    <string name="disclosure_title">การเปิดเผยข้อมูลสำคัญด้านความเป็นส่วนตัว (Prominent Disclosure)</string>
+    <string name="disclosure_body">ก่อนเปิดใช้งานระบบสั่งงานไร้สัมผัส Air Gesture โปรดอ่านรายละเอียดการใช้สิทธิ์อย่างโปร่งใสตามมาตรฐาน Google Play Protect:\n\n1. สิทธิ์กล้องถ่ายรูป (Camera — Volatile RAM Only):\nใช้ประมวลผลโครงกระดูกมือ (แบมือ, จีบนิ้วปรับเสียง, กำมือเลือก 15 แอป) ในหน่วยความจำชั่วคราว (RAM 192×192 / 256×256) เท่านั้น ไม่มีการบันทึกภาพหรือวิดีโอลงพื้นที่เก็บข้อมูลถาวร (SSD/SD Card/Cache) เด็ดขาด\n\n2. สิทธิ์การช่วยเหลือพิเศษ (AccessibilityService — Touchless Input Only):\nใช้เพื่อจำลองการเลื่อนหน้าจอ (dispatchGesture) และคำสั่งย้อนกลับ/สลับแอปเท่านั้น โดยปิดสิทธิ์อ่านเนื้อหาหน้าจอ (canRetrieveWindowContent=\"false\") 100% แอปจึงไม่สามารถอ่านข้อความ รหัสผ่าน หรือข้อมูลส่วนตัวบนหน้าจอได้\n\n3. ออฟไลน์ 100% (Zero Internet Permission):\nแอปไม่ได้ขอสิทธิ์เชื่อมต่ออินเทอร์เน็ต ข้อมูลทั้งหมดจึงไม่สามารถส่งออกนอกเครื่องได้ในระดับระบบปฏิบัติการ</string>
+    <string name="disclosure_accept">ยอมรับและดำเนินการต่อ (Accept)</string>
+    <string name="disclosure_decline">ปฏิเสธ (Decline)</string>
+</resources>

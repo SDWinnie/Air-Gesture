@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Dynamic Island Glow Ring -->
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M54,22 A32,32 0 1,1 53.99,22 Z"
+        android:strokeWidth="2.5"
+        android:strokeColor="#00E5FF" />
+    <!-- Stylized Open Hand Silhouette -->
+    <path
+        android:fillColor="#00E5FF"
+        android:pathData="M54,32 C55.6,32 57,33.3 57,35 L57,51 L59,51 L59,36 C59,34.3 60.3,33 62,33 C63.7,33 65,34.3 65,36 L65,53 L67,53 L67,40 C67,38.3 68.3,37 70,37 C71.7,37 73,38.3 73,40 L73,62 C73,71.4 65.4,79 56,79 L51,79 C43.2,79 37,73.5 35.4,66.1 L32.2,54.8 C31.7,53.1 32.7,51.3 34.4,50.8 C36.1,50.3 37.9,51.3 38.4,53 L41,61 L41,38 C41,36.3 42.3,35 44,35 C45.7,35 47,36.3 47,38 L47,51 L49,51 L49,35 C49,33.3 50.4,32 52,32 Z" />
+    <!-- Emerald Pulse Dot -->
+    <path
+        android:fillColor="#00E676"
+        android:pathData="M54,65 m-4,0 a4,4 0 1,0 8,0 a4,4 0 1,0 -8,0" />
+</vector>
