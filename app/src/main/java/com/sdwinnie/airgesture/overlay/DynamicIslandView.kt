@@ -36,7 +36,7 @@ class DynamicIslandView @JvmOverloads constructor(
     private val containerHeightPx = dp(64f).toInt()
 
     private var visualState: HudVisualState = HudVisualState.Dormant
-    private var palmStyle: HudPalmStyle = HudPalmStyle.SKELETON_21
+    private var palmStyle: HudPalmStyle = HudPalmStyle.CYBER_SKELETON_3D
     private var themeColor: HudThemeColor = HudThemeColor.CYBER_CYAN
 
     private var currentPillWidth = dp(48f)
@@ -125,6 +125,10 @@ class DynamicIslandView @JvmOverloads constructor(
             is HudVisualState.RadialSelectorActive -> {
                 targetPillWidth = dp(254f)
                 targetPillHeight = dp(42f)
+            }
+            is HudVisualState.AirTapFeedback -> {
+                targetPillWidth = dp(264f)
+                targetPillHeight = dp(44f)
             }
             is HudVisualState.PausedNotice -> {
                 targetPillWidth = dp(228f)
@@ -292,6 +296,13 @@ class DynamicIslandView @JvmOverloads constructor(
                 titlePaint.textAlign = Paint.Align.LEFT
             }
 
+            is HudVisualState.AirTapFeedback -> {
+                titlePaint.textAlign = Paint.Align.CENTER
+                titlePaint.color = Color.parseColor("#00E676")
+                canvas.drawText("👆 เคาะจอ: ${st.tapKind}", cx, pillRect.centerY() + dp(4.2f), titlePaint)
+                titlePaint.textAlign = Paint.Align.LEFT
+            }
+
             is HudVisualState.PausedNotice -> {
                 titlePaint.textAlign = Paint.Align.CENTER
                 titlePaint.color = Color.parseColor("#FFD54F")
@@ -315,8 +326,8 @@ class DynamicIslandView @JvmOverloads constructor(
         accentColor: Int
     ) {
         when (palmStyle) {
-            HudPalmStyle.SKELETON_21 -> {
-                drawHandMiniSilhouette(canvas, centerX, centerY, radiusPx, landmarks, accentColor)
+            HudPalmStyle.CYBER_SKELETON_3D -> {
+                drawCyberSkeleton3D(canvas, centerX, centerY, radiusPx, landmarks)
             }
             HudPalmStyle.GLOWING_PALM -> {
                 drawStylizedGlowingPalm(canvas, centerX, centerY, radiusPx, accentColor)
@@ -328,6 +339,14 @@ class DynamicIslandView @JvmOverloads constructor(
                 canvas.drawCircle(centerX, centerY, radiusPx, bonePaint)
                 canvas.drawText(emoji, centerX, centerY + dp(6f), emojiPaint)
             }
+            HudPalmStyle.AIR_CURSOR_RETICLE -> {
+                bonePaint.color = accentColor
+                canvas.drawCircle(centerX, centerY, radiusPx * 0.85f, bonePaint)
+                jointPaint.color = Color.parseColor(themeColor.secondaryHex)
+                canvas.drawCircle(centerX, centerY, dp(3.2f), jointPaint)
+                canvas.drawLine(centerX - radiusPx, centerY, centerX + radiusPx, centerY, bonePaint)
+                canvas.drawLine(centerX, centerY - radiusPx, centerX, centerY + radiusPx, bonePaint)
+            }
             HudPalmStyle.MINIMAL_ORB -> {
                 bonePaint.color = accentColor
                 canvas.drawCircle(centerX, centerY, radiusPx * 0.86f, bonePaint)
@@ -337,6 +356,73 @@ class DynamicIslandView @JvmOverloads constructor(
                 canvas.drawCircle(centerX, centerY, dp(3.2f), jointPaint)
             }
         }
+    }
+
+    private fun drawCyberSkeleton3D(
+        canvas: Canvas,
+        centerX: Float,
+        centerY: Float,
+        radiusPx: Float,
+        landmarks: List<Landmark3D>
+    ) {
+        if (landmarks.size < 21) {
+            drawStylizedGlowingPalm(canvas, centerX, centerY, radiusPx, Color.parseColor(themeColor.primaryHex))
+            return
+        }
+
+        var minX = 1f
+        var maxX = 0f
+        var minY = 1f
+        var maxY = 0f
+        for (p in landmarks) {
+            if (p.x < minX) minX = p.x
+            if (p.x > maxX) maxX = p.x
+            if (p.y < minY) minY = p.y
+            if (p.y > maxY) maxY = p.y
+        }
+        val span = maxOf(maxX - minX, maxY - minY).coerceAtLeast(0.08f)
+        val midX = (minX + maxX) * 0.5f
+        val midY = (minY + maxY) * 0.5f
+        val scale = (radiusPx * 1.82f) / span
+
+        fun mapX(pt: Landmark3D): Float = centerX + (pt.x - midX) * scale
+        fun mapY(pt: Landmark3D): Float = centerY + (pt.y - midY) * scale
+
+        val rayColors = intArrayOf(
+            Color.parseColor("#FFB300"), // Thumb: Gold
+            Color.parseColor("#00E5FF"), // Index: Cyan
+            Color.parseColor("#00E676"), // Middle: Emerald
+            Color.parseColor("#A374FF"), // Ring: Violet
+            Color.parseColor("#FF4D8D"), // Pinky: Rose
+            Color.parseColor("#78909C")  // Arch
+        )
+
+        for (i in HAND_BONE_EDGES.indices) {
+            val edge = HAND_BONE_EDGES[i]
+            val rayIdx = when {
+                i in 0..3 -> 0
+                i in 4..7 -> 1
+                i in 8..11 -> 2
+                i in 12..15 -> 3
+                i in 16..19 -> 4
+                else -> 5
+            }
+            bonePaint.color = rayColors[rayIdx]
+            bonePaint.strokeWidth = if (rayIdx == 5) dp(1.1f) else dp(1.6f)
+            val a = landmarks[edge[0]]
+            val b = landmarks[edge[1]]
+            canvas.drawLine(mapX(a), mapY(a), mapX(b), mapY(b), bonePaint)
+        }
+
+        // Draw 21 Joint Spheres
+        for (idx in 0 until 21) {
+            val pt = landmarks[idx]
+            val isTip = idx in FINGERTIP_INDICES
+            jointPaint.color = if (isTip) Color.WHITE else Color.parseColor("#00E676")
+            val r = if (isTip) dp(2.0f) else dp(1.3f)
+            canvas.drawCircle(mapX(pt), mapY(pt), r, jointPaint)
+        }
+        bonePaint.strokeWidth = dp(1.5f)
     }
 
     private fun drawStylizedGlowingPalm(
@@ -427,6 +513,7 @@ class DynamicIslandView @JvmOverloads constructor(
                 VolumeDirection.UP -> Color.parseColor("#00E676")
                 VolumeDirection.STEADY -> primaryTheme
             }
+            is HudVisualState.AirTapFeedback -> Color.parseColor("#00E676")
             is HudVisualState.RadialSelectorActive -> primaryTheme
             is HudVisualState.PausedNotice -> Color.parseColor("#FFB300")
         }

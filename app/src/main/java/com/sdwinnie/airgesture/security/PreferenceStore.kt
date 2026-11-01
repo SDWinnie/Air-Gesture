@@ -2,9 +2,12 @@ package com.sdwinnie.airgesture.security
 
 import android.content.Context
 import com.sdwinnie.airgesture.model.AirGestureConfig
+import com.sdwinnie.airgesture.model.AirTapAction
+import com.sdwinnie.airgesture.model.AirTapTriggerPreset
 import com.sdwinnie.airgesture.model.BackTriggerPreset
 import com.sdwinnie.airgesture.model.CameraResolution
 import com.sdwinnie.airgesture.model.HandLockMode
+import com.sdwinnie.airgesture.model.HardwareDelegateMode
 import com.sdwinnie.airgesture.model.HorizontalNavMode
 import com.sdwinnie.airgesture.model.HudPalmStyle
 import com.sdwinnie.airgesture.model.HudThemeColor
@@ -16,8 +19,8 @@ import com.sdwinnie.airgesture.model.VisionBufferSize
 import com.sdwinnie.airgesture.model.VolumeGesturePreset
 
 /**
- * Stores strictly non-sensitive user configuration flags, custom human posture presets,
- * HUD palm/theme visual styles, and the 15 radial shortcut package IDs.
+ * Stores non-sensitive user configuration flags, Air Tap settings, custom human posture presets,
+ * HUD palm/theme visual styles, and the 15 radial shortcut package IDs (v4.0).
  * Never stores camera pixels, landmarks, or behavioral history.
  */
 class PreferenceStore(context: Context) {
@@ -36,21 +39,29 @@ class PreferenceStore(context: Context) {
 
         return AirGestureConfig(
             resolution = readEnum(KEY_RESOLUTION, CameraResolution.RES_1080P, CameraResolution::valueOf),
-            targetFps = readEnum(KEY_TARGET_FPS, TargetFps.FPS_60, TargetFps::valueOf),
+            targetFps = readEnum(KEY_TARGET_FPS, TargetFps.FPS_30, TargetFps::valueOf),
             visionBufferSize = readEnum(KEY_VISION_BUFFER, VisionBufferSize.ROI_192, VisionBufferSize::valueOf),
+            hardwareDelegate = readEnum(KEY_HARDWARE_DELEGATE, HardwareDelegateMode.AUTO_GPU_CPU, HardwareDelegateMode::valueOf),
             useFrontCamera = prefs.getBoolean(KEY_FRONT_CAMERA, true),
             handLockMode = readEnum(KEY_HAND_LOCK, HandLockMode.AUTO_SINGLE, HandLockMode::valueOf),
+            enableAirTap = prefs.getBoolean(KEY_ENABLE_AIR_TAP, true),
+            airTapTrigger = readEnum(KEY_AIR_TAP_TRIGGER, AirTapTriggerPreset.ANY_TAP, AirTapTriggerPreset::valueOf),
+            airTapAction = readEnum(KEY_AIR_TAP_ACTION, AirTapAction.CLICK_AT_CURSOR, AirTapAction::valueOf),
+            showAirCursor = prefs.getBoolean(KEY_SHOW_AIR_CURSOR, true),
+            airTapSensitivity = prefs.getFloat(KEY_AIR_TAP_SENS, 1.0f).coerceIn(0.5f, 2.5f),
+            airCursorSensitivity = prefs.getFloat(KEY_AIR_CURSOR_SENS, 1.0f).coerceIn(0.5f, 2.5f),
             scrollPreset = readEnum(KEY_SCROLL_PRESET, ScrollGesturePreset.OPEN_PALM_SWEEP, ScrollGesturePreset::valueOf),
             volumePreset = readEnum(KEY_VOLUME_PRESET, VolumeGesturePreset.PINCH_OK_SLIDE, VolumeGesturePreset::valueOf),
             radialPreset = readEnum(KEY_RADIAL_PRESET, RadialTriggerPreset.CLOSED_FIST, RadialTriggerPreset::valueOf),
             backPreset = readEnum(KEY_BACK_PRESET, BackTriggerPreset.HORIZONTAL_SWIPE, BackTriggerPreset::valueOf),
             horizontalNavMode = readEnum(KEY_H_NAV_MODE, HorizontalNavMode.BACK_AND_RECENTS, HorizontalNavMode::valueOf),
-            hudPalmStyle = readEnum(KEY_HUD_PALM_STYLE, HudPalmStyle.SKELETON_21, HudPalmStyle::valueOf),
+            hudPalmStyle = readEnum(KEY_HUD_PALM_STYLE, HudPalmStyle.CYBER_SKELETON_3D, HudPalmStyle::valueOf),
             hudThemeColor = readEnum(KEY_HUD_THEME, HudThemeColor.CYBER_CYAN, HudThemeColor::valueOf),
             radialSlotCount = readEnum(KEY_RADIAL_COUNT, RadialSlotCount.SLOTS_8, RadialSlotCount::valueOf),
             showSystemVolumeUi = prefs.getBoolean(KEY_SHOW_SYS_VOL_UI, true),
-            scrollSensitivity = prefs.getFloat(KEY_SCROLL_SENS, 1.0f).coerceIn(0.5f, 2.0f),
-            volumeSensitivity = prefs.getFloat(KEY_VOL_SENS, 1.0f).coerceIn(0.5f, 2.0f),
+            showFpsCounter = prefs.getBoolean(KEY_SHOW_FPS, true),
+            scrollSensitivity = prefs.getFloat(KEY_SCROLL_SENS, 1.0f).coerceIn(0.5f, 2.5f),
+            volumeSensitivity = prefs.getFloat(KEY_VOL_SENS, 1.0f).coerceIn(0.5f, 2.5f),
             showLiveCalibrationPreview = prefs.getBoolean(KEY_SHOW_PREVIEW, false)
         )
     }
@@ -60,8 +71,15 @@ class PreferenceStore(context: Context) {
             .putString(KEY_RESOLUTION, config.resolution.name)
             .putString(KEY_TARGET_FPS, config.targetFps.name)
             .putString(KEY_VISION_BUFFER, config.visionBufferSize.name)
+            .putString(KEY_HARDWARE_DELEGATE, config.hardwareDelegate.name)
             .putBoolean(KEY_FRONT_CAMERA, config.useFrontCamera)
             .putString(KEY_HAND_LOCK, config.handLockMode.name)
+            .putBoolean(KEY_ENABLE_AIR_TAP, config.enableAirTap)
+            .putString(KEY_AIR_TAP_TRIGGER, config.airTapTrigger.name)
+            .putString(KEY_AIR_TAP_ACTION, config.airTapAction.name)
+            .putBoolean(KEY_SHOW_AIR_CURSOR, config.showAirCursor)
+            .putFloat(KEY_AIR_TAP_SENS, config.airTapSensitivity)
+            .putFloat(KEY_AIR_CURSOR_SENS, config.airCursorSensitivity)
             .putString(KEY_SCROLL_PRESET, config.scrollPreset.name)
             .putString(KEY_VOLUME_PRESET, config.volumePreset.name)
             .putString(KEY_RADIAL_PRESET, config.radialPreset.name)
@@ -71,6 +89,7 @@ class PreferenceStore(context: Context) {
             .putString(KEY_HUD_THEME, config.hudThemeColor.name)
             .putString(KEY_RADIAL_COUNT, config.radialSlotCount.name)
             .putBoolean(KEY_SHOW_SYS_VOL_UI, config.showSystemVolumeUi)
+            .putBoolean(KEY_SHOW_FPS, config.showFpsCounter)
             .putFloat(KEY_SCROLL_SENS, config.scrollSensitivity)
             .putFloat(KEY_VOL_SENS, config.volumeSensitivity)
             .putBoolean(KEY_SHOW_PREVIEW, config.showLiveCalibrationPreview)
@@ -94,8 +113,15 @@ class PreferenceStore(context: Context) {
         private const val KEY_RESOLUTION = "camera_resolution"
         private const val KEY_TARGET_FPS = "target_fps"
         private const val KEY_VISION_BUFFER = "vision_buffer_size"
+        private const val KEY_HARDWARE_DELEGATE = "hardware_delegate"
         private const val KEY_FRONT_CAMERA = "use_front_camera"
         private const val KEY_HAND_LOCK = "hand_lock_mode"
+        private const val KEY_ENABLE_AIR_TAP = "enable_air_tap"
+        private const val KEY_AIR_TAP_TRIGGER = "air_tap_trigger"
+        private const val KEY_AIR_TAP_ACTION = "air_tap_action"
+        private const val KEY_SHOW_AIR_CURSOR = "show_air_cursor"
+        private const val KEY_AIR_TAP_SENS = "air_tap_sensitivity"
+        private const val KEY_AIR_CURSOR_SENS = "air_cursor_sensitivity"
         private const val KEY_SCROLL_PRESET = "scroll_gesture_preset"
         private const val KEY_VOLUME_PRESET = "volume_gesture_preset"
         private const val KEY_RADIAL_PRESET = "radial_trigger_preset"
@@ -105,6 +131,7 @@ class PreferenceStore(context: Context) {
         private const val KEY_HUD_THEME = "hud_theme_color"
         private const val KEY_RADIAL_COUNT = "radial_slot_count"
         private const val KEY_SHOW_SYS_VOL_UI = "show_system_volume_ui"
+        private const val KEY_SHOW_FPS = "show_fps_counter"
         private const val KEY_SCROLL_SENS = "scroll_sensitivity"
         private const val KEY_VOL_SENS = "volume_sensitivity"
         private const val KEY_SHOW_PREVIEW = "show_live_preview"

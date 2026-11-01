@@ -76,6 +76,9 @@ class SingleHandLockTracker(
                     return null
                 }
             }
+            HandLockMode.FREE_TRACKING -> {
+                // Free tracking allows either hand dynamically without locking
+            }
         }
 
         // 3. Spatial Continuity Gate: reject instantaneous cross-screen teleport to a 2nd hand

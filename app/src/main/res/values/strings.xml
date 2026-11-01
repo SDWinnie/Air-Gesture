@@ -3,17 +3,17 @@
     <string name="tile_label">Air Gesture</string>
     <string name="notif_channel_name">Air Gesture Touchless Engine</string>
     <string name="notif_channel_desc">100% On-Device Edge-AI single-hand gesture tracking status</string>
-    <string name="notif_running_title">Air Gesture v3.0 • ล็อก 1 มือ (100% On-Device)</string>
-    <string name="notif_running_text">เลื่อนจอ • สถานะลด/เพิ่มเสียง • วงกลมเลือกแอปกลางหน้าจอ (Zero Cloud/Storage)</string>
+    <string name="notif_running_title">Air Gesture v4.0 • เคาะจอ &amp; โครงกระดูกมือ 3D (30–120 FPS)</string>
+    <string name="notif_running_text">เคาะจอ • เลื่อนจอ • สถานะเสียง • วงกลมเลือกแอปกลางจอ (Zero Cloud/Storage)</string>
     <string name="notif_paused_camera_text">พักอัตโนมัติ — กล้องกำลังถูกใช้งานโดยแอปอื่น</string>
     <string name="notif_action_pause">พักชั่วคราว</string>
     <string name="notif_action_resume">ทำงานต่อ</string>
     <string name="notif_action_stop">ปิดระบบ</string>
 
-    <string name="accessibility_service_description">Air Gesture v3.0 Spatial Touchless Engine: จำลองการปัดเลื่อนหน้าจอ (Scroll Up/Down), คำสั่งย้อนกลับ/สลับแอป และแสดงวงกลมเลือกแอปกลางหน้าจอพร้อมแถบสถานะลด/เพิ่มเสียง ปลอดภัย 100%: ปิดการอ่านเนื้อหาบนหน้าจอ (canRetrieveWindowContent=false), ไม่ใช้ SYSTEM_ALERT_WINDOW และไม่มีสิทธิ์อินเทอร์เน็ต (Zero Internet Permission)</string>
+    <string name="accessibility_service_description">Air Gesture v4.0 Touchless Engine: จำลองการเคาะจอสัมผัสกลางอากาศ (Air Tap/Knock), เลื่อนหน้าจอ (Scroll Up/Down), คำสั่งย้อนกลับ/สลับแอป และแสดงเป้าเล็งแอร์เมาส์ วงกลมเลือกแอปกลางหน้าจอพร้อมแถบสถานะเสียง ปลอดภัย 100%: ปิดการอ่านเนื้อหาบนหน้าจอ (canRetrieveWindowContent=false), ไม่ใช้ SYSTEM_ALERT_WINDOW และไม่มีสิทธิ์อินเทอร์เน็ต (Zero Internet Permission)</string>
 
     <string name="disclosure_title">การเปิดเผยข้อมูลความปลอดภัยและความเป็นส่วนตัว (Prominent Disclosure)</string>
-    <string name="disclosure_body">Air Gesture v3.0 ออกแบบตามมาตรฐานความปลอดภัย Google Play Protect 100% On-Device:\n\n1. สิทธิ์กล้องถ่ายรูป (ล็อกจับ 1 มือใน Volatile RAM เท่านั้น):\nประมวลผลโครงกระดูกมือข้างเดียวในหน่วยความจำชั่วคราว (224×224 / 256×256 RAM สัดส่วนจริง 1:1) ไม่มีการบันทึกภาพหรือวิดีโอลงพื้นที่จัดเก็บข้อมูลถาวร (0 ไฟล์ในเครื่อง)\n\n2. สิทธิ์การช่วยเหลือพิเศษ (เลื่อนหน้าจอ &amp; วงกลมเลือกแอปกลางหน้าจอ):\nใช้จำลองการเลื่อนจอ แสดงสถานะเพิ่ม/ลดเสียง และเปิดวงกลมเลือกแอปกลางหน้าจอโดยไม่ต้องขอสิทธิ์ SYSTEM_ALERT_WINDOW ทั้งนี้ปิดสิทธิ์อ่านเนื้อหาหน้าจอ (canRetrieveWindowContent=\"false\") ถาวร แอปจึงอ่านข้อความหรือรหัสผ่านบนจอไม่ได้ 100%\n\n3. ออฟไลน์ 100% (Zero Internet Socket):\nไบนารี APK ไม่มีสิทธิ์ INTERNET ข้อมูลทั้งหมดจึงไม่สามารถส่งออกนอกเครื่องได้ในระดับระบบปฏิบัติการ</string>
+    <string name="disclosure_body">Air Gesture v4.0 ออกแบบตามมาตรฐานความปลอดภัย Google Play Protect 100% On-Device:\n\n1. สิทธิ์กล้องถ่ายรูป (เคาะจอ &amp; วิเคราะห์กระดูกมือ 3D ใน Volatile RAM เท่านั้น):\nประมวลผลโครงกระดูกมือ 20 ชิ้นกระดูกในหน่วยความจำชั่วคราว (224×224 / 256×256 RAM สัดส่วนจริง 1:1) ไม่มีการบันทึกภาพหรือวิดีโอลงพื้นที่จัดเก็บข้อมูลถาวร (0 ไฟล์ในเครื่อง)\n\n2. สิทธิ์การช่วยเหลือพิเศษ (เคาะจอ, เลื่อนหน้าจอ &amp; วงกลมเลือกแอปกลางหน้าจอ):\nใช้จำลองการเคาะแตะจอ (Air Tap), เลื่อนจอ แสดงสถานะเพิ่ม/ลดเสียง และเปิดวงกลมเลือกแอปกลางหน้าจอโดยไม่ต้องขอสิทธิ์ SYSTEM_ALERT_WINDOW ทั้งนี้ปิดสิทธิ์อ่านเนื้อหาหน้าจอ (canRetrieveWindowContent=\"false\") ถาวร แอปจึงอ่านข้อความหรือรหัสผ่านบนจอไม่ได้ 100%\n\n3. ออฟไลน์ 100% (Zero Internet Socket):\nไบนารี APK ไม่มีสิทธิ์ INTERNET ข้อมูลทั้งหมดจึงไม่สามารถส่งออกนอกเครื่องได้ในระดับระบบปฏิบัติการ</string>
     <string name="disclosure_accept">ยอมรับและเปิดใช้งาน (Accept)</string>
     <string name="disclosure_decline">ยกเลิก</string>
 </resources>

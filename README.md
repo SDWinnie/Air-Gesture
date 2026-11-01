@@ -1,11 +1,11 @@
-# ✋ Air Gesture v3.0.0 — Single-Hand Spatial AI, On-Screen Circular App Wheel & Custom Gesture Studio
+# ✋ Air Gesture v4.0.0 — Touchless Air Tap, 20-Bone Hand Skeleton & Zero-GC 30–120 FPS Pipeline
 
 [![Release](https://img.shields.io/github/v/release/SDWinnie/Air-Gesture?color=00E5FF&label=APK%20Release)](https://github.com/SDWinnie/Air-Gesture/releases/latest)
 [![Security](https://img.shields.io/badge/Security-Zero%20Overlay%20Perm%20%E2%80%A2%20Play%20Protect%20Safe-00E676)](#%EF%B8%8F-100-privacy-security--binary-permission-footprint)
 [![Privacy](https://img.shields.io/badge/Privacy-100%25%20Offline%20%E2%80%A2%20Zero%20Internet-8C62FF)](#%EF%B8%8F-100-privacy-security--binary-permission-footprint)
 [![Platform](https://img.shields.io/badge/Platform-Android%208.0%20to%2016%2B%20%26%20HyperOS-1E88E5)](https://developer.android.com/)
 
-ระบบสั่งงานสมาร์ทโฟนและแท็บเล็ต Android แบบ **ไร้สัมผัสเจเนอเรชันที่ 3 (v3.0 Single-Hand Spatial AI)** ประมวลผลโครงกระดูกมือด้วย **Edge-AI ภายในเครื่อง 100% (Isotropic 1:1 Volatile RAM • Zero Cloud)** มาพร้อม **ระบบล็อกจับเฉพาะ 1 มือ (Single-Hand Lock)**, **วงกลมเลือกแอปเด้งกลางหน้าจอจริง (On-Screen 360° Spatial Joystick Wheel)**, **แถบสถานะลดเสียง/เพิ่มเสียงชัดเจนบนหน้าจอ** และ **สตูดิโอตั้งค่าท่ามือมนุษย์ & รูปฝ่ามือ HUD ได้อิสระ**
+ระบบสั่งงานสมาร์ทโฟนและแท็บเล็ต Android แบบ **ไร้สัมผัสเจเนอเรชันที่ 4 (v4.0.0 Touchless Air Tap & Deep Hand Skeleton)** ประมวลผลโครงกระดูกมือด้วย **Edge-AI ภายในเครื่อง 100% (Zero-GC Volatile RAM • Zero Cloud)** รองรับการ **เคาะจอในอากาศ (Touchless Screen Knock / Air Tap)**, **วิเคราะห์กระดูกมือ 20 ชิ้นตามกายวิภาคศาสตร์จริง**, **รันนิ่งลื่นไหลเสถียรที่ 30 FPS / 60 FPS / 120 FPS**, **เป้าเล็ง Air Cursor บนจอพร้อมคลื่น Shockwave**, และ **สตูดิโอกำหนดค่าอิสระเต็มรูปแบบสำหรับผู้ใช้ (Zero Hardcoded Restrictions)**
 
 ---
 
@@ -13,39 +13,44 @@
 
 | เวอร์ชัน | มาตรฐานความปลอดภัย (Binary Audit) | รองรับระบบ | ลิงก์ดาวน์โหลด |
 | :--- | :--- | :--- | :--- |
-| **v3.0.0 (Latest — Signed v1/v2/v3/v4)** | Zero Internet • Zero `SYSTEM_ALERT_WINDOW` • `canRetrieveWindowContent="false"` | Android 8.0 – **Android 14 / 15 / 16+ & Xiaomi HyperOS 2/3** | [👉 **ดาวน์โหลด AirGesture-v3.0.0.apk**](https://github.com/SDWinnie/Air-Gesture/releases/download/v3.0.0/AirGesture-v3.0.0.apk) |
+| **v4.0.0 (Latest — Signed v1/v2/v3/v4)** | Zero Internet • Zero `SYSTEM_ALERT_WINDOW` • `canRetrieveWindowContent="false"` | Android 8.0 – **Android 14 / 15 / 16+ & Xiaomi HyperOS 2/3** | [👉 **ดาวน์โหลด AirGesture-v4.0.0.apk**](https://github.com/SDWinnie/Air-Gesture/releases/download/v4.0.0/AirGesture-v4.0.0.apk) |
 
 ---
 
-## 🚀 อัปเกรดครั้งใหญ่ใน v3.0.0 (แก้ตรงจุดจากการใช้งานจริง)
+## 🚀 ฟีเจอร์ใหม่และอัปเกรดสำคัญใน v4.0.0
 
-1. **🔒 ระบบล็อกจับเฉพาะ 1 มือ + แก้อาการจับมั่ว 100% (Single-Hand Lock & Isotropic 1:1 Vision):**
-   * **แก้ปัญหาจับ 2 มือสลับไปมา**: เพิ่ม [`SingleHandLockTracker`](app/src/main/java/com/sdwinnie/airgesture/engine/SingleHandLockTracker.kt) ล็อกมือข้างแรกที่ยกขึ้นและบล็อกมือที่ 2 หรือการกระโดดข้ามหน้าจออัตโนมัติ พร้อมให้เลือกโหมด **`ล็อก 1 มืออัตโนมัติ`**, **`เฉพาะมือขวาเท่านั้น`** หรือ **`เฉพาะมือซ้ายเท่านั้น`**
-   * **แก้ปัญหาภาพมือบีบเบี้ยว & ROI สั่น**: ปรับ [`VolatileRoiDownscaler`](app/src/main/java/com/sdwinnie/airgesture/vision/VolatileRoiDownscaler.kt) เป็น **Isotropic 1:1 Letterbox (`224×224` / `256×256` RAM)** รักษาสัดส่วนนิ้วมือตามจริง 1:1 ทุกองศา ยกระดับความมั่นใจ AI (`0.64`) และเพิ่มตัวกรองสัดส่วนกระดูกมือจริง (`isAnatomicallyPlausibleHand`) ตัดปัญหาจับหน้าคน หมอน หรือฉากหลังมั่ว
-2. **🎡 วงกลมเลือกแอปเด้งกลางหน้าจอจริง + เล็งแบบจอยสติ๊กที่ไม่ต้องบิดข้อมือ:**
-   * แสดง **วงกลมเลือกแอปขนาดใหญ่กลางหน้าจอทับทุกแอป** ผ่าน `TYPE_ACCESSIBILITY_OVERLAY` (ไม่ต้องขอสิทธิ์ `SYSTEM_ALERT_WINDOW` ปลอดภัยต่อ Play Protect 100%)
-   * **Spatial Virtual Joystick**: ไม่ต้องบิดข้อมือฝืนธรรมชาติ เพียงขยับมือขึ้น/ลง/ซ้าย/ขวาเบาๆ (`4–8 ซม.`) จุดลูกศรเรืองแสงจะวิ่งไปยังแอปในวงกลม พร้อมแสดงไอคอนและชื่อแอปชัดเจน แล้ว **แบมือออกเพื่อเปิดแอป** (มี **โซนปลอดภัยตรงกลางวงกลม** หากแบมือตรงกลางจะยกเลิกโดยไม่เปิดแอปผิด)
-   * ปรับจำนวนแอปในวงกลมได้ตามถนัด: **`6 แอป`**, **`8 แอป (แนะนำ)`**, **`12 แอป`** หรือ **`15 แอป`**
-3. **🔉 สถานะลดเสียง / เพิ่มเสียง / ปิดเสียง แจ้งเตือนชัดเจนบนหน้าจอ:**
-   * แสดงแคปซูลสถานะเสียงแบบเรียลไทม์บนขอบบนหน้าจอ บอกทิศทางชัดเจนทั้ง **`🔉 กำลังลดเสียง ▼ 34% (-8%)`**, **`🔊 กำลังเพิ่มเสียง ▲ 76% (+10%)`**, **`🔇 ปิดเสียงแล้ว (MUTE) 0%`** พร้อมเชื่อมต่อแถบเสียงระบบ Android (`FLAG_SHOW_UI` เปิด/ปิดได้)
-4. **🖐️ ตั้งค่าท่าทางมนุษย์ (MediaPipe Ergonomic DB) & ตั้งค่ารูปฝ่ามือ/สี HUD ได้เอง:**
-   * เลือกท่ามือมาตรฐานจากฐานข้อมูล MediaPipe ที่มนุษย์ทำได้สบาย ไม่เมื่อยนิ้ว:
-     * **เลื่อนหน้าจอ**: `✋ แบมือ 5 นิ้ว` / `☝️ ชี้นิ้วเดียว` / `✌️ ชู 2 นิ้ว (V)`
-     * **ลดเสียง / เพิ่มเสียง**: `🤏 จีบนิ้ว OK เลื่อนขึ้น-ลง` / **`👍 ชูโป้งขึ้น=เพิ่ม • 👎 โป้งลง=ลดเสียง`** / `✌️ ชู 2 นิ้วเลื่อนขึ้น-ลง`
-     * **เปิดวงกลมเลือกแอป**: `✊ กำมือ` / `🤟 ท่า I Love You (โป้ง+ชี้+ก้อย)` / `🖖 ชู 3 นิ้ว`
-     * **ย้อนกลับด่วน**: `↔️ ปัดซ้าย-ขวา` / `✌️ ชู 2 นิ้วค้าง` / `🤟 ท่า I Love You ค้าง`
-   * ปรับแต่ง **รูปฝ่ามือบน Dynamic Island** (`🦴 โครงกระดูก 21 ข้อ`, `✋ รูปฝ่ามือเรืองแสง`, `🎭 ไอคอนท่าทางอัจฉริยะ`, `🔮 วงแหวนพลังงานมินิมอล`) และ **5 โทนสีเรืองแสง** ได้ทันทีในแท็บ **`🖐️ ท่ามือ & รูป`**
+1. **👆 ระบบเคาะจอในอากาศ (Touchless Screen Knock / Air Tap):**
+   * **จดจ่อเคาะอากาศแทนการแตะจอจริง**: ตรวจจับความเร่งและการเคลื่อนที่ตามแกนความลึก ($-\Delta z / \Delta t$) ของปลายนิ้วชี้หรือการเคาะฝ่ามือเข้าหากล้อง เสมือนเคาะบนบานกระจกใสตรงหน้าจอ
+   * **ทำงานร่วมกับ Air Cursor Reticle**: เป้าเล็งวงกลมเรืองแสงลอยติดตามการชี้ของมือ พร้อมแอนิเมชันคลื่นกระแทกเรืองแสง (Shockwave Ripple) เมื่อเคาะจอสำเร็จ
+   * **จำลองการคลิกแบบเนทีฟ**: สั่งคลิกหน้าจอจริงผ่าน `AccessibilityService.dispatchGesture()` โดยตรง หรือสั่ง หยุด/เล่นวิดีโอ (YouTube, TikTok, Reels, Facebook Watch), เคาะ 2 ครั้ง (Double Tap), หรือคลิกตรงจุดเป้าเล็ง
+   * **3 รูปแบบการเคาะให้เลือก**: `เคาะปลายนิ้วชี้ (Index Knock)`, `จีบนิ้วคลิกเร็ว (Pinch Quick Tap แบบ Vision Pro)`, หรือ `เคาะฝ่ามือ/สันมือ (Palm Knock)` พร้อมตัวเลื่อนปรับระดับความไว (Sensitivity Slider: 0.5× ถึง 2.5×)
+
+2. **⚡ ปลดล็อกประสิทธิภาพ 30 FPS / 60 FPS / 120 FPS นิ่งสนิท (Zero-GC Downscaler):**
+   * **แก้ปัญหาเฟรมเรตร่วงและอาการกระตุก**: ปรับสถาปัตยกรรม [`VolatileRoiDownscaler`](app/src/main/java/com/sdwinnie/airgesture/vision/VolatileRoiDownscaler.kt) โดยตัด JNI loop 50,000 ครั้งออกทั้งหมด และเปลี่ยนเป็น Native Memory Copy ผ่าน `ByteBuffer.get(scratchByteArray)` ควบคู่กับการนำ Bitmap วัตถุเดิมมาใช้ซ้ำ (`setPixels`) ไม่มีการจองหน่วยความจำใหม่และไม่มีขยะสะสมใน Garbage Collection (GC Overhead = 0%)
+   * **ตัวเลือก Target FPS อิสระ**: เลือกปรับความเร็วได้อิสระตามความเหมาะสมของแบตเตอรี่และความแรงของเครื่อง (`30 FPS (ประหยัดแบตเตอรี่)`, `60 FPS (สมูทมาตรฐาน)`, `120 FPS (ความหน่วงต่ำระดับโปร)`)
+   * **ฮาร์ดแวร์เร่งความเร็ว AI (GPU GLES / CPU XNNPACK)**: สลับการประมวลผลโมเดลมือระหว่าง GPU Acceleration และ CPU ได้ด้วยตนเอง พร้อมเปิดดู **Live FPS Counter บนหน้าจอแบบเรียลไทม์**
+
+3. **🦴 วิเคราะห์โครงกระดูกมือลึก 20 ชิ้น (Deep 20-Bone Skeletal & 3D Palm Plane):**
+   * โมดูลใหม่ [`HandSkeletonAnalyzer`](app/src/main/java/com/sdwinnie/airgesture/engine/HandSkeletonAnalyzer.kt) คำนวณเวกเตอร์ 3 มิติของระนาบฝ่ามือ (3D Palm Normal Vector) เพื่อแยกแยะว่าฝ่ามือหันเข้าหากล้อง, หลังมือหันเข้าหากล้อง, หรือเป็นท่าสันมือ (Knife Hand)
+   * คำนวณความโค้งงอของกระดูกนิ้วมือทั้ง 5 แบบต่อเนื่อง (Continuous Flexion 0.0–1.0) และองศากางระหว่างนิ้ว (Inter-Finger Abduction Angles)
+   * ขยายฐานข้อมูลท่าทางมือมนุษย์ตามธรรมชาติ: `เคาะจอ (Air Tap)`, `สันมือ (Knife Hand)`, `ปืนนิ้ว (Finger Gun)`, `ชูนิ้วโทรหา (Call Me / Shaka)`, `สป็อกวัลแคน (Spock Vulcan)`, `ชู 4 นิ้ว (Four Fingers)`
+
+4. **🎨 สไตล์ฝ่ามือใหม่บน HUD: โครงกระดูกไซเบอร์ 3D (Cyber Skeleton 3D):**
+   * แสดงกระดูกมือ 20 ชิ้นพร้อมข้อต่อ 21 จุด แยกสีสันเฉพาะแต่ละนิ้วตามกายวิภาค (โป้ง=สีทอง, ชี้=สีฟ้าไซเบอร์, กลาง=สีเขียวมรกต, นาง=สีม่วงนีออน, ก้อย=สีชมพูกุหลาบ) พร้อมแอนิเมชันแฟลชเมื่อตรวจพบการเคาะจอ
+
+5. **🎛️ ให้อิสระแก่ผู้ใช้เต็มรูปแบบ (Customization Freedom Studio):**
+   * ไม่มีการฟิกค่าคงที่ตายตัว ผู้ใช้สามารถเปิด/ปิดการล็อกมือเดียว, สลับโหมดจับอิสระ (Free Tracking), ปรับความไวการเลื่อนหน้าจอ, ความไวการปรับเสียง และความไวการเคาะจอได้อย่างสมบูรณ์
 
 ---
 
 ## 🛡️ 100% Privacy, Security & Binary Permission Footprint
 
-ตรวจสอบไบนารี APK ได้ด้วย `aapt2 dump permissions AirGesture-v3.0.0.apk`:
-* `android.permission.CAMERA` — ประมวลผลเฉพาะในหน่วยความจำชั่วคราว (`224×224` / `256×256` Volatile RAM)
+ตรวจสอบไบนารี APK ได้ด้วย `aapt2 dump permissions AirGesture-v4.0.0.apk`:
+* `android.permission.CAMERA` — ประมวลผลเฉพาะในหน่วยความจำชั่วคราว (`224×224` Volatile RAM)
 * `android.permission.FOREGROUND_SERVICE` & `android.permission.FOREGROUND_SERVICE_CAMERA`
 * `android.permission.POST_NOTIFICATIONS`
 * ❌ **ไม่มี `android.permission.INTERNET`** หรือ `ACCESS_NETWORK_STATE` (ออฟไลน์ 100% ระดับ Kernel)
-* ❌ **ไม่มี `android.permission.SYSTEM_ALERT_WINDOW`**
+* ❌ **ไม่มี `android.permission.SYSTEM_ALERT_WINDOW`** (ใช้ Accessibility Overlay ปลอดภัยต่อ Play Protect)
 * 🔒 **ปิดถาวร `android:canRetrieveWindowContent="false"`** (อ่านข้อความหรือรหัสผ่านบนหน้าจอไม่ได้ 100%)
 
 ---

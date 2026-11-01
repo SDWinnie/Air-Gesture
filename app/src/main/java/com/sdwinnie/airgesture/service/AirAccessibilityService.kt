@@ -122,6 +122,48 @@ class AirAccessibilityService : AccessibilityService() {
         return performGlobalAction(GLOBAL_ACTION_BACK)
     }
 
+    fun injectAirTapClick(normX: Float? = null, normY: Float? = null): Boolean {
+        val (screenW, screenH) = currentScreenDimensions()
+        val targetX = if (normX != null) (normX * screenW).coerceIn(12f, screenW - 12f) else (screenW * 0.5f)
+        val targetY = if (normY != null) (normY * screenH).coerceIn(12f, screenH - 12f) else (screenH * 0.5f)
+
+        val path = Path().apply {
+            moveTo(targetX, targetY)
+            lineTo(targetX + 1f, targetY + 1f)
+        }
+        val stroke = GestureDescription.StrokeDescription(path, 0L, 40L)
+        val gesture = GestureDescription.Builder().addStroke(stroke).build()
+        return dispatchGesture(gesture, null, null)
+    }
+
+    fun injectAirTapDoubleClick(normX: Float? = null, normY: Float? = null): Boolean {
+        val (screenW, screenH) = currentScreenDimensions()
+        val targetX = if (normX != null) (normX * screenW).coerceIn(12f, screenW - 12f) else (screenW * 0.5f)
+        val targetY = if (normY != null) (normY * screenH).coerceIn(12f, screenH - 12f) else (screenH * 0.5f)
+
+        val path1 = Path().apply {
+            moveTo(targetX, targetY)
+            lineTo(targetX + 1f, targetY + 1f)
+        }
+        val path2 = Path().apply {
+            moveTo(targetX, targetY)
+            lineTo(targetX + 1f, targetY + 1f)
+        }
+        val stroke1 = GestureDescription.StrokeDescription(path1, 0L, 35L)
+        val stroke2 = GestureDescription.StrokeDescription(path2, 85L, 35L)
+        val gesture = GestureDescription.Builder().addStroke(stroke1).addStroke(stroke2).build()
+        return dispatchGesture(gesture, null, null)
+    }
+
+    fun injectMediaPlayPause(): Boolean {
+        val am = getSystemService(Context.AUDIO_SERVICE) as? android.media.AudioManager
+        val down = android.view.KeyEvent(android.view.KeyEvent.ACTION_DOWN, android.view.KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE)
+        val up = android.view.KeyEvent(android.view.KeyEvent.ACTION_UP, android.view.KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE)
+        am?.dispatchMediaKeyEvent(down)
+        am?.dispatchMediaKeyEvent(up)
+        return injectAirTapClick(0.5f, 0.5f)
+    }
+
     fun injectSmoothVerticalScroll(
         handMovedUp: Boolean,
         normalizedSpeed: Float,

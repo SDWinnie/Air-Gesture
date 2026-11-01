@@ -18,8 +18,9 @@ enum class TargetFps(
     val displayName: String,
     val fps: Int
 ) {
-    FPS_60("60 FPS", 60),
-    FPS_120("120 FPS", 120)
+    FPS_30("30 FPS (โหมดมาตรฐาน เสถียร ไม่กระตุก ประหยัดแบตเตอรี่)", 30),
+    FPS_60("60 FPS (โหมดลื่นไหล ประสิทธิภาพสูง)", 60),
+    FPS_120("120 FPS (โหมดความเร็วสูงสุด Ultra-Low Latency)", 120)
 }
 
 enum class VisionBufferSize(
@@ -30,6 +31,13 @@ enum class VisionBufferSize(
     ROI_256("256×256 RAM (คมชัดระยะไกล)", 256)
 }
 
+enum class HardwareDelegateMode(
+    val displayName: String
+) {
+    AUTO_GPU_CPU("⚡ อัตโนมัติ GPU GLES + CPU สำรอง (เร็วที่สุด)"),
+    CPU_ONLY("🐢 CPU XNNPACK อย่างเดียว (ประหยัดพลังงาน)")
+}
+
 /**
  * Strict Single-Hand Lock modes preventing 2-hand jumping and background hand interference.
  */
@@ -38,7 +46,8 @@ enum class HandLockMode(
 ) {
     AUTO_SINGLE("🔒 มือเดียวอัตโนมัติ (ล็อกมือข้างแรกที่ยก)"),
     RIGHT_ONLY("🤚 จับเฉพาะมือขวาเท่านั้น (Right Hand)"),
-    LEFT_ONLY("✋ จับเฉพาะมือซ้ายเท่านั้น (Left Hand)")
+    LEFT_ONLY("✋ จับเฉพาะมือซ้ายเท่านั้น (Left Hand)"),
+    FREE_TRACKING("🌐 ตรวจจับอิสระ (ติดตามมือที่เด่นที่สุด)")
 }
 
 enum class HandSide(val thaiLabel: String) {
@@ -48,7 +57,32 @@ enum class HandSide(val thaiLabel: String) {
 }
 
 /**
- * Ergonomic Human-Doable Postures based on MediaPipe Canonical Gesture Taxonomy & HCI Biomechanics.
+ * Air Tap Trigger Presets (เคาะจอ / จดจอ).
+ */
+enum class AirTapTriggerPreset(
+    val displayName: String,
+    val badgeEmoji: String
+) {
+    INDEX_KNOCK("☝️ เคาะปลายนิ้วชี้กลางอากาศ (แตะกระจกจอ)", "☝️"),
+    PINCH_QUICK_TAP("🤏 จีบนิ้วชี้กับโป้งเคาะเร็วๆ (Vision Pro Style)", "🤏"),
+    PALM_FORWARD_KNOCK("🖐️ เคาะฝ่ามือเข้าหากล้อง", "🖐️"),
+    ANY_TAP("✨ เคาะได้ทุกแบบตามถนัด", "✨")
+}
+
+/**
+ * Air Tap Actions injected via AccessibilityService.
+ */
+enum class AirTapAction(
+    val displayName: String
+) {
+    CLICK_AT_CURSOR("🎯 เคาะคลิกตรงตำแหน่งชี้เป้า (Air Cursor เล็งตรงไหนแตะตรงนั้น)"),
+    CLICK_SCREEN_CENTER("🔘 เคาะคลิกตรงกลางหน้าจอ (Pause/Play, Shorts/Reels)"),
+    PLAY_PAUSE_MEDIA("⏯️ เล่น / หยุดสื่อมีเดียทันที (Media Play/Pause)"),
+    DOUBLE_CLICK("⚡ เคาะดับเบิลคลิก 2 ครั้ง (Double Click)")
+}
+
+/**
+ * Ergonomic Human-Doable Postures based on MediaPipe Canonical Gesture Taxonomy & HCI Biomechanics (v4.0).
  */
 enum class ScrollGesturePreset(
     val displayName: String,
@@ -56,7 +90,9 @@ enum class ScrollGesturePreset(
 ) {
     OPEN_PALM_SWEEP("✋ แบมือ 5 นิ้วปัดขึ้น / ปัดลง (ธรรมชาติ)", "✋"),
     ONE_FINGER_POINT("☝️ ชี้นิ้วชี้ 1 นิ้วปัดขึ้น / ปัดลง", "☝️"),
-    VICTORY_TWO_FINGER("✌️ ชู 2 นิ้ว (ตัว V) ปัดขึ้น / ปัดลง", "✌️")
+    VICTORY_TWO_FINGER("✌️ ชู 2 นิ้ว (ตัว V) ปัดขึ้น / ปัดลง", "✌️"),
+    KNIFE_HAND_SWIPE("✋ ใช้สันมือปัดขึ้น / ปัดลง", "✋"),
+    THUMB_SWEEP("👍 ใช้หัวแม่มือปัดขึ้น / ปัดลง", "👍")
 }
 
 enum class VolumeGesturePreset(
@@ -65,7 +101,8 @@ enum class VolumeGesturePreset(
 ) {
     PINCH_OK_SLIDE("🤏 จีบนิ้ว (OK) เลื่อนขึ้น=เพิ่ม • ลง=ลดเสียง", "🤏"),
     THUMBS_UP_DOWN("👍/👎 ชูโป้งขึ้น=เพิ่มเสียง • โป้งลง=ลดเสียง (ง่ายสุด)", "👍"),
-    VICTORY_SLIDE("✌️ ชู 2 นิ้ว เลื่อนขึ้น=เพิ่ม • ลง=ลดเสียง", "✌️")
+    VICTORY_SLIDE("✌️ ชู 2 นิ้ว เลื่อนขึ้น=เพิ่ม • ลง=ลดเสียง", "✌️"),
+    FINGER_GUN_SLIDE("👉 ทำท่าปืนเลื่อนขึ้น=เพิ่ม • ลง=ลดเสียง", "👉")
 }
 
 enum class RadialTriggerPreset(
@@ -74,7 +111,9 @@ enum class RadialTriggerPreset(
 ) {
     CLOSED_FIST("✊ กำมือค้างสั้นๆ (Closed Fist)", "✊"),
     I_LOVE_YOU_SIGN("🤟 ท่า I Love You (โป้ง+ชี้+ก้อย)", "🤟"),
-    THREE_FINGERS("🖖 ชู 3 นิ้วค้างสั้นๆ (ชี้+กลาง+นาง)", "🖖")
+    THREE_FINGERS("🖖 ชู 3 นิ้วค้างสั้นๆ (ชี้+กลาง+นาง)", "🖖"),
+    CALL_ME_SHAKA("🤙 ท่าโทรมา (ชากา 🤙) ค้างสั้นๆ", "🤙"),
+    OPEN_PALM_HOLD("🖐️ แบมือนิ่งๆ ค้างกลางจอ", "🖐️")
 }
 
 enum class BackTriggerPreset(
@@ -83,7 +122,8 @@ enum class BackTriggerPreset(
 ) {
     HORIZONTAL_SWIPE("↔️ ปัดมือซ้าย = ย้อนกลับ • ปัดขวา = สลับแอป", "↔️"),
     PEACE_HOLD_BACK("✌️ ชู 2 นิ้วค้างสั้นๆ = กดย้อนกลับทันที", "✌️"),
-    ILY_HOLD_BACK("🤟 ท่า I Love You ค้างสั้นๆ = กดย้อนกลับทันที", "🤟")
+    ILY_HOLD_BACK("🤟 ท่า I Love You ค้างสั้นๆ = กดย้อนกลับทันที", "🤟"),
+    FINGER_GUN_BACK("👉 ท่าปืนนิ้วค้างสั้นๆ = กดย้อนกลับทันที", "👉")
 }
 
 enum class HorizontalNavMode(
@@ -100,9 +140,10 @@ enum class HorizontalNavMode(
 enum class HudPalmStyle(
     val displayName: String
 ) {
-    SKELETON_21("🦴 โครงกระดูกมือสด 21 ข้อ (21-Joint Skeleton)"),
+    CYBER_SKELETON_3D("🦴 โครงกระดูกมือ 3D ไบโอเมทริกซ์ 20 ข้อต่อแยกสี"),
     GLOWING_PALM("✋ รูปฝ่ามือเรืองแสง (Glowing Palm Silhouette)"),
-    POSTURE_BADGE("🎭 ไอคอนท่าทางอัจฉริยะ (✋ 🤏 👍 👎 ✌️ ✊ 🤟)"),
+    POSTURE_BADGE("🎭 ไอคอนท่าทางอัจฉริยะ (✋ 🤏 👍 👎 ✌️ ✊ 🤟 🤙 👉)"),
+    AIR_CURSOR_RETICLE("🎯 เป้าเล็งแอร์เมาส์เคาะจอ (Air Cursor Reticle)"),
     MINIMAL_ORB("🔮 วงแหวนพลังงานมินิมอล (Spatial Pulse Orb)")
 }
 
@@ -118,7 +159,8 @@ enum class HudThemeColor(
     MATRIX_EMERALD("💚 Matrix Emerald", "#00E676", "#69F0AE"),
     SPATIAL_VIOLET("💜 Spatial Violet", "#A374FF", "#00E5FF"),
     SOLAR_GOLD("🧡 Solar Gold", "#FFC400", "#FF6D00"),
-    NEON_ROSE("🩷 Neon Rose", "#FF4D8D", "#FF80AB")
+    NEON_ROSE("🩷 Neon Rose", "#FF4D8D", "#FF80AB"),
+    HOLO_WHITE("⚪ Holo Crystal", "#FFFFFF", "#B0BEC5")
 }
 
 /**
@@ -136,19 +178,27 @@ enum class RadialSlotCount(
 
 data class AirGestureConfig(
     val resolution: CameraResolution = CameraResolution.RES_1080P,
-    val targetFps: TargetFps = TargetFps.FPS_60,
+    val targetFps: TargetFps = TargetFps.FPS_30,
     val visionBufferSize: VisionBufferSize = VisionBufferSize.ROI_192,
+    val hardwareDelegate: HardwareDelegateMode = HardwareDelegateMode.AUTO_GPU_CPU,
     val useFrontCamera: Boolean = true,
     val handLockMode: HandLockMode = HandLockMode.AUTO_SINGLE,
+    val enableAirTap: Boolean = true,
+    val airTapTrigger: AirTapTriggerPreset = AirTapTriggerPreset.ANY_TAP,
+    val airTapAction: AirTapAction = AirTapAction.CLICK_AT_CURSOR,
+    val showAirCursor: Boolean = true,
+    val airTapSensitivity: Float = 1.0f,
+    val airCursorSensitivity: Float = 1.0f,
     val scrollPreset: ScrollGesturePreset = ScrollGesturePreset.OPEN_PALM_SWEEP,
     val volumePreset: VolumeGesturePreset = VolumeGesturePreset.PINCH_OK_SLIDE,
     val radialPreset: RadialTriggerPreset = RadialTriggerPreset.CLOSED_FIST,
     val backPreset: BackTriggerPreset = BackTriggerPreset.HORIZONTAL_SWIPE,
     val horizontalNavMode: HorizontalNavMode = HorizontalNavMode.BACK_AND_RECENTS,
-    val hudPalmStyle: HudPalmStyle = HudPalmStyle.SKELETON_21,
+    val hudPalmStyle: HudPalmStyle = HudPalmStyle.CYBER_SKELETON_3D,
     val hudThemeColor: HudThemeColor = HudThemeColor.CYBER_CYAN,
     val radialSlotCount: RadialSlotCount = RadialSlotCount.SLOTS_8,
     val showSystemVolumeUi: Boolean = true,
+    val showFpsCounter: Boolean = true,
     val scrollSensitivity: Float = 1.0f,
     val volumeSensitivity: Float = 1.0f,
     val showLiveCalibrationPreview: Boolean = false

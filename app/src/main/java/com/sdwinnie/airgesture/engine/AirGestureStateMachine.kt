@@ -73,6 +73,8 @@ class AirGestureStateMachine(
     private var prevPalmTimestampMs: Long = -1L
     private var smoothedVxNormalized = 0f
     private var smoothedVyNormalized = 0f
+    private var smoothedCursorX = 0.5f
+    private var smoothedCursorY = 0.5f
 
     // Debounce & clutch timers
     private var lastScrollDispatchMs = -10_000L
@@ -110,6 +112,8 @@ class AirGestureStateMachine(
         prevPalmTimestampMs = -1L
         smoothedVxNormalized = 0f
         smoothedVyNormalized = 0f
+        smoothedCursorX = 0.5f
+        smoothedCursorY = 0.5f
         lastScrollDispatchMs = -10_000L
         lastScrollWasUp = null
         lastHorizontalDispatchMs = -10_000L
@@ -129,7 +133,10 @@ class AirGestureStateMachine(
         val smoothedFrame: HandFrame?,
         val posture: HandPosture,
         val lockedHandLabel: String,
-        val events: List<GestureEvent>
+        val events: List<GestureEvent>,
+        val cursorNormX: Float = 0.5f,
+        val cursorNormY: Float = 0.5f,
+        val skeletonData: HandSkeletonAnalyzer.HandSkeletonData? = null
     )
 
     fun process(
@@ -181,8 +188,40 @@ class AirGestureStateMachine(
         val palmCenter = HandGeometry.palmCentroid(landmarks)
 
         updateNormalizedVelocity(palmCenter, scale, frame.timestampMs)
-        val posture = HandGeometry.classifyPosture(landmarks, pinchEnterThreshold, scale)
+
+        // Smooth Air Cursor tracking (index tip or palm center)
+        val targetCursorX = landmarks[HandGeometry.INDEX_TIP].x
+        val targetCursorY = landmarks[HandGeometry.INDEX_TIP].y
+        val cursorAlpha = (0.35f * config.airCursorSensitivity).coerceIn(0.15f, 0.70f)
+        smoothedCursorX += (targetCursorX - smoothedCursorX) * cursorAlpha
+        smoothedCursorY += (targetCursorY - smoothedCursorY) * cursorAlpha
+
+        val skeleton = HandSkeletonAnalyzer.analyze(
+            landmarks = landmarks,
+            timestampMs = frame.timestampMs,
+            palmScale = scale,
+            airTapTrigger = config.airTapTrigger,
+            airTapSensitivity = config.airTapSensitivity,
+            enableAirTap = config.enableAirTap
+        )
+
+        val posture = if (skeleton.classifiedPosture != HandPosture.NONE) {
+            skeleton.classifiedPosture
+        } else {
+            HandGeometry.classifyPosture(landmarks, pinchEnterThreshold, scale)
+        }
         currentDetectedPosture = posture
+
+        // Detect Touchless Air Tap (เคาะจอ / จดจอ) in Active mode
+        if (currentMode == Mode.PALM_ACTIVE && config.enableAirTap && skeleton.isAirTapDetected) {
+            events.add(
+                GestureEvent.AirTapTriggered(
+                    normX = smoothedCursorX.coerceIn(0f, 1f),
+                    normY = smoothedCursorY.coerceIn(0f, 1f),
+                    tapKind = skeleton.airTapKind
+                )
+            )
+        }
 
         when (currentMode) {
             Mode.DORMANT -> handleDormantState(landmarks, palmCenter, scale, posture, frame.timestampMs, config, events)
@@ -191,7 +230,16 @@ class AirGestureStateMachine(
             Mode.FIST_RADIAL_MENU -> handleCircularAppWheelState(landmarks, palmCenter, scale, posture, config, events)
         }
 
-        return StepOutput(currentMode, frame, posture, lockedLabel, events)
+        return StepOutput(
+            mode = currentMode,
+            smoothedFrame = frame,
+            posture = posture,
+            lockedHandLabel = lockedLabel,
+            events = events,
+            cursorNormX = smoothedCursorX,
+            cursorNormY = smoothedCursorY,
+            skeletonData = skeleton
+        )
     }
 
     private fun isScrollPostureMatch(posture: HandPosture, preset: ScrollGesturePreset): Boolean {
@@ -199,6 +247,8 @@ class AirGestureStateMachine(
             ScrollGesturePreset.OPEN_PALM_SWEEP -> posture == HandPosture.OPEN_PALM
             ScrollGesturePreset.ONE_FINGER_POINT -> posture == HandPosture.POINTING_ONE || posture == HandPosture.OPEN_PALM
             ScrollGesturePreset.VICTORY_TWO_FINGER -> posture == HandPosture.VICTORY_PEACE
+            ScrollGesturePreset.KNIFE_HAND_SWIPE -> posture == HandPosture.KNIFE_HAND || posture == HandPosture.OPEN_PALM
+            ScrollGesturePreset.THUMB_SWEEP -> posture == HandPosture.THUMB_UP || posture == HandPosture.THUMB_DOWN
         }
     }
 
@@ -220,6 +270,9 @@ class AirGestureStateMachine(
             VolumeGesturePreset.VICTORY_SLIDE -> {
                 posture == HandPosture.VICTORY_PEACE
             }
+            VolumeGesturePreset.FINGER_GUN_SLIDE -> {
+                posture == HandPosture.FINGER_GUN
+            }
         }
     }
 
@@ -228,6 +281,8 @@ class AirGestureStateMachine(
             RadialTriggerPreset.CLOSED_FIST -> posture == HandPosture.CLOSED_FIST
             RadialTriggerPreset.I_LOVE_YOU_SIGN -> posture == HandPosture.I_LOVE_YOU
             RadialTriggerPreset.THREE_FINGERS -> posture == HandPosture.THREE_FINGERS
+            RadialTriggerPreset.CALL_ME_SHAKA -> posture == HandPosture.CALL_ME_SHAKA
+            RadialTriggerPreset.OPEN_PALM_HOLD -> posture == HandPosture.OPEN_PALM
         }
     }
 
@@ -346,6 +401,9 @@ class AirGestureStateMachine(
             BackTriggerPreset.ILY_HOLD_BACK ->
                 posture == HandPosture.I_LOVE_YOU &&
                     config.radialPreset != RadialTriggerPreset.I_LOVE_YOU_SIGN
+            BackTriggerPreset.FINGER_GUN_BACK ->
+                posture == HandPosture.FINGER_GUN &&
+                    config.volumePreset != VolumeGesturePreset.FINGER_GUN_SLIDE
         }
         if (isStaticBackMatch && wholeHandSpeed < 1.35f) {
             if (quickBackCandidateStartMs < 0L) {
@@ -518,6 +576,8 @@ class AirGestureStateMachine(
             RadialTriggerPreset.CLOSED_FIST -> HandGeometry.countExtendedNonThumbFingers(landmarks, scale) >= 3
             RadialTriggerPreset.I_LOVE_YOU_SIGN -> posture == HandPosture.OPEN_PALM
             RadialTriggerPreset.THREE_FINGERS -> posture == HandPosture.OPEN_PALM || posture == HandPosture.CLOSED_FIST
+            RadialTriggerPreset.CALL_ME_SHAKA -> posture == HandPosture.OPEN_PALM
+            RadialTriggerPreset.OPEN_PALM_HOLD -> posture == HandPosture.CLOSED_FIST || HandGeometry.countCurledNonThumbFingers(landmarks, scale) >= 3
         }
 
         if (releasedIntoOpenHand) {
@@ -592,6 +652,8 @@ class AirGestureStateMachine(
                 (landmarks[HandGeometry.INDEX_TIP].y + landmarks[HandGeometry.MIDDLE_TIP].y) * 0.5f
             VolumeGesturePreset.THUMBS_UP_DOWN ->
                 landmarks[HandGeometry.THUMB_TIP].y
+            VolumeGesturePreset.FINGER_GUN_SLIDE ->
+                landmarks[HandGeometry.INDEX_TIP].y
         }
     }
 }

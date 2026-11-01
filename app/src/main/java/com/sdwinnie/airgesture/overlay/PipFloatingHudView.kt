@@ -35,7 +35,7 @@ class PipFloatingHudView @JvmOverloads constructor(
     private fun dp(v: Float): Float = v * density
 
     private var state: HudVisualState = HudVisualState.Dormant
-    private var palmStyle: HudPalmStyle = HudPalmStyle.SKELETON_21
+    private var palmStyle: HudPalmStyle = HudPalmStyle.CYBER_SKELETON_3D
     private var themeColor: HudThemeColor = HudThemeColor.CYBER_CYAN
     private var activeSlotCount: Int = 8
 
@@ -181,6 +181,14 @@ class PipFloatingHudView @JvmOverloads constructor(
                 drawPipPalmCapsule(canvas, w, h, st, accent)
             }
 
+            is HudVisualState.AirTapFeedback -> {
+                borderPaint.color = Color.parseColor("#00E676")
+                canvas.drawRoundRect(cardRect, radius, radius, borderPaint)
+                titlePaint.textAlign = Paint.Align.CENTER
+                titlePaint.color = Color.parseColor("#00E676")
+                canvas.drawText("👆 เคาะจอ: ${st.tapKind}", w * 0.5f, h * 0.54f, titlePaint)
+            }
+
             is HudVisualState.PausedNotice -> {
                 borderPaint.color = Color.parseColor("#FFB300")
                 canvas.drawRoundRect(cardRect, radius, radius, borderPaint)
@@ -196,9 +204,9 @@ class PipFloatingHudView @JvmOverloads constructor(
                 canvas.drawCircle(dp(22f), h * 0.5f, dp(4f), jointPaint)
                 titlePaint.textAlign = Paint.Align.LEFT
                 titlePaint.color = Color.parseColor("#DCE7FA")
-                canvas.drawText("AIR GESTURE v3.0 READY", dp(34f), h * 0.46f, titlePaint)
+                canvas.drawText("AIR GESTURE v4.0 READY", dp(34f), h * 0.46f, titlePaint)
                 subPaint.textAlign = Paint.Align.LEFT
-                canvas.drawText("ล็อก 1 มือ • ปรับเสียง • วงกลมเลือกแอป", dp(34f), h * 0.72f, subPaint)
+                canvas.drawText("เคาะจอ • โครงกระดูกมือ 3D • 30 FPS", dp(34f), h * 0.72f, subPaint)
             }
         }
     }
@@ -218,7 +226,7 @@ class PipFloatingHudView @JvmOverloads constructor(
         if (palmStyle == HudPalmStyle.POSTURE_BADGE) {
             canvas.drawCircle(handCx, handCy, handR * 0.85f, bonePaint)
             canvas.drawText(st.postureEmoji, handCx, handCy + dp(6f), emojiPaint)
-        } else if (palmStyle == HudPalmStyle.SKELETON_21 && st.landmarks.size >= 21) {
+        } else if ((palmStyle == HudPalmStyle.CYBER_SKELETON_3D) && st.landmarks.size >= 21) {
             var minX = 1f
             var maxX = 0f
             var minY = 1f
@@ -233,7 +241,25 @@ class PipFloatingHudView @JvmOverloads constructor(
             val mx = (minX + maxX) * 0.5f
             val my = (minY + maxY) * 0.5f
             val sc = (handR * 1.8f) / span
-            for (e in BONES) {
+            val rayColors = intArrayOf(
+                Color.parseColor("#FFB300"),
+                Color.parseColor("#00E5FF"),
+                Color.parseColor("#00E676"),
+                Color.parseColor("#A374FF"),
+                Color.parseColor("#FF4D8D"),
+                Color.parseColor("#78909C")
+            )
+            for (i in BONES.indices) {
+                val e = BONES[i]
+                val rayIdx = when {
+                    i in 0..3 -> 0
+                    i in 4..7 -> 1
+                    i in 8..11 -> 2
+                    i in 12..15 -> 3
+                    i in 16..19 -> 4
+                    else -> 5
+                }
+                bonePaint.color = rayColors[rayIdx]
                 val a = st.landmarks[e[0]]
                 val b = st.landmarks[e[1]]
                 canvas.drawLine(

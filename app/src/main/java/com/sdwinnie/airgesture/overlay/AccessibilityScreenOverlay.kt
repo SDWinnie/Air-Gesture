@@ -13,13 +13,14 @@ import com.sdwinnie.airgesture.security.AirLogger
 import com.sdwinnie.airgesture.security.PreferenceStore
 
 /**
- * Zero-Permission-Flag On-Screen Circular Wheel & Dynamic Island Overlay (v3.0).
+ * Zero-Permission-Flag On-Screen Circular Wheel, Dynamic Island & Air Cursor Overlay (v4.0).
  *
  * Uses official Android [WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY] bound strictly
  * to [AccessibilityService] token — requiring ZERO `SYSTEM_ALERT_WINDOW` permission in AndroidManifest.xml!
  * Renders:
  * 1. Top-edge Dynamic Island & Live Volume Status Banner (`🔉 กำลังลดเสียง ▼` / `🔊 กำลังเพิ่มเสียง ▲`)
  * 2. Centered 360° Circular App Selector Wheel right on top of any foreground app!
+ * 3. High-tech Touchless Air Cursor target reticle and Air Tap ripple shockwaves.
  */
 class AccessibilityScreenOverlay(
     private val service: AccessibilityService
@@ -32,12 +33,15 @@ class AccessibilityScreenOverlay(
 
     private var islandView: DynamicIslandView? = null
     private var wheelView: RadialAppSelectorView? = null
+    private var cursorView: AirCursorOverlayView? = null
+    private var activeConfig: AirGestureConfig = AirGestureConfig()
     private var attached = false
 
     fun attachIfNeeded() {
         if (attached) return
         try {
             val cfg = preferenceStore.loadConfig()
+            activeConfig = cfg
 
             val topIsland = DynamicIslandView(service).apply {
                 applyVisualStyle(cfg.hudPalmStyle, cfg.hudThemeColor)
@@ -76,8 +80,26 @@ class AccessibilityScreenOverlay(
                 title = "AirGestureCircularWheel"
             }
 
+            val fullCursor = AirCursorOverlayView(service).apply {
+                applyTheme(cfg.hudThemeColor)
+            }
+            val cursorParams = WindowManager.LayoutParams(
+                WindowManager.LayoutParams.MATCH_PARENT,
+                WindowManager.LayoutParams.MATCH_PARENT,
+                WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
+                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                    WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
+                    WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+                    WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+                PixelFormat.TRANSLUCENT
+            ).apply {
+                title = "AirGestureAirCursor"
+            }
+
+            windowManager.addView(fullCursor, cursorParams)
             windowManager.addView(topIsland, topParams)
             windowManager.addView(centerWheel, centerParams)
+            cursorView = fullCursor
             islandView = topIsland
             wheelView = centerWheel
             attached = true
@@ -88,9 +110,11 @@ class AccessibilityScreenOverlay(
     }
 
     fun applyConfig(config: AirGestureConfig) {
+        activeConfig = config
         islandView?.applyVisualStyle(config.hudPalmStyle, config.hudThemeColor)
         wheelView?.applyThemeColor(config.hudThemeColor)
         wheelView?.refreshSlots(config.radialSlotCount.count)
+        cursorView?.applyTheme(config.hudThemeColor)
     }
 
     fun refreshSlots(slotCount: Int) {
@@ -108,14 +132,26 @@ class AccessibilityScreenOverlay(
 
         val island = islandView ?: return
         val wheel = wheelView ?: return
+        val cursor = cursorView
 
         if (!engineRunning) {
             island.visibility = View.GONE
             wheel.visibility = View.GONE
+            cursor?.updatePointer(0.5f, 0.5f, visible = false)
             return
         }
 
-        // 1. Centered Circular App Wheel pops up directly in the center of the screen!
+        // 1. Air Cursor Reticle & Ripple Animation
+        if (hudState is HudVisualState.PalmTracking && activeConfig.showAirCursor) {
+            cursor?.updatePointer(hudState.cursorNormX, hudState.cursorNormY, visible = true)
+        } else if (hudState is HudVisualState.AirTapFeedback) {
+            cursor?.triggerAirTapRipple()
+            cursor?.updatePointer(hudState.normX, hudState.normY, visible = activeConfig.showAirCursor)
+        } else {
+            cursor?.updatePointer(0.5f, 0.5f, visible = false)
+        }
+
+        // 2. Centered Circular App Wheel
         if (hudState is HudVisualState.RadialSelectorActive) {
             wheel.updateSelection(
                 angleDegrees = hudState.angleDegrees,
@@ -132,7 +168,7 @@ class AccessibilityScreenOverlay(
             wheel.visibility = View.GONE
         }
 
-        // 2. Top-edge Dynamic Island & Volume Status Pill (hidden when dormant or when MainActivity's dock is visible)
+        // 3. Top-edge Dynamic Island & Volume Status Pill
         val shouldShowTopIsland = !dashboardInForeground && hudState !is HudVisualState.Dormant
         if (shouldShowTopIsland) {
             if (island.visibility != View.VISIBLE) {
@@ -147,8 +183,10 @@ class AccessibilityScreenOverlay(
 
     fun detach() {
         attached = false
+        cursorView?.let { v -> runCatching { windowManager.removeViewImmediate(v) } }
         islandView?.let { v -> runCatching { windowManager.removeViewImmediate(v) } }
         wheelView?.let { v -> runCatching { windowManager.removeViewImmediate(v) } }
+        cursorView = null
         islandView = null
         wheelView = null
     }

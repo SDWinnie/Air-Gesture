@@ -1,7 +1,9 @@
 package com.sdwinnie.airgesture.input
 
 import com.sdwinnie.airgesture.engine.AirGestureStateMachine
+import com.sdwinnie.airgesture.engine.HandSkeletonAnalyzer
 import com.sdwinnie.airgesture.model.AirGestureConfig
+import com.sdwinnie.airgesture.model.AirTapAction
 import com.sdwinnie.airgesture.model.GestureEvent
 import com.sdwinnie.airgesture.model.HandFrame
 import com.sdwinnie.airgesture.model.HandPosture
@@ -40,12 +42,38 @@ class TouchlessActionDispatcher(
         activeRadialInCancelZone: Boolean,
         config: AirGestureConfig,
         fps: Float,
-        thermalWarning: Boolean
+        thermalWarning: Boolean,
+        cursorNormX: Float = 0.5f,
+        cursorNormY: Float = 0.5f,
+        skeletonData: HandSkeletonAnalyzer.HandSkeletonData? = null
     ): DispatchOutcome {
         val totalSlots = config.radialSlotCount.count
 
         for (event in events) {
             when (event) {
+                is GestureEvent.AirTapTriggered -> {
+                    val a11y = AirAccessibilityService.activeInstance
+                    val tapAction = config.airTapAction
+                    val ok = when (tapAction) {
+                        AirTapAction.CLICK_AT_CURSOR -> a11y?.injectAirTapClick(event.normX, event.normY) ?: false
+                        AirTapAction.CLICK_SCREEN_CENTER -> a11y?.injectAirTapClick(0.5f, 0.5f) ?: false
+                        AirTapAction.PLAY_PAUSE_MEDIA -> a11y?.injectMediaPlayPause() ?: false
+                        AirTapAction.DOUBLE_CLICK -> a11y?.injectAirTapDoubleClick(event.normX, event.normY) ?: false
+                    }
+                    val actionName = when (tapAction) {
+                        AirTapAction.CLICK_AT_CURSOR -> "คลิกชี้เป้า (${(event.normX * 100).toInt()}%, ${(event.normY * 100).toInt()}%)"
+                        AirTapAction.CLICK_SCREEN_CENTER -> "คลิกกลางหน้าจอ"
+                        AirTapAction.PLAY_PAUSE_MEDIA -> "เล่น/หยุดวิดีโอ (Play/Pause)"
+                        AirTapAction.DOUBLE_CLICK -> "ดับเบิลคลิก 2 ครั้ง"
+                    }
+                    lastStatusLabel = "👆 เคาะจอ: $actionName"
+                    lastAccent = HudVisualState.AccentKind.EMERALD
+                    lastActionSummary = if (ok) {
+                        "👆 ${event.tapKind} -> $actionName สำเร็จ!"
+                    } else {
+                        "👆 $actionName (โปรดเปิดการช่วยเหลือพิเศษ)"
+                    }
+                }
                 GestureEvent.WakeDynamicIsland -> {
                     lastStatusLabel = "จับสัญญาณ $lockedHandLabel"
                     lastAccent = HudVisualState.AccentKind.CYAN
@@ -186,7 +214,10 @@ class TouchlessActionDispatcher(
                     landmarks = smoothedFrame?.landmarks.orEmpty(),
                     accentHighlight = if (thermalWarning) HudVisualState.AccentKind.AMBER else lastAccent,
                     fps = fps,
-                    thermalWarning = thermalWarning
+                    thermalWarning = thermalWarning,
+                    cursorNormX = cursorNormX,
+                    cursorNormY = cursorNormY,
+                    skeletonData = skeletonData
                 )
             }
         }

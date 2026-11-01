@@ -124,7 +124,7 @@ class DualStreamCameraController(
         visionHandler = Handler(visionThread!!.looper)
 
         visionHandler?.post {
-            val ok = handTracker.initialize()
+            val ok = handTracker.initialize(config.hardwareDelegate)
             trackerReady.set(ok)
             if (!ok) {
                 onStreamStateChanged("AI Engine Fallback", false)
@@ -151,7 +151,8 @@ class DualStreamCameraController(
     fun applyUpdatedConfig(newConfig: AirGestureConfig) {
         val requiresReopen = newConfig.useFrontCamera != activeConfig.useFrontCamera ||
             newConfig.resolution != activeConfig.resolution ||
-            newConfig.targetFps != activeConfig.targetFps
+            newConfig.targetFps != activeConfig.targetFps ||
+            newConfig.hardwareDelegate != activeConfig.hardwareDelegate
         activeConfig = newConfig
         downscaler.ensureDimension(newConfig.visionBufferSize.dimension)
         if (!isRunning.get()) return

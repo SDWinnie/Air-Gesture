@@ -294,4 +294,30 @@ class AirGestureEngineTest {
         val committed = commit.events.filterIsInstance<GestureEvent.RadialMenuCommitted>().first()
         assertEquals(2, committed.selectedSlot)
     }
+
+    @Test
+    fun `hand skeleton analyzer extracts 23 bones, palm normal, and detects touchless air tap`() {
+        val palm = makeOpenPalm(timestampMs = 100L)
+        val skeleton = HandSkeletonAnalyzer.analyze(palm.landmarks, 100L)
+
+        assertEquals(23, skeleton.bones.size)
+        assertTrue("Open palm must face camera", skeleton.isPalmFacingCamera)
+        assertTrue("Index finger must be extended in open palm", skeleton.fingerFlexion[1] > 0.60f)
+
+        // Simulate an index fingertip forward knock in Z (Z plunges from 0f to -0.09f relative to palm)
+        HandSkeletonAnalyzer.reset()
+        val baseHand = makeOpenPalm(timestampMs = 100L).landmarks.toMutableList()
+        val s1 = HandSkeletonAnalyzer.analyze(baseHand, 100L)
+        assertFalse(s1.isAirTapDetected)
+
+        // Rapid forward plunge 120ms later
+        val tapHand = makeOpenPalm(timestampMs = 220L).landmarks.toMutableList()
+        tapHand[HandGeometry.INDEX_TIP] = Landmark3D(
+            x = tapHand[HandGeometry.INDEX_TIP].x,
+            y = tapHand[HandGeometry.INDEX_TIP].y - 0.04f,
+            z = -0.12f
+        )
+        val s2 = HandSkeletonAnalyzer.analyze(tapHand, 220L)
+        assertTrue("Index forward knock must trigger touchless Air Tap", s2.isAirTapDetected)
+    }
 }

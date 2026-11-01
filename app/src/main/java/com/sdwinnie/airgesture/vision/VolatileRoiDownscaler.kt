@@ -2,14 +2,15 @@ package com.sdwinnie.airgesture.vision
 
 import android.graphics.Bitmap
 import android.media.Image
+import java.nio.ByteBuffer
 
 /**
- * Isotropic 1:1 Aspect-Ratio Volatile-RAM Downscaler (v3.0).
+ * Ultra-Fast Isotropic 1:1 Volatile-RAM Downscaler & Zero-GC Buffer Reuser (v4.0).
  *
- * - Fixes the 1.78× vertical squashing distortion of portrait camera streams by letterboxing
- *   the full upright camera FOV into a true 1:1 square volatile RAM buffer (224×224 or 256×256).
- * - Eliminates moving-ROI coordinate oscillation against MediaPipe's internal RunningMode.VIDEO tracker.
- * - Produces an isolated per-frame volatile Bitmap from pre-allocated scratch RAM.
+ * - Solves the 30-120 FPS bottleneck by replacing per-pixel ByteBuffer.get() JNI method calls
+ *   with single-pass bulk native memcpy (ByteBuffer.get(ByteArray)).
+ * - Reuses a single pre-allocated volatile Bitmap buffer across frames (zero GC pressure).
+ * - Implements true 1:1 isotropic letterboxing with zero aspect ratio squashing distortion.
  */
 class VolatileRoiDownscaler(initialDimension: Int = 224) {
 
@@ -17,6 +18,12 @@ class VolatileRoiDownscaler(initialDimension: Int = 224) {
         private set
 
     private var argbScratch = IntArray(initialDimension * initialDimension)
+    private var yScratch = ByteArray(0)
+    private var uScratch = ByteArray(0)
+    private var vScratch = ByteArray(0)
+
+    @Volatile
+    private var reusableBitmap: Bitmap? = null
 
     @Synchronized
     fun ensureDimension(dimension: Int) {
@@ -24,6 +31,14 @@ class VolatileRoiDownscaler(initialDimension: Int = 224) {
         argbScratch.fill(0)
         targetDimension = dimension
         argbScratch = IntArray(dimension * dimension)
+        reusableBitmap?.recycle()
+        reusableBitmap = Bitmap.createBitmap(dimension, dimension, Bitmap.Config.ARGB_8888)
+    }
+
+    private fun ensureScratchSize(yLen: Int, uLen: Int, vLen: Int) {
+        if (yScratch.size < yLen) yScratch = ByteArray((yLen * 1.15f).toInt())
+        if (uScratch.size < uLen) uScratch = ByteArray((uLen * 1.15f).toInt())
+        if (vScratch.size < vLen) vScratch = ByteArray((vLen * 1.15f).toInt())
     }
 
     @Synchronized
@@ -32,17 +47,22 @@ class VolatileRoiDownscaler(initialDimension: Int = 224) {
         uprightRotationDeg: Int,
         mirrorHorizontally: Boolean
     ): Bitmap? {
-        val planes = image.planes
-        if (planes == null || planes.size < 3) return null
+        val planes = image.planes ?: return null
+        if (planes.size < 3) return null
 
         val dim = targetDimension
         val srcW = image.width
         val srcH = image.height
         if (srcW <= 1 || srcH <= 1) return null
 
-        val yBuffer = planes[0].buffer ?: return null
-        val uBuffer = planes[1].buffer ?: return null
-        val vBuffer = planes[2].buffer ?: return null
+        val yBuffer: ByteBuffer = planes[0].buffer ?: return null
+        val uBuffer: ByteBuffer = planes[1].buffer ?: return null
+        val vBuffer: ByteBuffer = planes[2].buffer ?: return null
+
+        val yLen = yBuffer.remaining()
+        val uLen = uBuffer.remaining()
+        val vLen = vBuffer.remaining()
+        if (yLen <= 0 || uLen <= 0 || vLen <= 0) return null
 
         val yRowStride = planes[0].rowStride
         val yPixelStride = planes[0].pixelStride
@@ -51,10 +71,20 @@ class VolatileRoiDownscaler(initialDimension: Int = 224) {
         val vRowStride = planes[2].rowStride
         val vPixelStride = planes[2].pixelStride
 
-        val yLimit = yBuffer.limit()
-        val uLimit = uBuffer.limit()
-        val vLimit = vBuffer.limit()
-        if (yLimit <= 0 || uLimit <= 0 || vLimit <= 0) return null
+        ensureScratchSize(yLen, uLen, vLen)
+
+        // Bulk native memory copy: 3 single calls instead of 150,000 individual JNI invocations!
+        val yPos = yBuffer.position()
+        yBuffer.get(yScratch, 0, yLen)
+        yBuffer.position(yPos)
+
+        val uPos = uBuffer.position()
+        uBuffer.get(uScratch, 0, uLen)
+        uBuffer.position(uPos)
+
+        val vPos = vBuffer.position()
+        vBuffer.get(vScratch, 0, vLen)
+        vBuffer.position(vPos)
 
         val rot = ((uprightRotationDeg % 360) + 360) % 360
         val uprightW = if (rot == 90 || rot == 270) srcH else srcW
@@ -70,7 +100,11 @@ class VolatileRoiDownscaler(initialDimension: Int = 224) {
         val invScaledH = 1.0f / scaledH.toFloat()
 
         val out = argbScratch
-        out.fill(-0x1000000) // Opaque black letterbox padding (0xFF000000)
+        out.fill(-0x1000000) // Opaque black letterbox padding
+
+        val yRaw = yScratch
+        val uRaw = uScratch
+        val vRaw = vScratch
 
         for (oy in 0 until scaledH) {
             val uy = ((oy + 0.5f) * invScaledH).coerceIn(0f, 0.9999f)
@@ -108,13 +142,13 @@ class VolatileRoiDownscaler(initialDimension: Int = 224) {
 
                 val hvX = sx shr 1
                 val hvY = sy shr 1
-                val yIndex = (sy * yRowStride + sx * yPixelStride).coerceIn(0, yLimit - 1)
-                val uIndex = (hvY * uRowStride + hvX * uPixelStride).coerceIn(0, uLimit - 1)
-                val vIndex = (hvY * vRowStride + hvX * vPixelStride).coerceIn(0, vLimit - 1)
+                val yIndex = (sy * yRowStride + sx * yPixelStride).coerceIn(0, yLen - 1)
+                val uIndex = (hvY * uRowStride + hvX * uPixelStride).coerceIn(0, uLen - 1)
+                val vIndex = (hvY * vRowStride + hvX * vPixelStride).coerceIn(0, vLen - 1)
 
-                val yVal = (yBuffer.get(yIndex).toInt() and 0xFF) - 16
-                val uVal = (uBuffer.get(uIndex).toInt() and 0xFF) - 128
-                val vVal = (vBuffer.get(vIndex).toInt() and 0xFF) - 128
+                val yVal = (yRaw[yIndex].toInt() and 0xFF) - 16
+                val uVal = (uRaw[uIndex].toInt() and 0xFF) - 128
+                val vVal = (vRaw[vIndex].toInt() and 0xFF) - 128
 
                 val y1192 = if (yVal < 0) 0 else 1192 * yVal
                 var r = (y1192 + 1634 * vVal) shr 10
@@ -129,11 +163,23 @@ class VolatileRoiDownscaler(initialDimension: Int = 224) {
             }
         }
 
-        return Bitmap.createBitmap(out, dim, dim, Bitmap.Config.ARGB_8888)
+        var bmp = reusableBitmap
+        if (bmp == null || bmp.isRecycled || bmp.width != dim || bmp.height != dim) {
+            bmp?.recycle()
+            bmp = Bitmap.createBitmap(dim, dim, Bitmap.Config.ARGB_8888)
+            reusableBitmap = bmp
+        }
+        bmp.setPixels(out, 0, dim, 0, 0, dim, dim)
+        return bmp
     }
 
     @Synchronized
     fun wipeVolatileMemory() {
         argbScratch.fill(0)
+        yScratch.fill(0)
+        uScratch.fill(0)
+        vScratch.fill(0)
+        reusableBitmap?.recycle()
+        reusableBitmap = null
     }
 }

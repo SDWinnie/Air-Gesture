@@ -227,7 +227,10 @@ class AirGestureForegroundService : LifecycleService() {
             activeRadialInCancelZone = gestureStateMachine.activeRadialInCancelZone,
             config = activeConfig,
             fps = instantFps,
-            thermalWarning = thermalController.isThermalThrottling
+            thermalWarning = thermalController.isThermalThrottling,
+            cursorNormX = step.cursorNormX,
+            cursorNormY = step.cursorNormY,
+            skeletonData = step.skeletonData
         )
 
         AirGestureRuntimeBus.updateHudState(outcome.hudState)

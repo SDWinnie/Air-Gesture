@@ -654,6 +654,118 @@
                             app:strokeColor="@color/stroke_subtle" />
                     </LinearLayout>
 
+                    <!-- Air Tap / Screen Knock Studio Card -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="14dp"
+                        android:background="@drawable/bg_hero_bento"
+                        android:orientation="vertical"
+                        android:padding="16dp">
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal">
+
+                            <TextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="👆 ระบบเคาะจอสัมผัสกลางอากาศ (Air Tap)"
+                                android:textColor="@color/accent_emerald"
+                                android:textSize="14.5sp"
+                                android:textStyle="bold" />
+
+                            <com.google.android.material.materialswitch.MaterialSwitch
+                                android:id="@+id/switchEnableAirTap"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:checked="true" />
+                        </LinearLayout>
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="3dp"
+                            android:text="เคาะนิ้วชี้หรือจีบนิ้วกลางอากาศเพื่อแตะ/คลิกจอ โดยไม่ต้องสัมผัสกระจกหน้าจอจริง"
+                            android:textColor="@color/text_secondary"
+                            android:textSize="11.5sp" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="10dp"
+                            android:text="1. ท่าที่ใช้เคาะจอ (Air Tap Trigger Gesture)"
+                            android:textColor="@color/text_primary"
+                            android:textSize="12sp"
+                            android:textStyle="bold" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnPickAirTapStyle"
+                            style="@style/Widget.Material3.Button.OutlinedButton"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="4dp"
+                            android:text="ท่าเคาะจอ"
+                            android:textAllCaps="false"
+                            android:textColor="@color/accent_emerald"
+                            android:textSize="12sp"
+                            app:cornerRadius="12dp"
+                            app:strokeColor="@color/stroke_subtle" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="10dp"
+                            android:text="2. การทำงานเมื่อเคาะจอ (Air Tap Action)"
+                            android:textColor="@color/text_primary"
+                            android:textSize="12sp"
+                            android:textStyle="bold" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnPickAirTapAction"
+                            style="@style/Widget.Material3.Button.OutlinedButton"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="4dp"
+                            android:text="การทำงานเมื่อเคาะจอ"
+                            android:textAllCaps="false"
+                            android:textColor="@color/accent_cyan"
+                            android:textSize="12sp"
+                            app:cornerRadius="12dp"
+                            app:strokeColor="@color/stroke_subtle" />
+
+                        <com.google.android.material.materialswitch.MaterialSwitch
+                            android:id="@+id/switchShowAirCursor"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:checked="true"
+                            android:text="🎯 แสดงเป้าเล็งแอร์เมาส์ชี้ตำแหน่งบนหน้าจอ"
+                            android:textColor="@color/text_primary"
+                            android:textSize="12.5sp" />
+
+                        <TextView
+                            android:id="@+id/tvAirTapSensLabel"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="10dp"
+                            android:text="ความไวในการเคาะจอ: 1.0x (สมดุล)"
+                            android:textColor="@color/text_secondary"
+                            android:textSize="11.5sp" />
+
+                        <com.google.android.material.slider.Slider
+                            android:id="@+id/sliderAirTapSens"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:value="1.0"
+                            android:valueFrom="0.5"
+                            android:valueTo="2.5"
+                            android:stepSize="0.1" />
+                    </LinearLayout>
+
                     <!-- Ergonomic Human Gesture Presets Card -->
                     <LinearLayout
                         android:layout_width="match_parent"
@@ -972,11 +1084,18 @@
                             app:singleSelection="true">
 
                             <com.google.android.material.chip.Chip
+                                android:id="@+id/chipFps30"
+                                style="@style/Widget.Material3.Chip.Filter"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="30 FPS (โหมดมาตรฐาน เสถียร ไม่กระตุก)" />
+
+                            <com.google.android.material.chip.Chip
                                 android:id="@+id/chipFps60"
                                 style="@style/Widget.Material3.Chip.Filter"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="60 FPS (สมดุลประหยัดไฟ)" />
+                                android:text="60 FPS (สมดุลประสิทธิภาพ)" />
 
                             <com.google.android.material.chip.Chip
                                 android:id="@+id/chipFps120"
@@ -1025,6 +1144,26 @@
                             android:layout_marginTop="8dp"
                             android:checked="true"
                             android:text="ใช้กล้องหน้า (Front Selfie Camera)"
+                            android:textColor="@color/text_primary"
+                            android:textSize="13sp" />
+
+                        <com.google.android.material.materialswitch.MaterialSwitch
+                            android:id="@+id/switchHardwareGpu"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:checked="true"
+                            android:text="⚡ ประมวลผลด้วย GPU GLES (เร่งความเร็ว 30-120 FPS)"
+                            android:textColor="@color/text_primary"
+                            android:textSize="13sp" />
+
+                        <com.google.android.material.materialswitch.MaterialSwitch
+                            android:id="@+id/switchShowFpsCounter"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:checked="true"
+                            android:text="📊 แสดงตัวเลขอัตราเฟรมเรตสด (Live FPS Counter)"
                             android:textColor="@color/text_primary"
                             android:textSize="13sp" />
                     </LinearLayout>

@@ -1,5 +1,7 @@
 package com.sdwinnie.airgesture.model
 
+import com.sdwinnie.airgesture.engine.HandSkeletonAnalyzer
+
 data class Landmark3D(
     val x: Float,
     val y: Float,
@@ -7,19 +9,25 @@ data class Landmark3D(
 )
 
 /**
- * Canonical Ergonomic Human Hand Postures (MediaPipe / HCI Standard Taxonomy).
+ * Canonical Ergonomic Human Hand Postures (MediaPipe / HCI Standard Taxonomy v4.0).
  */
 enum class HandPosture(val emoji: String, val thaiName: String) {
     NONE("⚪", "ไม่พบท่ามือ"),
     OPEN_PALM("✋", "แบมือ 5 นิ้ว"),
+    AIR_TAP_POSE("👆", "ท่าเคาะจอ / จดจอ"),
     PINCH_OK("🤏", "ท่ามือจีบ (OK)"),
     CLOSED_FIST("✊", "ท่ากำมือ"),
     THUMB_UP("👍", "ชูนิ้วโป้งขึ้น"),
     THUMB_DOWN("👎", "นิ้วโป้งชี้ลง"),
     POINTING_ONE("☝️", "ชี้นิ้วเดียว"),
     VICTORY_PEACE("✌️", "ชู 2 นิ้ว (V)"),
-    THREE_FINGERS("🖖", "ชู 3 นิ้ว"),
-    I_LOVE_YOU("🤟", "ท่า I Love You")
+    THREE_FINGERS("3️⃣", "ชู 3 นิ้ว"),
+    FOUR_FINGERS("4️⃣", "ชู 4 นิ้ว"),
+    I_LOVE_YOU("🤟", "ท่า I Love You"),
+    CALL_ME_SHAKA("🤙", "ท่าโทรมา (Shaka)"),
+    FINGER_GUN("👉", "ท่าปืนนิ้ว"),
+    SPOCK_VULCAN("🖖", "ท่าแยกร่องนิ้ว"),
+    KNIFE_HAND("✋", "ท่าสันมือ")
 }
 
 data class HandFrame(
@@ -55,6 +63,12 @@ sealed interface GestureEvent {
     ) : GestureEvent
 
     data object QuickBackTriggered : GestureEvent
+
+    data class AirTapTriggered(
+        val normX: Float,
+        val normY: Float,
+        val tapKind: String
+    ) : GestureEvent
 
     data class PinchVolumeModulate(
         val normalizedDeltaY: Float
@@ -95,7 +109,16 @@ sealed interface HudVisualState {
         val landmarks: List<Landmark3D>,
         val accentHighlight: AccentKind = AccentKind.CYAN,
         val fps: Float = 0f,
-        val thermalWarning: Boolean = false
+        val thermalWarning: Boolean = false,
+        val cursorNormX: Float = 0.5f,
+        val cursorNormY: Float = 0.5f,
+        val skeletonData: HandSkeletonAnalyzer.HandSkeletonData? = null
+    ) : HudVisualState
+
+    data class AirTapFeedback(
+        val tapKind: String,
+        val normX: Float,
+        val normY: Float
     ) : HudVisualState
 
     data class VolumeSlider(

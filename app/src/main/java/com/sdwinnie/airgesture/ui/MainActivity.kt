@@ -30,9 +30,12 @@ import com.sdwinnie.airgesture.databinding.ActivityMainBinding
 import com.sdwinnie.airgesture.databinding.ItemSecurityAuditBinding
 import com.sdwinnie.airgesture.input.RadialAppSlotManager
 import com.sdwinnie.airgesture.model.AirGestureConfig
+import com.sdwinnie.airgesture.model.AirTapAction
+import com.sdwinnie.airgesture.model.AirTapTriggerPreset
 import com.sdwinnie.airgesture.model.BackTriggerPreset
 import com.sdwinnie.airgesture.model.CameraResolution
 import com.sdwinnie.airgesture.model.HandLockMode
+import com.sdwinnie.airgesture.model.HardwareDelegateMode
 import com.sdwinnie.airgesture.model.HorizontalNavMode
 import com.sdwinnie.airgesture.model.HudPalmStyle
 import com.sdwinnie.airgesture.model.HudThemeColor
@@ -272,6 +275,53 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
+        binding.switchEnableAirTap.isChecked = currentConfig.enableAirTap
+        binding.switchEnableAirTap.setOnCheckedChangeListener { _, isChecked ->
+            if (suppressConfigListeners) return@setOnCheckedChangeListener
+            persistAndReloadConfig(currentConfig.copy(enableAirTap = isChecked))
+            refreshGestureStudioLabels()
+        }
+
+        binding.btnPickAirTapStyle.setOnClickListener {
+            showEnumSingleChoiceDialog(
+                title = "เลือกท่าทางที่ใช้เคาะจอ (Air Tap Trigger)",
+                entries = AirTapTriggerPreset.entries,
+                current = currentConfig.airTapTrigger,
+                labelOf = { it.displayName }
+            ) { chosen ->
+                persistAndReloadConfig(currentConfig.copy(airTapTrigger = chosen))
+                refreshGestureStudioLabels()
+            }
+        }
+
+        binding.btnPickAirTapAction.setOnClickListener {
+            showEnumSingleChoiceDialog(
+                title = "เลือกคำสั่งที่จะทำงานเมื่อเคาะจอ",
+                entries = AirTapAction.entries,
+                current = currentConfig.airTapAction,
+                labelOf = { it.displayName }
+            ) { chosen ->
+                persistAndReloadConfig(currentConfig.copy(airTapAction = chosen))
+                refreshGestureStudioLabels()
+            }
+        }
+
+        binding.switchShowAirCursor.isChecked = currentConfig.showAirCursor
+        binding.switchShowAirCursor.setOnCheckedChangeListener { _, isChecked ->
+            if (suppressConfigListeners) return@setOnCheckedChangeListener
+            persistAndReloadConfig(currentConfig.copy(showAirCursor = isChecked))
+        }
+
+        val airTapSens = ((currentConfig.airTapSensitivity * 10f).roundToInt() / 10f).coerceIn(0.5f, 2.5f)
+        binding.sliderAirTapSens.value = airTapSens
+        binding.tvAirTapSensLabel.text = "ความไวในการเคาะจอ: ${String.format(Locale.US, "%.1f", airTapSens)}x"
+        binding.sliderAirTapSens.addOnChangeListener { _, value, fromUser ->
+            if (!fromUser || suppressConfigListeners) return@addOnChangeListener
+            val clean = (value * 10f).roundToInt() / 10f
+            binding.tvAirTapSensLabel.text = "ความไวในการเคาะจอ: ${String.format(Locale.US, "%.1f", clean)}x"
+            persistAndReloadConfig(currentConfig.copy(airTapSensitivity = clean))
+        }
+
         binding.btnPickScrollPreset.setOnClickListener {
             showEnumSingleChoiceDialog(
                 title = "เลือกท่าเลื่อนหน้าจอขึ้น / ลง",
@@ -407,6 +457,8 @@ class MainActivity : AppCompatActivity() {
     @SuppressLint("SetTextI18n")
     private fun refreshGestureStudioLabels() {
         binding.btnPickHandLock.text = currentConfig.handLockMode.displayName
+        binding.btnPickAirTapStyle.text = currentConfig.airTapTrigger.displayName
+        binding.btnPickAirTapAction.text = currentConfig.airTapAction.displayName
         binding.btnPickScrollPreset.text = currentConfig.scrollPreset.displayName
         binding.btnPickVolumePreset.text = currentConfig.volumePreset.displayName
         binding.btnPickRadialPreset.text = currentConfig.radialPreset.displayName
@@ -415,7 +467,8 @@ class MainActivity : AppCompatActivity() {
         binding.btnPickThemeColor.text = "สีธีม: ${currentConfig.hudThemeColor.displayName}"
 
         binding.tvActiveGestureSummary.text =
-            "• ล็อกมือ: ${currentConfig.handLockMode.displayName}\n" +
+            "• เคาะจอสัมผัส (Air Tap): ${if (currentConfig.enableAirTap) "${currentConfig.airTapTrigger.badgeEmoji} ${currentConfig.airTapTrigger.displayName} -> ${currentConfig.airTapAction.displayName}" else "ปิดการใช้งาน"}\n" +
+                "• ล็อกมือ: ${currentConfig.handLockMode.displayName}\n" +
                 "• เลื่อนจอ: ${currentConfig.scrollPreset.displayName}\n" +
                 "• ลด/เพิ่มเสียง: ${currentConfig.volumePreset.displayName}\n" +
                 "• วงกลมเลือกแอป (${currentConfig.radialSlotCount.count} แอป): ${currentConfig.radialPreset.displayName}\n" +
@@ -555,6 +608,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         when (currentConfig.targetFps) {
+            TargetFps.FPS_30 -> binding.chipFps30.isChecked = true
             TargetFps.FPS_60 -> binding.chipFps60.isChecked = true
             TargetFps.FPS_120 -> binding.chipFps120.isChecked = true
         }
@@ -579,6 +633,8 @@ class MainActivity : AppCompatActivity() {
         binding.tvVolumeSensValue.text = String.format(Locale.US, "%.1f×", snappedVol)
 
         binding.switchFrontCamera.isChecked = currentConfig.useFrontCamera
+        binding.switchHardwareGpu.isChecked = currentConfig.hardwareDelegate == HardwareDelegateMode.AUTO_GPU_CPU
+        binding.switchShowFpsCounter.isChecked = currentConfig.showFpsCounter
         binding.switchCalibrationPreview.isChecked = currentConfig.showLiveCalibrationPreview
         binding.cardCalibrationPreview.visibility =
             if (currentConfig.showLiveCalibrationPreview) View.VISIBLE else View.GONE
@@ -600,12 +656,23 @@ class MainActivity : AppCompatActivity() {
 
         binding.chipGroupFps.setOnCheckedStateChangeListener { _, checkedIds ->
             if (suppressConfigListeners) return@setOnCheckedStateChangeListener
-            val fps = if (checkedIds.firstOrNull() == R.id.chipFps120) {
-                TargetFps.FPS_120
-            } else {
-                TargetFps.FPS_60
+            val fps = when (checkedIds.firstOrNull()) {
+                R.id.chipFps30 -> TargetFps.FPS_30
+                R.id.chipFps120 -> TargetFps.FPS_120
+                else -> TargetFps.FPS_60
             }
             persistAndReloadConfig(currentConfig.copy(targetFps = fps))
+        }
+
+        binding.switchHardwareGpu.setOnCheckedChangeListener { _, isChecked ->
+            if (suppressConfigListeners) return@setOnCheckedChangeListener
+            val mode = if (isChecked) HardwareDelegateMode.AUTO_GPU_CPU else HardwareDelegateMode.CPU_ONLY
+            persistAndReloadConfig(currentConfig.copy(hardwareDelegate = mode))
+        }
+
+        binding.switchShowFpsCounter.setOnCheckedChangeListener { _, isChecked ->
+            if (suppressConfigListeners) return@setOnCheckedChangeListener
+            persistAndReloadConfig(currentConfig.copy(showFpsCounter = isChecked))
         }
 
         binding.chipGroupRoi.setOnCheckedStateChangeListener { _, checkedIds ->
