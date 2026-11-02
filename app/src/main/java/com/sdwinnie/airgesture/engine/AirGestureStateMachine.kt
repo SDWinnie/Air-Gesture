@@ -144,7 +144,9 @@ class AirGestureStateMachine(
         val cursorNormY: Float = 0.5f,
         val skeletonData: HandSkeletonAnalyzer.HandSkeletonData? = null,
         val eyeContactActive: Boolean = false,
-        val eyeFeedbackText: String? = null
+        val eyeFeedbackText: String? = null,
+        val eyeLockedOn: Boolean = false,
+        val eyeTrackCount: Int = 12
     )
 
     fun process(
@@ -197,7 +199,9 @@ class AirGestureStateMachine(
                 lockedHandLabel = lockedLabel,
                 events = events,
                 eyeContactActive = eyeRes.isLookingAtScreen,
-                eyeFeedbackText = eyeRes.feedbackText
+                eyeFeedbackText = eyeRes.feedbackText,
+                eyeLockedOn = eyeRes.isLockedOn,
+                eyeTrackCount = eyeRes.trackCount
             )
         }
 
@@ -272,7 +276,9 @@ class AirGestureStateMachine(
             cursorNormY = smoothedCursorY,
             skeletonData = skeleton,
             eyeContactActive = eyeRes.isLookingAtScreen,
-            eyeFeedbackText = eyeRes.feedbackText
+            eyeFeedbackText = eyeRes.feedbackText,
+            eyeLockedOn = eyeRes.isLockedOn,
+            eyeTrackCount = eyeRes.trackCount
         )
     }
 

@@ -48,7 +48,9 @@ class TouchlessActionDispatcher(
         cursorNormY: Float = 0.5f,
         skeletonData: HandSkeletonAnalyzer.HandSkeletonData? = null,
         eyeContactActive: Boolean = false,
-        lastBlinkFeedback: String? = null
+        lastBlinkFeedback: String? = null,
+        isEyeLocked: Boolean = false,
+        eyeTrackCount: Int = 12
     ): DispatchOutcome {
         val totalSlots = config.radialSlotCount.count
 
@@ -221,11 +223,12 @@ class TouchlessActionDispatcher(
             }
 
             mode == AirGestureStateMachine.Mode.DORMANT -> {
-                if (eyeContactActive || lastBlinkFeedback != null) {
+                if (eyeContactActive || lastBlinkFeedback != null || isEyeLocked) {
+                    val defaultEyeStatus = if (isEyeLocked) "🎯 ล็อกสายตา 60 FPS ($eyeTrackCount Tracks)" else "👁️ สบตาหน้าจอ (พร้อมรับกระพริบตา)"
                     HudVisualState.PalmTracking(
-                        statusText = lastBlinkFeedback ?: "👁️ สบตาหน้าจอ (พร้อมรับกระพริบตา)",
-                        postureEmoji = "👁️",
-                        handSideLabel = "สายตา",
+                        statusText = lastBlinkFeedback ?: defaultEyeStatus,
+                        postureEmoji = if (isEyeLocked) "🎯" else "👁️",
+                        handSideLabel = if (isEyeLocked) "ล็อกตา" else "สายตา",
                         landmarks = emptyList(),
                         accentHighlight = HudVisualState.AccentKind.CYAN,
                         fps = fps,
@@ -234,7 +237,9 @@ class TouchlessActionDispatcher(
                         cursorNormY = cursorNormY,
                         skeletonData = null,
                         eyeContactActive = eyeContactActive,
-                        lastBlinkFeedback = lastBlinkFeedback
+                        lastBlinkFeedback = lastBlinkFeedback,
+                        isEyeLocked = isEyeLocked,
+                        eyeTrackCount = eyeTrackCount
                     )
                 } else {
                     HudVisualState.Dormant
@@ -277,7 +282,9 @@ class TouchlessActionDispatcher(
                     cursorNormY = cursorNormY,
                     skeletonData = skeletonData,
                     eyeContactActive = eyeContactActive,
-                    lastBlinkFeedback = lastBlinkFeedback
+                    lastBlinkFeedback = lastBlinkFeedback,
+                    isEyeLocked = isEyeLocked,
+                    eyeTrackCount = eyeTrackCount
                 )
             }
         }

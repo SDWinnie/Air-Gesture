@@ -89,7 +89,7 @@ class DualStreamCameraController(
     private var lastInferenceStartMs = 0L
 
     @Volatile
-    private var lastHandDetectedMs = 0L
+    private var lastActivityDetectedMs = 0L
 
     private var smoothedFps = 0f
 
@@ -380,8 +380,9 @@ class DualStreamCameraController(
                 val nowMs = SystemClock.elapsedRealtime()
                 val minIntervalMs = thermalController.computeMinInferenceIntervalMs(
                     configuredTargetFps = activeConfig.targetFps.fps,
-                    lastHandDetectedMs = lastHandDetectedMs,
-                    nowMs = nowMs
+                    lastActivityDetectedMs = lastActivityDetectedMs,
+                    nowMs = nowMs,
+                    isEyeTrackingEnabled = activeConfig.enableEyeContactBlink
                 )
 
                 val elapsed = nowMs - lastInferenceStartMs
@@ -406,7 +407,8 @@ class DualStreamCameraController(
 
                 val eyeFrame = if (activeConfig.enableEyeContactBlink) {
                     eyeTracker.analyzeEyeFrame(
-                        volatileBitmap = volatileBitmap,
+                        pixelBuffer = downscaler.getVolatileArgbBuffer(),
+                        bufferDim = downscaler.targetDimension,
                         nowMs = nowMs,
                         config = activeConfig
                     )
@@ -420,8 +422,8 @@ class DualStreamCameraController(
                     frameTimestampMs = nowMs
                 )
 
-                if (handFrame != null) {
-                    lastHandDetectedMs = nowMs
+                if (handFrame != null || eyeFrame?.isFaceDetected == true) {
+                    lastActivityDetectedMs = nowMs
                 }
 
                 val latencyMs = (SystemClock.elapsedRealtimeNanos() - t0Ns) / 1_000_000.0f

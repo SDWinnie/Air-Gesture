@@ -125,7 +125,9 @@ sealed interface HudVisualState {
         val cursorNormY: Float = 0.5f,
         val skeletonData: HandSkeletonAnalyzer.HandSkeletonData? = null,
         val eyeContactActive: Boolean = false,
-        val lastBlinkFeedback: String? = null
+        val lastBlinkFeedback: String? = null,
+        val isEyeLocked: Boolean = false,
+        val eyeTrackCount: Int = 0
     ) : HudVisualState
 
     data class EyeBlinkFeedback(

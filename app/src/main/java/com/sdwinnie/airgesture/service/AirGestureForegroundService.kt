@@ -234,18 +234,22 @@ class AirGestureForegroundService : LifecycleService() {
             cursorNormY = step.cursorNormY,
             skeletonData = step.skeletonData,
             eyeContactActive = step.eyeContactActive,
-            lastBlinkFeedback = step.eyeFeedbackText
+            lastBlinkFeedback = step.eyeFeedbackText,
+            isEyeLocked = step.eyeLockedOn,
+            eyeTrackCount = step.eyeTrackCount
         )
 
         AirGestureRuntimeBus.updateHudState(outcome.hudState)
 
         val postureText = when (step.mode) {
             AirGestureStateMachine.Mode.DORMANT ->
-                if (step.eyeContactActive) "👁️ สบตาหน้าจอ (พร้อมรับกระพริบตา)"
+                if (step.eyeLockedOn) "🎯 ล็อกสายตา 60 FPS (${step.eyeTrackCount} Tracks)"
+                else if (step.eyeContactActive) "👁️ สบตาหน้าจอ (พร้อมรับกระพริบตา)"
                 else if (step.eyeFeedbackText != null) step.eyeFeedbackText
                 else "โหมดประหยัดพลังงาน (รอ 1 มือ / สายตา)"
             AirGestureStateMachine.Mode.PALM_ACTIVE ->
                 if (handFrame != null) "${step.posture.emoji} ${step.posture.thaiName} (${step.lockedHandLabel})"
+                else if (step.eyeLockedOn) "🎯 ล็อกสายตา (${step.eyeTrackCount} Tracks)"
                 else if (step.eyeContactActive) "👁️ สบตาหน้าจอ (${step.lockedHandLabel})"
                 else "พร้อมรับท่ามือ (${step.lockedHandLabel})"
             AirGestureStateMachine.Mode.PINCH_VOLUME -> "${activeConfig.volumePreset.badgeEmoji} กำลังปรับเสียงระบบ"

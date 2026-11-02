@@ -291,8 +291,13 @@ class PipFloatingHudView @JvmOverloads constructor(
         titlePaint.color = Color.WHITE
         canvas.drawText(st.statusText, dp(56f), h * 0.46f, titlePaint)
 
+        val pipMeta = when {
+            st.thermalWarning -> "โหมดลดความร้อน"
+            st.isEyeLocked -> "🎯 ล็อกสายตา (${st.eyeTrackCount} Tracks) • ${st.fps.toInt().coerceAtLeast(1)} FPS"
+            else -> "ล็อก ${st.handSideLabel} • ${st.fps.toInt().coerceAtLeast(1)} FPS"
+        }
         subPaint.textAlign = Paint.Align.LEFT
-        canvas.drawText("ล็อก ${st.handSideLabel} • ${st.fps.toInt().coerceAtLeast(1)} FPS", dp(56f), h * 0.74f, subPaint)
+        canvas.drawText(pipMeta, dp(56f), h * 0.74f, subPaint)
     }
 
     private fun drawPipVolumeBar(

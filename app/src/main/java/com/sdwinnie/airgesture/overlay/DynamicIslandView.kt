@@ -212,10 +212,10 @@ class DynamicIslandView @JvmOverloads constructor(
                     titlePaint
                 )
 
-                val metaLabel = if (st.thermalWarning) {
-                    "โหมดลดความร้อน"
-                } else {
-                    "ล็อก ${st.handSideLabel} • ${st.fps.toInt().coerceAtLeast(1)} FPS"
+                val metaLabel = when {
+                    st.thermalWarning -> "โหมดลดความร้อน"
+                    st.isEyeLocked -> "🎯 ล็อกสายตา (${st.eyeTrackCount} Tracks) • ${st.fps.toInt().coerceAtLeast(1)} FPS"
+                    else -> "ล็อก ${st.handSideLabel} • ${st.fps.toInt().coerceAtLeast(1)} FPS"
                 }
                 subPaint.textAlign = Paint.Align.LEFT
                 subPaint.color = if (st.thermalWarning) Color.parseColor("#FFB300") else Color.parseColor("#8CA6CA")

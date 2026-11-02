@@ -407,16 +407,78 @@ class AirGestureEngineTest {
     }
 
     @Test
-    fun `camera eye gaze tracker accurately resolves eye frame data with gaze alignment`() {
+    fun `camera eye gaze tracker accurately resolves eye frame data with 12 tracks and lock-on`() {
         val tracker = com.sdwinnie.airgesture.vision.CameraEyeGazeTracker()
         val cfg = AirGestureConfig(enableEyeContactBlink = true)
 
-        // When bitmap is null, returns null
-        val nullRes = tracker.analyzeEyeFrame(null, 100L, cfg)
-        assertNull("Null bitmap must return null", nullRes)
+        // When buffer is null, returns null
+        val nullRes = tracker.analyzeEyeFrame(null, 0, 100L, cfg)
+        assertNull("Null buffer must return null", nullRes)
 
         // When eye contact disabled, returns null
-        val disabledRes = tracker.analyzeEyeFrame(null, 100L, cfg.copy(enableEyeContactBlink = false))
+        val disabledRes = tracker.analyzeEyeFrame(null, 0, 100L, cfg.copy(enableEyeContactBlink = false))
         assertNull("Disabled eye contact must return null", disabledRes)
+
+        // Create a synthetic 100x100 face image with skin tone & eye sockets
+        val dim = 100
+        val buffer = IntArray(dim * dim) { 0xFF000000.toInt() } // black background
+
+        // Draw skin face oval in center
+        val skinR = 210
+        val skinG = 150
+        val skinB = 120
+        val skinColor = (-0x1000000) or (skinR shl 16) or (skinG shl 8) or skinB
+
+        for (y in 20..75) {
+            for (x in 25..75) {
+                buffer[y * dim + x] = skinColor
+            }
+        }
+
+        // Draw left eye socket & dark pupil at (38, 38)
+        val pupilColor = (-0x1000000) or (35 shl 16) or (30 shl 8) or 25
+        for (dy in -2..2) {
+            for (dx in -2..2) {
+                buffer[(38 + dy) * dim + (38 + dx)] = pupilColor
+                buffer[(38 + dy) * dim + (62 + dx)] = pupilColor
+            }
+        }
+
+        // Frame 1: Initial detection
+        val res1 = tracker.analyzeEyeFrame(buffer, dim, 100L, cfg)
+        assertNotNull("Face must be detected", res1)
+        assertTrue("isFaceDetected must be true", res1!!.isFaceDetected)
+
+        // Frame 2: Lock-on confirmed
+        val res2 = tracker.analyzeEyeFrame(buffer, dim, 116L, cfg)
+        assertNotNull("Frame 2 must be detected", res2)
+        assertTrue("Second consecutive frame must achieve lock-on", res2!!.isLockedOn)
+        assertEquals("Must track 12 high-density tracks", 12, res2.trackingTrackCount)
+        assertNotNull("Left eye track must be extracted", res2.leftEyeTrack)
+        assertNotNull("Right eye track must be extracted", res2.rightEyeTrack)
+        assertTrue("EAR must be open (> 0.22)", res2.averageEar > 0.22f)
+    }
+
+    @Test
+    fun `thermal and duty controller maintains 60 FPS when eye tracking is enabled`() {
+        val controller = com.sdwinnie.airgesture.vision.ThermalAndDutyController(null)
+
+        // When eye tracking is enabled, interval must be ~16ms (60 FPS), never dropping to 66ms (15 FPS)
+        val intervalEye = controller.computeMinInferenceIntervalMs(
+            configuredTargetFps = 60,
+            lastActivityDetectedMs = 0L,
+            nowMs = 10_000L,
+            isEyeTrackingEnabled = true
+        )
+        assertEquals("Eye tracking must run at full 60 FPS (16ms interval)", 16L, intervalEye)
+
+        // When eye tracking is disabled and idle, sentry operates at 30 FPS (33ms interval)
+        val intervalIdle = controller.computeMinInferenceIntervalMs(
+            configuredTargetFps = 60,
+            lastActivityDetectedMs = 0L,
+            nowMs = 10_000L,
+            isEyeTrackingEnabled = false
+        )
+        assertEquals("Idle sentry must operate at 30 FPS (33ms interval)", 33L, intervalIdle)
     }
 }

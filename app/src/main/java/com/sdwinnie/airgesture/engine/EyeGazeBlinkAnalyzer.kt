@@ -24,6 +24,17 @@ import kotlin.math.min
 class EyeGazeBlinkAnalyzer(
     private var baselineEar: Float = 0.32f
 ) {
+    data class EyeTrackPoints(
+        val pupilX: Float,
+        val pupilY: Float,
+        val upperLidY: Float,
+        val lowerLidY: Float,
+        val innerCanthusX: Float,
+        val outerCanthusX: Float,
+        val apertureHeight: Float,
+        val apertureWidth: Float
+    )
+
     data class EyeFrameData(
         val leftEar: Float,
         val rightEar: Float,
@@ -31,12 +42,16 @@ class EyeGazeBlinkAnalyzer(
         val gazePitchDeg: Float = 0f,
         val eyeDistanceNorm: Float = 0.15f,
         val isFaceDetected: Boolean = true,
-        val confidence: Float = 0.95f
+        val confidence: Float = 0.95f,
+        val isLockedOn: Boolean = false,
+        val leftEyeTrack: EyeTrackPoints? = null,
+        val rightEyeTrack: EyeTrackPoints? = null,
+        val trackingTrackCount: Int = 12
     ) {
         val averageEar: Float get() = (leftEar + rightEar) * 0.5f
 
         val isLookingAtScreen: Boolean
-            get() = isFaceDetected && abs(gazeYawDeg) < 18.0f && abs(gazePitchDeg) < 18.0f
+            get() = isFaceDetected && abs(gazeYawDeg) < 24.0f && abs(gazePitchDeg) < 24.0f
     }
 
     data class AnalysisResult(
@@ -46,7 +61,9 @@ class EyeGazeBlinkAnalyzer(
         val rightEar: Float,
         val pendingBlinkCount: Int,
         val events: List<GestureEvent>,
-        val feedbackText: String?
+        val feedbackText: String?,
+        val isLockedOn: Boolean = false,
+        val trackCount: Int = 12
     )
 
     private var wasEyeClosed = false
@@ -98,7 +115,9 @@ class EyeGazeBlinkAnalyzer(
                 rightEar = 0f,
                 pendingBlinkCount = pendingBlinkCount,
                 events = events,
-                feedbackText = feedback
+                feedbackText = feedback,
+                isLockedOn = false,
+                trackCount = 0
             )
         }
 
@@ -130,17 +149,18 @@ class EyeGazeBlinkAnalyzer(
             // Eye just closed
             wasEyeClosed = true
             eyeClosedStartMs = nowMs
+            feedback = "👁️ กำลังกระพริบตา..."
         } else if (!isEyeClosedNow && wasEyeClosed) {
             // Eye just reopened -> calculate blink duration
             val blinkDuration = nowMs - eyeClosedStartMs
             wasEyeClosed = false
             eyeClosedStartMs = -1L
 
-            // Standard human blink is 80..380ms (reject micro-jitters < 70ms or prolonged closures > 600ms)
-            if (blinkDuration in 70L..420L) {
+            // Standard human blink is 40..480ms at high frame rates
+            if (blinkDuration in 40L..480L) {
                 // If eye contact is strictly required, ensure user was looking at screen
                 val validEyeContact = !config.requireEyeContact || isLooking
-                if (validEyeContact && (nowMs - lastActionFiredMs) > 420L) {
+                if (validEyeContact && (nowMs - lastActionFiredMs) > 320L) {
                     pendingBlinkCount++
                     blinkWindowExpireMs = nowMs + config.blinkSpeedWindowMs
 
@@ -156,7 +176,7 @@ class EyeGazeBlinkAnalyzer(
                         pendingBlinkCount = 0
                         blinkWindowExpireMs = -1L
                     } else {
-                        feedback = "👁️ กระพริบตา $pendingBlinkCount ครั้ง..."
+                        feedback = "🎯 ล็อกตา: กระพริบ $pendingBlinkCount ครั้ง..."
                     }
                 }
             }
@@ -177,6 +197,10 @@ class EyeGazeBlinkAnalyzer(
             }
         }
 
+        if (feedback == null && eyeFrame.isLockedOn) {
+            feedback = if (isLooking) "🎯 ล็อกสายตาแล้ว (${eyeFrame.trackingTrackCount} Tracks)" else "👁️ มองตรงหน้าจอเพื่อสั่งงาน"
+        }
+
         return AnalysisResult(
             isLookingAtScreen = isLooking,
             gazeConfidence = eyeFrame.confidence,
@@ -184,7 +208,9 @@ class EyeGazeBlinkAnalyzer(
             rightEar = eyeFrame.rightEar,
             pendingBlinkCount = pendingBlinkCount,
             events = events,
-            feedbackText = feedback
+            feedbackText = feedback,
+            isLockedOn = eyeFrame.isLockedOn,
+            trackCount = eyeFrame.trackingTrackCount
         )
     }
 

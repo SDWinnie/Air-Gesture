@@ -17,6 +17,8 @@ class VolatileRoiDownscaler(initialDimension: Int = 224) {
     var targetDimension: Int = initialDimension
         private set
 
+    fun getVolatileArgbBuffer(): IntArray = argbScratch
+
     private var argbScratch = IntArray(initialDimension * initialDimension)
     private var yScratch = ByteArray(0)
     private var uScratch = ByteArray(0)

@@ -232,7 +232,7 @@ enum class RadialSlotCount(
 
 data class AirGestureConfig(
     val resolution: CameraResolution = CameraResolution.RES_1080P,
-    val targetFps: TargetFps = TargetFps.FPS_30,
+    val targetFps: TargetFps = TargetFps.FPS_60,
     val visionBufferSize: VisionBufferSize = VisionBufferSize.ROI_192,
     val hardwareDelegate: HardwareDelegateMode = HardwareDelegateMode.AUTO_GPU_CPU,
     val useFrontCamera: Boolean = true,
