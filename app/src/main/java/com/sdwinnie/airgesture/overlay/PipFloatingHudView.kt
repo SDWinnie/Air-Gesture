@@ -231,7 +231,10 @@ class PipFloatingHudView @JvmOverloads constructor(
         val handCy = h * 0.5f
         bonePaint.color = accent
 
-        if (palmStyle == HudPalmStyle.POSTURE_BADGE) {
+        if (st.postureEmoji == "👁️" || st.landmarks.isEmpty()) {
+            canvas.drawCircle(handCx, handCy, handR * 0.85f, bonePaint)
+            canvas.drawText(if (st.postureEmoji.isNotEmpty()) st.postureEmoji else "👁️", handCx, handCy + dp(6f), emojiPaint)
+        } else if (palmStyle == HudPalmStyle.POSTURE_BADGE) {
             canvas.drawCircle(handCx, handCy, handR * 0.85f, bonePaint)
             canvas.drawText(st.postureEmoji, handCx, handCy + dp(6f), emojiPaint)
         } else if ((palmStyle == HudPalmStyle.CYBER_SKELETON_3D || palmStyle == HudPalmStyle.CYBER_SKELETON_36 || palmStyle == HudPalmStyle.CYBER_SKELETON_48) && st.landmarks.size >= 21) {

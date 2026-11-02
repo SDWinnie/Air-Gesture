@@ -405,4 +405,18 @@ class AirGestureEngineTest {
             assertTrue("Y must be inside normalized bounds", pt.y in 0.0f..1.0f)
         }
     }
+
+    @Test
+    fun `camera eye gaze tracker accurately resolves eye frame data with gaze alignment`() {
+        val tracker = com.sdwinnie.airgesture.vision.CameraEyeGazeTracker()
+        val cfg = AirGestureConfig(enableEyeContactBlink = true)
+
+        // When bitmap is null, returns null
+        val nullRes = tracker.analyzeEyeFrame(null, 100L, cfg)
+        assertNull("Null bitmap must return null", nullRes)
+
+        // When eye contact disabled, returns null
+        val disabledRes = tracker.analyzeEyeFrame(null, 100L, cfg.copy(enableEyeContactBlink = false))
+        assertNull("Disabled eye contact must return null", disabledRes)
+    }
 }

@@ -338,6 +338,15 @@ class DynamicIslandView @JvmOverloads constructor(
         emoji: String,
         accentColor: Int
     ) {
+        if (emoji == "👁️" || landmarks.isEmpty()) {
+            jointPaint.color = Color.argb(55, Color.red(accentColor), Color.green(accentColor), Color.blue(accentColor))
+            canvas.drawCircle(centerX, centerY, radiusPx, jointPaint)
+            bonePaint.color = accentColor
+            canvas.drawCircle(centerX, centerY, radiusPx, bonePaint)
+            canvas.drawText(if (emoji.isNotEmpty()) emoji else "👁️", centerX, centerY + dp(6f), emojiPaint)
+            return
+        }
+
         when (palmStyle) {
             HudPalmStyle.CYBER_SKELETON_3D,
             HudPalmStyle.CYBER_SKELETON_36,

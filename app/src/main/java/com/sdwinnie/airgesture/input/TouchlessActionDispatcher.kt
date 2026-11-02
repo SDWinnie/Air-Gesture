@@ -209,10 +209,39 @@ class TouchlessActionDispatcher(
             }
         }
 
-        val resolvedHud: HudVisualState = when (mode) {
-            AirGestureStateMachine.Mode.DORMANT -> HudVisualState.Dormant
+        val blinkEvent = events.filterIsInstance<GestureEvent.EyeBlinkTriggered>().lastOrNull()
 
-            AirGestureStateMachine.Mode.PINCH_VOLUME -> {
+        val resolvedHud: HudVisualState = when {
+            blinkEvent != null -> {
+                HudVisualState.EyeBlinkFeedback(
+                    blinkCount = blinkEvent.blinkCount,
+                    action = blinkEvent.action,
+                    actionLabel = blinkEvent.actionDescription
+                )
+            }
+
+            mode == AirGestureStateMachine.Mode.DORMANT -> {
+                if (eyeContactActive || lastBlinkFeedback != null) {
+                    HudVisualState.PalmTracking(
+                        statusText = lastBlinkFeedback ?: "👁️ สบตาหน้าจอ (พร้อมรับกระพริบตา)",
+                        postureEmoji = "👁️",
+                        handSideLabel = "สายตา",
+                        landmarks = emptyList(),
+                        accentHighlight = HudVisualState.AccentKind.CYAN,
+                        fps = fps,
+                        thermalWarning = thermalWarning,
+                        cursorNormX = cursorNormX,
+                        cursorNormY = cursorNormY,
+                        skeletonData = null,
+                        eyeContactActive = eyeContactActive,
+                        lastBlinkFeedback = lastBlinkFeedback
+                    )
+                } else {
+                    HudVisualState.Dormant
+                }
+            }
+
+            mode == AirGestureStateMachine.Mode.PINCH_VOLUME -> {
                 val snap = volumeController.currentStatusSnapshot()
                 HudVisualState.VolumeSlider(
                     volumePercent = snap.percent,
@@ -222,7 +251,7 @@ class TouchlessActionDispatcher(
                 )
             }
 
-            AirGestureStateMachine.Mode.FIST_RADIAL_MENU -> {
+            mode == AirGestureStateMachine.Mode.FIST_RADIAL_MENU -> {
                 HudVisualState.RadialSelectorActive(
                     angleDegrees = activeRadialAngleDeg,
                     selectedSlot = activeRadialSlot.coerceAtLeast(0),
@@ -234,7 +263,7 @@ class TouchlessActionDispatcher(
                 )
             }
 
-            AirGestureStateMachine.Mode.PALM_ACTIVE -> {
+            else -> {
                 val liveEmoji = if (posture != HandPosture.NONE) posture.emoji else config.scrollPreset.badgeEmoji
                 HudVisualState.PalmTracking(
                     statusText = lastStatusLabel,

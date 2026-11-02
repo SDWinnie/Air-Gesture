@@ -3,11 +3,14 @@ package com.sdwinnie.airgesture.vision
 import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.ImageFormat
+import android.graphics.Rect
 import android.hardware.camera2.CameraCaptureSession
 import android.hardware.camera2.CameraCharacteristics
 import android.hardware.camera2.CameraDevice
 import android.hardware.camera2.CameraManager
 import android.hardware.camera2.CaptureRequest
+import android.hardware.camera2.CaptureResult
+import android.hardware.camera2.TotalCaptureResult
 import android.hardware.camera2.params.OutputConfiguration
 import android.hardware.camera2.params.SessionConfiguration
 import android.hardware.display.DisplayManager
@@ -20,6 +23,7 @@ import android.util.Range
 import android.util.Size
 import android.view.Display
 import android.view.Surface
+import com.sdwinnie.airgesture.engine.EyeGazeBlinkAnalyzer
 import com.sdwinnie.airgesture.model.AirGestureConfig
 import com.sdwinnie.airgesture.model.HandFrame
 import com.sdwinnie.airgesture.security.AirLogger
@@ -38,6 +42,7 @@ class DualStreamCameraController(
     private val thermalController: ThermalAndDutyController,
     private val onVisionStep: (
         handFrame: HandFrame?,
+        eyeFrame: EyeGazeBlinkAnalyzer.EyeFrameData?,
         nowMs: Long,
         inferenceLatencyMs: Float,
         instantFps: Float
@@ -51,6 +56,7 @@ class DualStreamCameraController(
     private val displayManager = context.applicationContext.getSystemService(Context.DISPLAY_SERVICE) as DisplayManager
 
     private val downscaler = VolatileRoiDownscaler(224)
+    private val eyeTracker = CameraEyeGazeTracker()
 
     private var cameraThread: HandlerThread? = null
     private var cameraHandler: Handler? = null
@@ -65,6 +71,8 @@ class DualStreamCameraController(
     private var isFrontFacing: Boolean = true
     private var selectedCaptureSize: Size = Size(1280, 720)
     private var selectedFpsRange: Range<Int> = Range(30, 30)
+    private var selectedFaceDetectMode: Int = CaptureRequest.STATISTICS_FACE_DETECT_MODE_OFF
+    private var sensorActiveArray: Rect? = null
 
     private var cameraDevice: CameraDevice? = null
     private var captureSession: CameraCaptureSession? = null
@@ -171,6 +179,7 @@ class DualStreamCameraController(
 
         closeCameraResources()
         downscaler.wipeVolatileMemory()
+        eyeTracker.reset()
 
         visionThread?.quitSafely()
         runCatching { visionThread?.join(350L) }
@@ -223,6 +232,16 @@ class DualStreamCameraController(
 
             val fpsRanges = chars.get(CameraCharacteristics.CONTROL_AE_AVAILABLE_TARGET_FPS_RANGES)?.toList().orEmpty()
             selectedFpsRange = chooseBestFpsRange(fpsRanges, activeConfig.targetFps.fps)
+
+            val faceModes = chars.get(CameraCharacteristics.STATISTICS_INFO_AVAILABLE_FACE_DETECT_MODES) ?: intArrayOf()
+            selectedFaceDetectMode = when {
+                faceModes.contains(CameraCharacteristics.STATISTICS_FACE_DETECT_MODE_FULL) ->
+                    CameraCharacteristics.STATISTICS_FACE_DETECT_MODE_FULL
+                faceModes.contains(CameraCharacteristics.STATISTICS_FACE_DETECT_MODE_SIMPLE) ->
+                    CameraCharacteristics.STATISTICS_FACE_DETECT_MODE_SIMPLE
+                else -> CameraCharacteristics.STATISTICS_FACE_DETECT_MODE_OFF
+            }
+            sensorActiveArray = chars.get(CameraCharacteristics.SENSOR_INFO_ACTIVE_ARRAY_SIZE)
 
             val reader = ImageReader.newInstance(
                 selectedCaptureSize.width,
@@ -295,8 +314,26 @@ class DualStreamCameraController(
                             for (s in surfaces) addTarget(s)
                             set(CaptureRequest.CONTROL_AE_TARGET_FPS_RANGE, selectedFpsRange)
                             set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_VIDEO)
+                            if (selectedFaceDetectMode != CameraCharacteristics.STATISTICS_FACE_DETECT_MODE_OFF) {
+                                set(CaptureRequest.STATISTICS_FACE_DETECT_MODE, selectedFaceDetectMode)
+                            }
                         }
-                        session.setRepeatingRequest(reqBuilder.build(), null, handler)
+                        val captureCallback = object : CameraCaptureSession.CaptureCallback() {
+                            override fun onCaptureCompleted(
+                                session: CameraCaptureSession,
+                                request: CaptureRequest,
+                                result: TotalCaptureResult
+                            ) {
+                                val faces = result.get(CaptureResult.STATISTICS_FACES)
+                                eyeTracker.onHardwareCaptureResult(
+                                    faces = faces,
+                                    activeArray = sensorActiveArray,
+                                    uprightRotDeg = computeUprightRotationDegrees(),
+                                    isFront = isFrontFacing
+                                )
+                            }
+                        }
+                        session.setRepeatingRequest(reqBuilder.build(), captureCallback, handler)
                         val summary = "${selectedCaptureSize.width}×${selectedCaptureSize.height} @ ${selectedFpsRange.upper}fps"
                         onStreamStateChanged(summary, false)
                     } catch (t: Throwable) {
@@ -367,6 +404,16 @@ class DualStreamCameraController(
                     mirrorHorizontally = isFrontFacing
                 ) ?: return
 
+                val eyeFrame = if (activeConfig.enableEyeContactBlink) {
+                    eyeTracker.analyzeEyeFrame(
+                        volatileBitmap = volatileBitmap,
+                        nowMs = nowMs,
+                        config = activeConfig
+                    )
+                } else {
+                    null
+                }
+
                 val handFrame = handTracker.detectSingleHand(
                     isotropicBitmap = volatileBitmap,
                     isMirroredSelfie = isFrontFacing,
@@ -378,7 +425,7 @@ class DualStreamCameraController(
                 }
 
                 val latencyMs = (SystemClock.elapsedRealtimeNanos() - t0Ns) / 1_000_000.0f
-                onVisionStep(handFrame, nowMs, latencyMs, smoothedFps)
+                onVisionStep(handFrame, eyeFrame, nowMs, latencyMs, smoothedFps)
             } catch (t: Throwable) {
                 AirLogger.e("VisionLoop", "Frame processing recovered safely", t)
             } finally {

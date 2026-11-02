@@ -16,6 +16,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleService
 import com.sdwinnie.airgesture.R
 import com.sdwinnie.airgesture.engine.AirGestureStateMachine
+import com.sdwinnie.airgesture.engine.EyeGazeBlinkAnalyzer
 import com.sdwinnie.airgesture.input.RadialAppSlotManager
 import com.sdwinnie.airgesture.input.SystemVolumeController
 import com.sdwinnie.airgesture.input.TouchlessActionDispatcher
@@ -207,13 +208,14 @@ class AirGestureForegroundService : LifecycleService() {
 
     private fun handleVisionStep(
         handFrame: HandFrame?,
+        eyeFrame: EyeGazeBlinkAnalyzer.EyeFrameData?,
         nowMs: Long,
         inferenceLatencyMs: Float,
         instantFps: Float
     ) {
         if (manuallyPaused || !engineRunning) return
 
-        val step = gestureStateMachine.process(handFrame, nowMs, activeConfig)
+        val step = gestureStateMachine.process(handFrame, nowMs, activeConfig, eyeFrame)
         val outcome = actionDispatcher.dispatchEvents(
             mode = step.mode,
             events = step.events,
@@ -238,9 +240,13 @@ class AirGestureForegroundService : LifecycleService() {
         AirGestureRuntimeBus.updateHudState(outcome.hudState)
 
         val postureText = when (step.mode) {
-            AirGestureStateMachine.Mode.DORMANT -> "โหมดประหยัดพลังงาน (รอ 1 มือ)"
+            AirGestureStateMachine.Mode.DORMANT ->
+                if (step.eyeContactActive) "👁️ สบตาหน้าจอ (พร้อมรับกระพริบตา)"
+                else if (step.eyeFeedbackText != null) step.eyeFeedbackText
+                else "โหมดประหยัดพลังงาน (รอ 1 มือ / สายตา)"
             AirGestureStateMachine.Mode.PALM_ACTIVE ->
                 if (handFrame != null) "${step.posture.emoji} ${step.posture.thaiName} (${step.lockedHandLabel})"
+                else if (step.eyeContactActive) "👁️ สบตาหน้าจอ (${step.lockedHandLabel})"
                 else "พร้อมรับท่ามือ (${step.lockedHandLabel})"
             AirGestureStateMachine.Mode.PINCH_VOLUME -> "${activeConfig.volumePreset.badgeEmoji} กำลังปรับเสียงระบบ"
             AirGestureStateMachine.Mode.FIST_RADIAL_MENU -> "🎡 วงกลมเลือกแอปบนหน้าจอ"
