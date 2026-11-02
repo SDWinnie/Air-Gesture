@@ -5,7 +5,9 @@ import com.sdwinnie.airgesture.model.AirGestureConfig
 import com.sdwinnie.airgesture.model.AirTapAction
 import com.sdwinnie.airgesture.model.AirTapTriggerPreset
 import com.sdwinnie.airgesture.model.BackTriggerPreset
+import com.sdwinnie.airgesture.model.BlinkAction
 import com.sdwinnie.airgesture.model.CameraResolution
+import com.sdwinnie.airgesture.model.EyeBlinkTriggerMode
 import com.sdwinnie.airgesture.model.HandLockMode
 import com.sdwinnie.airgesture.model.HardwareDelegateMode
 import com.sdwinnie.airgesture.model.HorizontalNavMode
@@ -14,7 +16,9 @@ import com.sdwinnie.airgesture.model.HudThemeColor
 import com.sdwinnie.airgesture.model.RadialSlotCount
 import com.sdwinnie.airgesture.model.RadialTriggerPreset
 import com.sdwinnie.airgesture.model.ScrollGesturePreset
+import com.sdwinnie.airgesture.model.SkeletonBoneDensity
 import com.sdwinnie.airgesture.model.TargetFps
+import com.sdwinnie.airgesture.model.VisionBalanceMode
 import com.sdwinnie.airgesture.model.VisionBufferSize
 import com.sdwinnie.airgesture.model.VolumeGesturePreset
 
@@ -44,6 +48,17 @@ class PreferenceStore(context: Context) {
             hardwareDelegate = readEnum(KEY_HARDWARE_DELEGATE, HardwareDelegateMode.AUTO_GPU_CPU, HardwareDelegateMode::valueOf),
             useFrontCamera = prefs.getBoolean(KEY_FRONT_CAMERA, true),
             handLockMode = readEnum(KEY_HAND_LOCK, HandLockMode.AUTO_SINGLE, HandLockMode::valueOf),
+            skeletonDensity = readEnum(KEY_SKELETON_DENSITY, SkeletonBoneDensity.BONES_48, SkeletonBoneDensity::valueOf),
+            visionBalanceMode = readEnum(KEY_VISION_BALANCE_MODE, VisionBalanceMode.ISOTROPIC_CENTER_WEIGHTED, VisionBalanceMode::valueOf),
+            balanceSmoothingFactor = prefs.getFloat(KEY_BALANCE_SMOOTHING, 1.0f).coerceIn(0.5f, 2.5f),
+            enableEyeContactBlink = prefs.getBoolean(KEY_ENABLE_EYE_BLINK, true),
+            requireEyeContact = prefs.getBoolean(KEY_REQUIRE_EYE_CONTACT, true),
+            eyeBlinkTriggerMode = readEnum(KEY_EYE_TRIGGER_MODE, EyeBlinkTriggerMode.BOTH_EYES, EyeBlinkTriggerMode::valueOf),
+            singleBlinkAction = readEnum(KEY_SINGLE_BLINK_ACTION, BlinkAction.SCROLL_DOWN, BlinkAction::valueOf),
+            doubleBlinkAction = readEnum(KEY_DOUBLE_BLINK_ACTION, BlinkAction.SCROLL_UP, BlinkAction::valueOf),
+            tripleBlinkAction = readEnum(KEY_TRIPLE_BLINK_ACTION, BlinkAction.SEND_HEART_LIKE, BlinkAction::valueOf),
+            blinkSensitivity = prefs.getFloat(KEY_BLINK_SENS, 1.0f).coerceIn(0.5f, 2.5f),
+            blinkSpeedWindowMs = prefs.getLong(KEY_BLINK_WINDOW_MS, 650L).coerceIn(350L, 1200L),
             enableAirTap = prefs.getBoolean(KEY_ENABLE_AIR_TAP, true),
             airTapTrigger = readEnum(KEY_AIR_TAP_TRIGGER, AirTapTriggerPreset.ANY_TAP, AirTapTriggerPreset::valueOf),
             airTapAction = readEnum(KEY_AIR_TAP_ACTION, AirTapAction.CLICK_AT_CURSOR, AirTapAction::valueOf),
@@ -74,6 +89,17 @@ class PreferenceStore(context: Context) {
             .putString(KEY_HARDWARE_DELEGATE, config.hardwareDelegate.name)
             .putBoolean(KEY_FRONT_CAMERA, config.useFrontCamera)
             .putString(KEY_HAND_LOCK, config.handLockMode.name)
+            .putString(KEY_SKELETON_DENSITY, config.skeletonDensity.name)
+            .putString(KEY_VISION_BALANCE_MODE, config.visionBalanceMode.name)
+            .putFloat(KEY_BALANCE_SMOOTHING, config.balanceSmoothingFactor)
+            .putBoolean(KEY_ENABLE_EYE_BLINK, config.enableEyeContactBlink)
+            .putBoolean(KEY_REQUIRE_EYE_CONTACT, config.requireEyeContact)
+            .putString(KEY_EYE_TRIGGER_MODE, config.eyeBlinkTriggerMode.name)
+            .putString(KEY_SINGLE_BLINK_ACTION, config.singleBlinkAction.name)
+            .putString(KEY_DOUBLE_BLINK_ACTION, config.doubleBlinkAction.name)
+            .putString(KEY_TRIPLE_BLINK_ACTION, config.tripleBlinkAction.name)
+            .putFloat(KEY_BLINK_SENS, config.blinkSensitivity)
+            .putLong(KEY_BLINK_WINDOW_MS, config.blinkSpeedWindowMs)
             .putBoolean(KEY_ENABLE_AIR_TAP, config.enableAirTap)
             .putString(KEY_AIR_TAP_TRIGGER, config.airTapTrigger.name)
             .putString(KEY_AIR_TAP_ACTION, config.airTapAction.name)
@@ -116,6 +142,17 @@ class PreferenceStore(context: Context) {
         private const val KEY_HARDWARE_DELEGATE = "hardware_delegate"
         private const val KEY_FRONT_CAMERA = "use_front_camera"
         private const val KEY_HAND_LOCK = "hand_lock_mode"
+        private const val KEY_SKELETON_DENSITY = "skeleton_density"
+        private const val KEY_VISION_BALANCE_MODE = "vision_balance_mode"
+        private const val KEY_BALANCE_SMOOTHING = "balance_smoothing_factor"
+        private const val KEY_ENABLE_EYE_BLINK = "enable_eye_blink"
+        private const val KEY_REQUIRE_EYE_CONTACT = "require_eye_contact"
+        private const val KEY_EYE_TRIGGER_MODE = "eye_trigger_mode"
+        private const val KEY_SINGLE_BLINK_ACTION = "single_blink_action"
+        private const val KEY_DOUBLE_BLINK_ACTION = "double_blink_action"
+        private const val KEY_TRIPLE_BLINK_ACTION = "triple_blink_action"
+        private const val KEY_BLINK_SENS = "blink_sensitivity"
+        private const val KEY_BLINK_WINDOW_MS = "blink_window_ms"
         private const val KEY_ENABLE_AIR_TAP = "enable_air_tap"
         private const val KEY_AIR_TAP_TRIGGER = "air_tap_trigger"
         private const val KEY_AIR_TAP_ACTION = "air_tap_action"

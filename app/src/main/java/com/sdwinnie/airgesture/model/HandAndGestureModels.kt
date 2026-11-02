@@ -70,6 +70,17 @@ sealed interface GestureEvent {
         val tapKind: String
     ) : GestureEvent
 
+    data class EyeBlinkTriggered(
+        val blinkCount: Int,
+        val action: BlinkAction,
+        val actionDescription: String
+    ) : GestureEvent
+
+    data class EyeContactChanged(
+        val isLookingAtScreen: Boolean,
+        val gazeConfidence: Float
+    ) : GestureEvent
+
     data class PinchVolumeModulate(
         val normalizedDeltaY: Float
     ) : GestureEvent
@@ -112,7 +123,15 @@ sealed interface HudVisualState {
         val thermalWarning: Boolean = false,
         val cursorNormX: Float = 0.5f,
         val cursorNormY: Float = 0.5f,
-        val skeletonData: HandSkeletonAnalyzer.HandSkeletonData? = null
+        val skeletonData: HandSkeletonAnalyzer.HandSkeletonData? = null,
+        val eyeContactActive: Boolean = false,
+        val lastBlinkFeedback: String? = null
+    ) : HudVisualState
+
+    data class EyeBlinkFeedback(
+        val blinkCount: Int,
+        val action: BlinkAction,
+        val actionLabel: String
     ) : HudVisualState
 
     data class AirTapFeedback(

@@ -189,6 +189,14 @@ class PipFloatingHudView @JvmOverloads constructor(
                 canvas.drawText("👆 เคาะจอ: ${st.tapKind}", w * 0.5f, h * 0.54f, titlePaint)
             }
 
+            is HudVisualState.EyeBlinkFeedback -> {
+                borderPaint.color = Color.parseColor("#FF4D8D")
+                canvas.drawRoundRect(cardRect, radius, radius, borderPaint)
+                titlePaint.textAlign = Paint.Align.CENTER
+                titlePaint.color = Color.parseColor("#FF4D8D")
+                canvas.drawText("${st.action.badgeEmoji} ${st.actionLabel}", w * 0.5f, h * 0.54f, titlePaint)
+            }
+
             is HudVisualState.PausedNotice -> {
                 borderPaint.color = Color.parseColor("#FFB300")
                 canvas.drawRoundRect(cardRect, radius, radius, borderPaint)
@@ -226,7 +234,7 @@ class PipFloatingHudView @JvmOverloads constructor(
         if (palmStyle == HudPalmStyle.POSTURE_BADGE) {
             canvas.drawCircle(handCx, handCy, handR * 0.85f, bonePaint)
             canvas.drawText(st.postureEmoji, handCx, handCy + dp(6f), emojiPaint)
-        } else if ((palmStyle == HudPalmStyle.CYBER_SKELETON_3D) && st.landmarks.size >= 21) {
+        } else if ((palmStyle == HudPalmStyle.CYBER_SKELETON_3D || palmStyle == HudPalmStyle.CYBER_SKELETON_36 || palmStyle == HudPalmStyle.CYBER_SKELETON_48) && st.landmarks.size >= 21) {
             var minX = 1f
             var maxX = 0f
             var minY = 1f

@@ -8,6 +8,7 @@ import com.sdwinnie.airgesture.model.HandPosture
 import com.sdwinnie.airgesture.model.HandSide
 import com.sdwinnie.airgesture.model.Landmark3D
 import com.sdwinnie.airgesture.model.RadialSlotCount
+import com.sdwinnie.airgesture.model.SkeletonBoneDensity
 import com.sdwinnie.airgesture.model.VolumeGesturePreset
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -296,15 +297,21 @@ class AirGestureEngineTest {
     }
 
     @Test
-    fun `hand skeleton analyzer extracts 23 bones, palm normal, and detects touchless air tap`() {
+    fun `hand skeleton analyzer extracts 20, 36, and 48 bones, palm normal, and detects touchless air tap`() {
         val palm = makeOpenPalm(timestampMs = 100L)
-        val skeleton = HandSkeletonAnalyzer.analyze(palm.landmarks, 100L)
+        val skeleton20 = HandSkeletonAnalyzer.analyze(palm.landmarks, 100L, density = SkeletonBoneDensity.BONES_20)
+        assertEquals(23, skeleton20.bones.size)
 
-        assertEquals(23, skeleton.bones.size)
-        assertTrue("Open palm must face camera", skeleton.isPalmFacingCamera)
-        assertTrue("Index finger must be extended in open palm", skeleton.fingerFlexion[1] > 0.60f)
+        val skeleton36 = HandSkeletonAnalyzer.analyze(palm.landmarks, 100L, density = SkeletonBoneDensity.BONES_36)
+        assertEquals(36, skeleton36.bones.size)
 
-        // Simulate an index fingertip forward knock in Z (Z plunges from 0f to -0.09f relative to palm)
+        val skeleton48 = HandSkeletonAnalyzer.analyze(palm.landmarks, 100L, density = SkeletonBoneDensity.BONES_48)
+        assertEquals(48, skeleton48.bones.size)
+
+        assertTrue("Open palm must face camera", skeleton48.isPalmFacingCamera)
+        assertTrue("Index finger must be extended in open palm", skeleton48.fingerFlexion[1] > 0.60f)
+
+        // Simulate an index fingertip forward knock in Z (Z plunges from 0f to -0.12f relative to palm)
         HandSkeletonAnalyzer.reset()
         val baseHand = makeOpenPalm(timestampMs = 100L).landmarks.toMutableList()
         val s1 = HandSkeletonAnalyzer.analyze(baseHand, 100L)
@@ -319,5 +326,83 @@ class AirGestureEngineTest {
         )
         val s2 = HandSkeletonAnalyzer.analyze(tapHand, 220L)
         assertTrue("Index forward knock must trigger touchless Air Tap", s2.isAirTapDetected)
+    }
+
+    @Test
+    fun `eye gaze blink analyzer executes 1 blink scroll down, 2 blink scroll up, and 3 blink send heart`() {
+        val analyzer = EyeGazeBlinkAnalyzer(baselineEar = 0.32f)
+        val cfg = AirGestureConfig(
+            enableEyeContactBlink = true,
+            requireEyeContact = true,
+            singleBlinkAction = com.sdwinnie.airgesture.model.BlinkAction.SCROLL_DOWN,
+            doubleBlinkAction = com.sdwinnie.airgesture.model.BlinkAction.SCROLL_UP,
+            tripleBlinkAction = com.sdwinnie.airgesture.model.BlinkAction.SEND_HEART_LIKE,
+            blinkSpeedWindowMs = 500L
+        )
+
+        // Helper to simulate a complete eye blink cycle (open -> closed for 150ms -> open)
+        fun simulateSingleBlink(startMs: Long, isLookingAtScreen: Boolean = true): EyeGazeBlinkAnalyzer.AnalysisResult {
+            val yaw = if (isLookingAtScreen) 0f else 35f // 35 deg = looking away!
+            // Baseline open eye
+            analyzer.process(EyeGazeBlinkAnalyzer.EyeFrameData(leftEar = 0.32f, rightEar = 0.32f, gazeYawDeg = yaw), startMs, cfg)
+            // Eye closed (EAR 0.10)
+            analyzer.process(EyeGazeBlinkAnalyzer.EyeFrameData(leftEar = 0.10f, rightEar = 0.10f, gazeYawDeg = yaw), startMs + 40L, cfg)
+            // Eye reopened (EAR 0.32) 150ms later
+            return analyzer.process(EyeGazeBlinkAnalyzer.EyeFrameData(leftEar = 0.32f, rightEar = 0.32f, gazeYawDeg = yaw), startMs + 190L, cfg)
+        }
+
+        // Test 1: Single Blink -> Scroll Down
+        analyzer.reset()
+        simulateSingleBlink(100L)
+        // Advance time past the 500ms window
+        val res1 = analyzer.process(EyeGazeBlinkAnalyzer.EyeFrameData(leftEar = 0.32f, rightEar = 0.32f), 800L, cfg)
+        val blink1 = res1.events.filterIsInstance<GestureEvent.EyeBlinkTriggered>().firstOrNull()
+        assertNotNull("1 Blink must trigger EyeBlinkTriggered event", blink1)
+        assertEquals(1, blink1?.blinkCount)
+        assertEquals(com.sdwinnie.airgesture.model.BlinkAction.SCROLL_DOWN, blink1?.action)
+
+        // Test 2: Double Blink -> Scroll Up
+        analyzer.reset()
+        simulateSingleBlink(1000L)
+        simulateSingleBlink(1300L) // 2nd blink 300ms later within window
+        val res2 = analyzer.process(EyeGazeBlinkAnalyzer.EyeFrameData(leftEar = 0.32f, rightEar = 0.32f), 2000L, cfg)
+        val blink2 = res2.events.filterIsInstance<GestureEvent.EyeBlinkTriggered>().firstOrNull()
+        assertNotNull("2 Blinks must trigger EyeBlinkTriggered event", blink2)
+        assertEquals(2, blink2?.blinkCount)
+        assertEquals(com.sdwinnie.airgesture.model.BlinkAction.SCROLL_UP, blink2?.action)
+
+        // Test 3: Triple Blink -> Send Heart / Like (fires immediately on 3rd blink!)
+        analyzer.reset()
+        simulateSingleBlink(3000L)
+        simulateSingleBlink(3300L)
+        val res3 = simulateSingleBlink(3600L)
+        val blink3 = res3.events.filterIsInstance<GestureEvent.EyeBlinkTriggered>().firstOrNull()
+        assertNotNull("3 Blinks must trigger Heart Like", blink3)
+        assertEquals(3, blink3?.blinkCount)
+        assertEquals(com.sdwinnie.airgesture.model.BlinkAction.SEND_HEART_LIKE, blink3?.action)
+
+        // Test 4: Looking Away (Eye contact check) -> Ignored!
+        analyzer.reset()
+        simulateSingleBlink(5000L, isLookingAtScreen = false)
+        val res4 = analyzer.process(EyeGazeBlinkAnalyzer.EyeFrameData(leftEar = 0.32f, rightEar = 0.32f), 5800L, cfg)
+        val blinkIgnored = res4.events.filterIsInstance<GestureEvent.EyeBlinkTriggered>().firstOrNull()
+        assertNull("Blink while looking away must be ignored", blinkIgnored)
+    }
+
+    @Test
+    fun `balanced vision calibrator normalizes landmarks with 1-euro spatial filter`() {
+        val calibrator = com.sdwinnie.airgesture.vision.BalancedVisionCalibrator()
+        val raw = makeOpenPalm(timestampMs = 100L).landmarks
+        val balanced = calibrator.calibrateLandmarks(
+            raw = raw,
+            timestampMs = 100L,
+            mode = com.sdwinnie.airgesture.model.VisionBalanceMode.ISOTROPIC_CENTER_WEIGHTED
+        )
+
+        assertEquals(21, balanced.size)
+        for (pt in balanced) {
+            assertTrue("X must be inside normalized bounds", pt.x in 0.0f..1.0f)
+            assertTrue("Y must be inside normalized bounds", pt.y in 0.0f..1.0f)
+        }
     }
 }

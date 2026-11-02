@@ -230,7 +230,9 @@ class AirGestureForegroundService : LifecycleService() {
             thermalWarning = thermalController.isThermalThrottling,
             cursorNormX = step.cursorNormX,
             cursorNormY = step.cursorNormY,
-            skeletonData = step.skeletonData
+            skeletonData = step.skeletonData,
+            eyeContactActive = step.eyeContactActive,
+            lastBlinkFeedback = step.eyeFeedbackText
         )
 
         AirGestureRuntimeBus.updateHudState(outcome.hudState)

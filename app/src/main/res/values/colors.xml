@@ -8,6 +8,7 @@
     <color name="accent_violet">#8C62FF</color>
     <color name="accent_amber">#FFC400</color>
     <color name="accent_coral">#FF4D6D</color>
+    <color name="accent_rose">#FF4D8D</color>
     <color name="text_primary">#F5F8FF</color>
     <color name="text_secondary">#93A6C8</color>
     <color name="text_muted">#627597</color>

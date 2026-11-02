@@ -766,6 +766,250 @@
                             android:stepSize="0.1" />
                     </LinearLayout>
 
+                    <!-- Eye Contact & Multi-Blink AI Control Card -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="14dp"
+                        android:background="@drawable/bg_hero_bento"
+                        android:orientation="vertical"
+                        android:padding="16dp">
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal">
+
+                            <TextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="👁️ ระบบสบตา &amp; กระพริบตาสั่งงาน (Eye Contact AI)"
+                                android:textColor="@color/accent_cyan"
+                                android:textSize="14.5sp"
+                                android:textStyle="bold" />
+
+                            <com.google.android.material.materialswitch.MaterialSwitch
+                                android:id="@+id/switchEnableEyeBlink"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:checked="true" />
+                        </LinearLayout>
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="3dp"
+                            android:text="กระพริบตา 1 ครั้ง เลื่อนลง • 2 ครั้ง เลื่อนขึ้น • 3 ครั้ง กดใจ (Like TikTok/Reels) ควบคุมอิสระด้วย Edge-AI"
+                            android:textColor="@color/text_secondary"
+                            android:textSize="11.5sp" />
+
+                        <com.google.android.material.materialswitch.MaterialSwitch
+                            android:id="@+id/switchRequireEyeContact"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:checked="true"
+                            android:text="🔒 ต้องสบตาหน้าจอก่อน (ป้องกันการสั่งงานเมื่อหันมองทางอื่น)"
+                            android:textColor="@color/text_primary"
+                            android:textSize="12.5sp" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="10dp"
+                            android:text="โหมดตรวจจับดวงตา (Scope)"
+                            android:textColor="@color/text_primary"
+                            android:textSize="12sp"
+                            android:textStyle="bold" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnPickEyeBlinkScope"
+                            style="@style/Widget.Material3.Button.OutlinedButton"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="4dp"
+                            android:text="โหมดตรวจจับดวงตา"
+                            android:textAllCaps="false"
+                            android:textColor="@color/accent_cyan"
+                            android:textSize="12sp"
+                            app:cornerRadius="12dp"
+                            app:strokeColor="@color/stroke_subtle" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="10dp"
+                            android:text="1. กระพริบตา 1 ครั้ง (Single Blink)"
+                            android:textColor="@color/text_primary"
+                            android:textSize="12sp"
+                            android:textStyle="bold" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnPickSingleBlink"
+                            style="@style/Widget.Material3.Button.OutlinedButton"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="4dp"
+                            android:text="คำสั่งกระพริบตา 1 ครั้ง"
+                            android:textAllCaps="false"
+                            android:textColor="@color/accent_emerald"
+                            android:textSize="12sp"
+                            app:cornerRadius="12dp"
+                            app:strokeColor="@color/stroke_subtle" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="10dp"
+                            android:text="2. กระพริบตา 2 ครั้ง (Double Blink)"
+                            android:textColor="@color/text_primary"
+                            android:textSize="12sp"
+                            android:textStyle="bold" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnPickDoubleBlink"
+                            style="@style/Widget.Material3.Button.OutlinedButton"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="4dp"
+                            android:text="คำสั่งกระพริบตา 2 ครั้ง"
+                            android:textAllCaps="false"
+                            android:textColor="@color/accent_emerald"
+                            android:textSize="12sp"
+                            app:cornerRadius="12dp"
+                            app:strokeColor="@color/stroke_subtle" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="10dp"
+                            android:text="3. กระพริบตา 3 ครั้ง (Triple Blink)"
+                            android:textColor="@color/text_primary"
+                            android:textSize="12sp"
+                            android:textStyle="bold" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnPickTripleBlink"
+                            style="@style/Widget.Material3.Button.OutlinedButton"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="4dp"
+                            android:text="คำสั่งกระพริบตา 3 ครั้ง"
+                            android:textAllCaps="false"
+                            android:textColor="@color/accent_rose"
+                            android:textSize="12sp"
+                            app:cornerRadius="12dp"
+                            app:strokeColor="@color/stroke_subtle" />
+
+                        <TextView
+                            android:id="@+id/tvBlinkSensLabel"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="10dp"
+                            android:text="ความไวการตรวจจับกระพริบตา: 1.0x (EAR สมดุล)"
+                            android:textColor="@color/text_secondary"
+                            android:textSize="11.5sp" />
+
+                        <com.google.android.material.slider.Slider
+                            android:id="@+id/sliderBlinkSens"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:value="1.0"
+                            android:valueFrom="0.5"
+                            android:valueTo="2.5"
+                            android:stepSize="0.1" />
+                    </LinearLayout>
+
+                    <!-- Hand Skeleton Bone Density & Vision Balance Card -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="14dp"
+                        android:background="@drawable/bg_glass_bento"
+                        android:orientation="vertical"
+                        android:padding="16dp">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="🦴 โครงสร้างกระดูกมือ 20, 36, 48 ชิ้น &amp; ปรับสมดุลมุมมอง AI"
+                            android:textColor="@color/accent_emerald"
+                            android:textSize="14.5sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="3dp"
+                            android:text="คำนวณข้อต่อนิ้วและข้อมือตามกายวิภาคศาสตร์ พร้อมปรับสมดุลภาพถ่ายหน้าจอ 1:1 ขจัดอาการกระตุก"
+                            android:textColor="@color/text_secondary"
+                            android:textSize="11.5sp" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="10dp"
+                            android:text="จำนวนกระดูกมือที่ตรวจจับ (Bone Density)"
+                            android:textColor="@color/text_primary"
+                            android:textSize="12sp"
+                            android:textStyle="bold" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnPickBoneDensity"
+                            style="@style/Widget.Material3.Button.OutlinedButton"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="4dp"
+                            android:text="ระดับกระดูกมือ"
+                            android:textAllCaps="false"
+                            android:textColor="@color/accent_emerald"
+                            android:textSize="12sp"
+                            app:cornerRadius="12dp"
+                            app:strokeColor="@color/stroke_subtle" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="10dp"
+                            android:text="โหมดความสมดุลการมองเห็นของ AI (Vision Calibration)"
+                            android:textColor="@color/text_primary"
+                            android:textSize="12sp"
+                            android:textStyle="bold" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnPickVisionBalance"
+                            style="@style/Widget.Material3.Button.OutlinedButton"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="4dp"
+                            android:text="โหมดสมดุลการมองเห็น"
+                            android:textAllCaps="false"
+                            android:textColor="@color/accent_cyan"
+                            android:textSize="12sp"
+                            app:cornerRadius="12dp"
+                            app:strokeColor="@color/stroke_subtle" />
+
+                        <TextView
+                            android:id="@+id/tvBalanceSmoothingLabel"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="10dp"
+                            android:text="ตัวกรองความนิ่งและสมดุลพิกัด (1-Euro Smoothing): 1.0x"
+                            android:textColor="@color/text_secondary"
+                            android:textSize="11.5sp" />
+
+                        <com.google.android.material.slider.Slider
+                            android:id="@+id/sliderBalanceSmoothing"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:value="1.0"
+                            android:valueFrom="0.5"
+                            android:valueTo="2.5"
+                            android:stepSize="0.1" />
+                    </LinearLayout>
+
                     <!-- Ergonomic Human Gesture Presets Card -->
                     <LinearLayout
                         android:layout_width="match_parent"

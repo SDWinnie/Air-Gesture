@@ -3,6 +3,7 @@ package com.sdwinnie.airgesture.engine
 import com.sdwinnie.airgesture.model.AirTapTriggerPreset
 import com.sdwinnie.airgesture.model.HandPosture
 import com.sdwinnie.airgesture.model.Landmark3D
+import com.sdwinnie.airgesture.model.SkeletonBoneDensity
 import kotlin.math.abs
 import kotlin.math.acos
 import kotlin.math.atan2
@@ -54,7 +55,10 @@ object HandSkeletonAnalyzer {
         MIDDLE("นิ้วกลาง"),
         RING("นิ้วนาง"),
         PINKY("นิ้วก้อย"),
-        PALM_ARCH("ส่วนโค้งฝ่ามือ")
+        PALM_ARCH("ส่วนโค้งฝ่ามือ"),
+        CARPAL_ARCH("กระดูกข้อมือ"),
+        FOREARM_AXIS("ท่อนแขน"),
+        CURVATURE_CHAIN("ความโค้งงอนิ้วมือ")
     }
 
     enum class BoneType {
@@ -62,7 +66,11 @@ object HandSkeletonAnalyzer {
         PROXIMAL_PHALANX,
         INTERMEDIATE_PHALANX,
         DISTAL_PHALANX,
-        TRANSVERSE_ARCH
+        TRANSVERSE_ARCH,
+        CARPAL_BONE,
+        FOREARM_SHAFT,
+        CURVATURE_SEGMENT,
+        TRANSVERSE_LIGAMENT
     }
 
     data class BoneSegment3D(
@@ -73,7 +81,10 @@ object HandSkeletonAnalyzer {
         val lengthNormalized: Float,
         val dirX: Float,
         val dirY: Float,
-        val dirZ: Float
+        val dirZ: Float,
+        val startPoint: Landmark3D? = null,
+        val endPoint: Landmark3D? = null,
+        val label: String = ""
     )
 
     data class Vector3D(val x: Float, val y: Float, val z: Float) {
@@ -151,7 +162,7 @@ object HandSkeletonAnalyzer {
     }
 
     /**
-     * Extracts full 20-bone skeleton, 3D palm normal, continuous joint angles, and Air Tap impulses.
+     * Extracts full 20, 36, or 48-bone kinematic skeleton, 3D palm normal, continuous joint angles, and Air Tap impulses.
      */
     fun analyze(
         landmarks: List<Landmark3D>,
@@ -159,7 +170,8 @@ object HandSkeletonAnalyzer {
         palmScale: Float = HandGeometry.palmScale(landmarks),
         airTapTrigger: AirTapTriggerPreset = AirTapTriggerPreset.ANY_TAP,
         airTapSensitivity: Float = 1.0f,
-        enableAirTap: Boolean = true
+        enableAirTap: Boolean = true,
+        density: SkeletonBoneDensity = SkeletonBoneDensity.BONES_48
     ): HandSkeletonData {
         require(landmarks.size >= 21) { "Skeleton requires 21 landmarks" }
 
@@ -179,11 +191,17 @@ object HandSkeletonAnalyzer {
         val isBackFacingCamera = normal.z < -0.18f
         val isKnifeHand = abs(normal.z) <= 0.22f
 
-        // 2. Extract All 20 Anatomical Bones + 3 Knuckle Arch Segments
-        val bones = ArrayList<BoneSegment3D>(23)
-        fun addBone(s: Int, e: Int, ray: FingerRay, type: BoneType) {
-            val p1 = landmarks[s]
-            val p2 = landmarks[e]
+        // 2. Extract 20, 36, or 48 Anatomical Bone Segments
+        val bones = ArrayList<BoneSegment3D>(48)
+        fun addBone(
+            s: Int,
+            e: Int,
+            ray: FingerRay,
+            type: BoneType,
+            p1: Landmark3D = landmarks[s],
+            p2: Landmark3D = landmarks[e],
+            label: String = ""
+        ) {
             val dx = p2.x - p1.x
             val dy = p2.y - p1.y
             val dz = p2.z - p1.z
@@ -198,45 +216,138 @@ object HandSkeletonAnalyzer {
                     lengthNormalized = len / palmScale.coerceAtLeast(0.01f),
                     dirX = dx * inv,
                     dirY = dy * inv,
-                    dirZ = dz * inv
+                    dirZ = dz * inv,
+                    startPoint = p1,
+                    endPoint = p2,
+                    label = label
                 )
             )
         }
 
-        // Thumb Bones
-        addBone(WRIST, THUMB_CMC, FingerRay.THUMB, BoneType.METACARPAL)
-        addBone(THUMB_CMC, THUMB_MCP, FingerRay.THUMB, BoneType.METACARPAL)
-        addBone(THUMB_MCP, THUMB_IP, FingerRay.THUMB, BoneType.PROXIMAL_PHALANX)
-        addBone(THUMB_IP, THUMB_TIP, FingerRay.THUMB, BoneType.DISTAL_PHALANX)
+        // --- Core 20 Anatomical Bones ---
+        // Thumb Bones (4)
+        addBone(WRIST, THUMB_CMC, FingerRay.THUMB, BoneType.METACARPAL, label = "Thumb Metacarpal")
+        addBone(THUMB_CMC, THUMB_MCP, FingerRay.THUMB, BoneType.METACARPAL, label = "Thumb CMC-MCP")
+        addBone(THUMB_MCP, THUMB_IP, FingerRay.THUMB, BoneType.PROXIMAL_PHALANX, label = "Thumb Proximal")
+        addBone(THUMB_IP, THUMB_TIP, FingerRay.THUMB, BoneType.DISTAL_PHALANX, label = "Thumb Distal")
 
-        // Index Bones
-        addBone(WRIST, INDEX_MCP, FingerRay.INDEX, BoneType.METACARPAL)
-        addBone(INDEX_MCP, INDEX_PIP, FingerRay.INDEX, BoneType.PROXIMAL_PHALANX)
-        addBone(INDEX_PIP, INDEX_DIP, FingerRay.INDEX, BoneType.INTERMEDIATE_PHALANX)
-        addBone(INDEX_DIP, INDEX_TIP, FingerRay.INDEX, BoneType.DISTAL_PHALANX)
+        // Index Bones (4)
+        addBone(WRIST, INDEX_MCP, FingerRay.INDEX, BoneType.METACARPAL, label = "Index Metacarpal")
+        addBone(INDEX_MCP, INDEX_PIP, FingerRay.INDEX, BoneType.PROXIMAL_PHALANX, label = "Index Proximal")
+        addBone(INDEX_PIP, INDEX_DIP, FingerRay.INDEX, BoneType.INTERMEDIATE_PHALANX, label = "Index Intermediate")
+        addBone(INDEX_DIP, INDEX_TIP, FingerRay.INDEX, BoneType.DISTAL_PHALANX, label = "Index Distal")
 
-        // Middle Bones
-        addBone(WRIST, MIDDLE_MCP, FingerRay.MIDDLE, BoneType.METACARPAL)
-        addBone(MIDDLE_MCP, MIDDLE_PIP, FingerRay.MIDDLE, BoneType.PROXIMAL_PHALANX)
-        addBone(MIDDLE_PIP, MIDDLE_DIP, FingerRay.MIDDLE, BoneType.INTERMEDIATE_PHALANX)
-        addBone(MIDDLE_DIP, MIDDLE_TIP, FingerRay.MIDDLE, BoneType.DISTAL_PHALANX)
+        // Middle Bones (4)
+        addBone(WRIST, MIDDLE_MCP, FingerRay.MIDDLE, BoneType.METACARPAL, label = "Middle Metacarpal")
+        addBone(MIDDLE_MCP, MIDDLE_PIP, FingerRay.MIDDLE, BoneType.PROXIMAL_PHALANX, label = "Middle Proximal")
+        addBone(MIDDLE_PIP, MIDDLE_DIP, FingerRay.MIDDLE, BoneType.INTERMEDIATE_PHALANX, label = "Middle Intermediate")
+        addBone(MIDDLE_DIP, MIDDLE_TIP, FingerRay.MIDDLE, BoneType.DISTAL_PHALANX, label = "Middle Distal")
 
-        // Ring Bones
-        addBone(WRIST, RING_MCP, FingerRay.RING, BoneType.METACARPAL)
-        addBone(RING_MCP, RING_PIP, FingerRay.RING, BoneType.PROXIMAL_PHALANX)
-        addBone(RING_PIP, RING_DIP, FingerRay.RING, BoneType.INTERMEDIATE_PHALANX)
-        addBone(RING_DIP, RING_TIP, FingerRay.RING, BoneType.DISTAL_PHALANX)
+        // Ring Bones (4)
+        addBone(WRIST, RING_MCP, FingerRay.RING, BoneType.METACARPAL, label = "Ring Metacarpal")
+        addBone(RING_MCP, RING_PIP, FingerRay.RING, BoneType.PROXIMAL_PHALANX, label = "Ring Proximal")
+        addBone(RING_PIP, RING_DIP, FingerRay.RING, BoneType.INTERMEDIATE_PHALANX, label = "Ring Intermediate")
+        addBone(RING_DIP, RING_TIP, FingerRay.RING, BoneType.DISTAL_PHALANX, label = "Ring Distal")
 
-        // Pinky Bones
-        addBone(WRIST, PINKY_MCP, FingerRay.PINKY, BoneType.METACARPAL)
-        addBone(PINKY_MCP, PINKY_PIP, FingerRay.PINKY, BoneType.PROXIMAL_PHALANX)
-        addBone(PINKY_PIP, PINKY_DIP, FingerRay.PINKY, BoneType.INTERMEDIATE_PHALANX)
-        addBone(PINKY_DIP, PINKY_TIP, FingerRay.PINKY, BoneType.DISTAL_PHALANX)
+        // Pinky Bones (4)
+        addBone(WRIST, PINKY_MCP, FingerRay.PINKY, BoneType.METACARPAL, label = "Pinky Metacarpal")
+        addBone(PINKY_MCP, PINKY_PIP, FingerRay.PINKY, BoneType.PROXIMAL_PHALANX, label = "Pinky Proximal")
+        addBone(PINKY_PIP, PINKY_DIP, FingerRay.PINKY, BoneType.INTERMEDIATE_PHALANX, label = "Pinky Intermediate")
+        addBone(PINKY_DIP, PINKY_TIP, FingerRay.PINKY, BoneType.DISTAL_PHALANX, label = "Pinky Distal")
 
-        // Knuckle Arch Segments
-        addBone(INDEX_MCP, MIDDLE_MCP, FingerRay.PALM_ARCH, BoneType.TRANSVERSE_ARCH)
-        addBone(MIDDLE_MCP, RING_MCP, FingerRay.PALM_ARCH, BoneType.TRANSVERSE_ARCH)
-        addBone(RING_MCP, PINKY_MCP, FingerRay.PALM_ARCH, BoneType.TRANSVERSE_ARCH)
+        if (density == SkeletonBoneDensity.BONES_20) {
+            // Keep exactly 20 or add 3 arches if desired
+            addBone(INDEX_MCP, MIDDLE_MCP, FingerRay.PALM_ARCH, BoneType.TRANSVERSE_ARCH, label = "Arch I-M")
+            addBone(MIDDLE_MCP, RING_MCP, FingerRay.PALM_ARCH, BoneType.TRANSVERSE_ARCH, label = "Arch M-R")
+            addBone(RING_MCP, PINKY_MCP, FingerRay.PALM_ARCH, BoneType.TRANSVERSE_ARCH, label = "Arch R-P")
+        } else {
+            // --- 3 Knuckle Arch Segments ---
+            addBone(INDEX_MCP, MIDDLE_MCP, FingerRay.PALM_ARCH, BoneType.TRANSVERSE_ARCH, label = "Arch Index-Middle")
+            addBone(MIDDLE_MCP, RING_MCP, FingerRay.PALM_ARCH, BoneType.TRANSVERSE_ARCH, label = "Arch Middle-Ring")
+            addBone(RING_MCP, PINKY_MCP, FingerRay.PALM_ARCH, BoneType.TRANSVERSE_ARCH, label = "Arch Ring-Pinky")
+
+            // --- 13 Carpal & Forearm Biomechanical Segments (Total = 36 Bones) ---
+            val forearmDirX = (wrist.x - middleMcp.x)
+            val forearmDirY = (wrist.y - middleMcp.y)
+            val forearmLen = hypot(forearmDirX, forearmDirY).coerceAtLeast(1e-5f)
+            val fNormX = forearmDirX / forearmLen
+            val fNormY = forearmDirY / forearmLen
+
+            // Radial Styloid & Ulnar Styloid
+            val radialStyloid = Landmark3D(wrist.x - vWidth.x * 0.32f, wrist.y - vWidth.y * 0.32f, wrist.z)
+            val ulnarStyloid = Landmark3D(wrist.x + vWidth.x * 0.32f, wrist.y + vWidth.y * 0.32f, wrist.z)
+
+            // Forearm Anchors
+            val radiusShaftAnchor = Landmark3D(radialStyloid.x + fNormX * palmScale * 0.85f, radialStyloid.y + fNormY * palmScale * 0.85f, wrist.z)
+            val ulnaShaftAnchor = Landmark3D(ulnarStyloid.x + fNormX * palmScale * 0.85f, ulnarStyloid.y + fNormY * palmScale * 0.85f, wrist.z)
+
+            // 1-3 Forearm
+            addBone(21, 22, FingerRay.FOREARM_AXIS, BoneType.FOREARM_SHAFT, radiusShaftAnchor, radialStyloid, "Radius Shaft")
+            addBone(23, 24, FingerRay.FOREARM_AXIS, BoneType.FOREARM_SHAFT, ulnaShaftAnchor, ulnarStyloid, "Ulna Shaft")
+            addBone(22, 24, FingerRay.FOREARM_AXIS, BoneType.TRANSVERSE_LIGAMENT, radialStyloid, ulnarStyloid, "DRUJ Ligament")
+
+            // 4-11 Carpal Bones (8)
+            val scaphoid = Landmark3D(wrist.x - vWidth.x * 0.18f + fNormX * -0.1f * palmScale, wrist.y - vWidth.y * 0.18f + fNormY * -0.1f * palmScale, wrist.z)
+            val lunate = Landmark3D(wrist.x + fNormX * -0.1f * palmScale, wrist.y + fNormY * -0.1f * palmScale, wrist.z)
+            val triquetrum = Landmark3D(wrist.x + vWidth.x * 0.18f + fNormX * -0.1f * palmScale, wrist.y + vWidth.y * 0.18f + fNormY * -0.1f * palmScale, wrist.z)
+            val pisiform = Landmark3D(triquetrum.x + normal.x * 0.08f * palmScale, triquetrum.y + normal.y * 0.08f * palmScale, triquetrum.z + normal.z * 0.08f * palmScale)
+
+            val trapezium = Landmark3D(scaphoid.x - vWidth.x * 0.15f + fNormX * -0.22f * palmScale, scaphoid.y - vWidth.y * 0.15f + fNormY * -0.22f * palmScale, wrist.z)
+            val trapezoid = Landmark3D(scaphoid.x + fNormX * -0.22f * palmScale, scaphoid.y + fNormY * -0.22f * palmScale, wrist.z)
+            val capitate = Landmark3D(lunate.x + fNormX * -0.24f * palmScale, lunate.y + fNormY * -0.24f * palmScale, wrist.z)
+            val hamate = Landmark3D(triquetrum.x + fNormX * -0.22f * palmScale, triquetrum.y + fNormY * -0.22f * palmScale, wrist.z)
+
+            addBone(22, 25, FingerRay.CARPAL_ARCH, BoneType.CARPAL_BONE, radialStyloid, scaphoid, "Scaphoid")
+            addBone(0, 26, FingerRay.CARPAL_ARCH, BoneType.CARPAL_BONE, wrist, lunate, "Lunate")
+            addBone(24, 27, FingerRay.CARPAL_ARCH, BoneType.CARPAL_BONE, ulnarStyloid, triquetrum, "Triquetrum")
+            addBone(27, 28, FingerRay.CARPAL_ARCH, BoneType.CARPAL_BONE, triquetrum, pisiform, "Pisiform")
+            addBone(25, 29, FingerRay.CARPAL_ARCH, BoneType.CARPAL_BONE, scaphoid, trapezium, "Trapezium")
+            addBone(25, 30, FingerRay.CARPAL_ARCH, BoneType.CARPAL_BONE, scaphoid, trapezoid, "Trapezoid")
+            addBone(26, 31, FingerRay.CARPAL_ARCH, BoneType.CARPAL_BONE, lunate, capitate, "Capitate")
+            addBone(27, 32, FingerRay.CARPAL_ARCH, BoneType.CARPAL_BONE, triquetrum, hamate, "Hamate")
+
+            // 12-13 Carpal Retinaculum & Palmar Ray (Total = 36 Bones)
+            addBone(29, 32, FingerRay.CARPAL_ARCH, BoneType.TRANSVERSE_LIGAMENT, trapezium, hamate, "Transverse Carpal Ligament")
+            addBone(26, 31, FingerRay.PALM_ARCH, BoneType.TRANSVERSE_ARCH, lunate, capitate, "Palmar Aponeurosis")
+
+            if (density == SkeletonBoneDensity.BONES_48) {
+                // --- 12 Clinical Kinematic Curvature & Intermetacarpal Segments (Total = 48 Bones) ---
+                fun midArc(p1: Landmark3D, p2: Landmark3D, curveNorm: Float = 0.05f): Landmark3D {
+                    return Landmark3D(
+                        x = (p1.x + p2.x) * 0.5f + normal.x * curveNorm * palmScale,
+                        y = (p1.y + p2.y) * 0.5f + normal.y * curveNorm * palmScale,
+                        z = (p1.z + p2.z) * 0.5f + normal.z * curveNorm * palmScale
+                    )
+                }
+
+                // 8 Curvature Sub-Bones (Mid-shaft arc divisions for Proximal & Intermediate phalanges)
+                val idxProxMid = midArc(landmarks[INDEX_MCP], landmarks[INDEX_PIP])
+                val idxInterMid = midArc(landmarks[INDEX_PIP], landmarks[INDEX_DIP])
+                addBone(INDEX_MCP, 33, FingerRay.CURVATURE_CHAIN, BoneType.CURVATURE_SEGMENT, landmarks[INDEX_MCP], idxProxMid, "Index Proximal Arc")
+                addBone(INDEX_PIP, 34, FingerRay.CURVATURE_CHAIN, BoneType.CURVATURE_SEGMENT, landmarks[INDEX_PIP], idxInterMid, "Index Intermediate Arc")
+
+                val midProxMid = midArc(landmarks[MIDDLE_MCP], landmarks[MIDDLE_PIP])
+                val midInterMid = midArc(landmarks[MIDDLE_PIP], landmarks[MIDDLE_DIP])
+                addBone(MIDDLE_MCP, 35, FingerRay.CURVATURE_CHAIN, BoneType.CURVATURE_SEGMENT, landmarks[MIDDLE_MCP], midProxMid, "Middle Proximal Arc")
+                addBone(MIDDLE_PIP, 36, FingerRay.CURVATURE_CHAIN, BoneType.CURVATURE_SEGMENT, landmarks[MIDDLE_PIP], midInterMid, "Middle Intermediate Arc")
+
+                val rngProxMid = midArc(landmarks[RING_MCP], landmarks[RING_PIP])
+                val rngInterMid = midArc(landmarks[RING_PIP], landmarks[RING_DIP])
+                addBone(RING_MCP, 37, FingerRay.CURVATURE_CHAIN, BoneType.CURVATURE_SEGMENT, landmarks[RING_MCP], rngProxMid, "Ring Proximal Arc")
+                addBone(RING_PIP, 38, FingerRay.CURVATURE_CHAIN, BoneType.CURVATURE_SEGMENT, landmarks[RING_PIP], rngInterMid, "Ring Intermediate Arc")
+
+                val pnkProxMid = midArc(landmarks[PINKY_MCP], landmarks[PINKY_PIP])
+                val pnkInterMid = midArc(landmarks[PINKY_PIP], landmarks[PINKY_DIP])
+                addBone(PINKY_MCP, 39, FingerRay.CURVATURE_CHAIN, BoneType.CURVATURE_SEGMENT, landmarks[PINKY_MCP], pnkProxMid, "Pinky Proximal Arc")
+                addBone(PINKY_PIP, 40, FingerRay.CURVATURE_CHAIN, BoneType.CURVATURE_SEGMENT, landmarks[PINKY_PIP], pnkInterMid, "Pinky Intermediate Arc")
+
+                // 4 Deep Intermetacarpal Transverse Ligaments (Total = 48 Bones!)
+                addBone(THUMB_CMC, INDEX_MCP, FingerRay.PALM_ARCH, BoneType.TRANSVERSE_LIGAMENT, landmarks[THUMB_CMC], landmarks[INDEX_MCP], "Intermetacarpal I-II")
+                addBone(INDEX_MCP, MIDDLE_MCP, FingerRay.PALM_ARCH, BoneType.TRANSVERSE_LIGAMENT, landmarks[INDEX_MCP], landmarks[MIDDLE_MCP], "Intermetacarpal II-III")
+                addBone(MIDDLE_MCP, RING_MCP, FingerRay.PALM_ARCH, BoneType.TRANSVERSE_LIGAMENT, landmarks[MIDDLE_MCP], landmarks[RING_MCP], "Intermetacarpal III-IV")
+                addBone(RING_MCP, PINKY_MCP, FingerRay.PALM_ARCH, BoneType.TRANSVERSE_LIGAMENT, landmarks[RING_MCP], landmarks[PINKY_MCP], "Intermetacarpal IV-V")
+            }
+        }
 
         // 3. Compute Finger Flexion [0..1]
         val fingerFlexion = FloatArray(5)

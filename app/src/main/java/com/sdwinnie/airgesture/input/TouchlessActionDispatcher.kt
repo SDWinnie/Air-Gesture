@@ -4,6 +4,7 @@ import com.sdwinnie.airgesture.engine.AirGestureStateMachine
 import com.sdwinnie.airgesture.engine.HandSkeletonAnalyzer
 import com.sdwinnie.airgesture.model.AirGestureConfig
 import com.sdwinnie.airgesture.model.AirTapAction
+import com.sdwinnie.airgesture.model.BlinkAction
 import com.sdwinnie.airgesture.model.GestureEvent
 import com.sdwinnie.airgesture.model.HandFrame
 import com.sdwinnie.airgesture.model.HandPosture
@@ -45,7 +46,9 @@ class TouchlessActionDispatcher(
         thermalWarning: Boolean,
         cursorNormX: Float = 0.5f,
         cursorNormY: Float = 0.5f,
-        skeletonData: HandSkeletonAnalyzer.HandSkeletonData? = null
+        skeletonData: HandSkeletonAnalyzer.HandSkeletonData? = null,
+        eyeContactActive: Boolean = false,
+        lastBlinkFeedback: String? = null
     ): DispatchOutcome {
         val totalSlots = config.radialSlotCount.count
 
@@ -72,6 +75,32 @@ class TouchlessActionDispatcher(
                         "👆 ${event.tapKind} -> $actionName สำเร็จ!"
                     } else {
                         "👆 $actionName (โปรดเปิดการช่วยเหลือพิเศษ)"
+                    }
+                }
+                is GestureEvent.EyeBlinkTriggered -> {
+                    val a11y = AirAccessibilityService.activeInstance
+                    val ok = when (event.action) {
+                        BlinkAction.SCROLL_DOWN -> a11y?.injectBlinkScroll(scrollUp = true, sensitivity = config.scrollSensitivity) ?: false
+                        BlinkAction.SCROLL_UP -> a11y?.injectBlinkScroll(scrollUp = false, sensitivity = config.scrollSensitivity) ?: false
+                        BlinkAction.SEND_HEART_LIKE -> a11y?.injectHeartDoubleTap(cursorNormX, cursorNormY) ?: false
+                        BlinkAction.CLICK_AT_CURSOR -> a11y?.injectAirTapClick(cursorNormX, cursorNormY) ?: false
+                        BlinkAction.CLICK_SCREEN_CENTER -> a11y?.injectAirTapClick(0.5f, 0.5f) ?: false
+                        BlinkAction.PLAY_PAUSE_MEDIA -> a11y?.injectMediaPlayPause() ?: false
+                        BlinkAction.QUICK_BACK -> a11y?.performQuickBack() ?: false
+                        BlinkAction.NONE -> false
+                    }
+                    lastStatusLabel = "${event.action.badgeEmoji} ${event.actionDescription}"
+                    lastAccent = if (event.action == BlinkAction.SEND_HEART_LIKE) HudVisualState.AccentKind.AMBER else HudVisualState.AccentKind.CYAN
+                    lastActionSummary = if (ok) {
+                        "👁️ ${event.actionDescription} สำเร็จ!"
+                    } else {
+                        "👁️ ${event.actionDescription} (โปรดเปิดการช่วยเหลือพิเศษ)"
+                    }
+                }
+                is GestureEvent.EyeContactChanged -> {
+                    if (event.isLookingAtScreen) {
+                        lastStatusLabel = "👁️ สบตาหน้าจอ (พร้อมรับกระพริบตา)"
+                        lastAccent = HudVisualState.AccentKind.CYAN
                     }
                 }
                 GestureEvent.WakeDynamicIsland -> {
@@ -217,7 +246,9 @@ class TouchlessActionDispatcher(
                     thermalWarning = thermalWarning,
                     cursorNormX = cursorNormX,
                     cursorNormY = cursorNormY,
-                    skeletonData = skeletonData
+                    skeletonData = skeletonData,
+                    eyeContactActive = eyeContactActive,
+                    lastBlinkFeedback = lastBlinkFeedback
                 )
             }
         }

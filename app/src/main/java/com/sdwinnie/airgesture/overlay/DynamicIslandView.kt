@@ -130,6 +130,10 @@ class DynamicIslandView @JvmOverloads constructor(
                 targetPillWidth = dp(264f)
                 targetPillHeight = dp(44f)
             }
+            is HudVisualState.EyeBlinkFeedback -> {
+                targetPillWidth = dp(272f)
+                targetPillHeight = dp(46f)
+            }
             is HudVisualState.PausedNotice -> {
                 targetPillWidth = dp(228f)
                 targetPillHeight = dp(38f)
@@ -178,6 +182,15 @@ class DynamicIslandView @JvmOverloads constructor(
 
         when (val st = visualState) {
             HudVisualState.Dormant -> Unit
+
+            is HudVisualState.EyeBlinkFeedback -> {
+                titlePaint.textAlign = Paint.Align.CENTER
+                titlePaint.color = Color.parseColor("#FF4D8D")
+                canvas.drawText("${st.action.badgeEmoji} ${st.actionLabel}", pillRect.centerX(), pillRect.centerY() - dp(1.5f), titlePaint)
+                subPaint.textAlign = Paint.Align.CENTER
+                subPaint.color = Color.parseColor("#8CA6CA")
+                canvas.drawText("กระพริบตา ${st.blinkCount} ครั้ง สำเร็จ!", pillRect.centerX(), pillRect.centerY() + dp(12.5f), subPaint)
+            }
 
             is HudVisualState.PalmTracking -> {
                 drawCustomizablePalmGraphic(
@@ -326,7 +339,9 @@ class DynamicIslandView @JvmOverloads constructor(
         accentColor: Int
     ) {
         when (palmStyle) {
-            HudPalmStyle.CYBER_SKELETON_3D -> {
+            HudPalmStyle.CYBER_SKELETON_3D,
+            HudPalmStyle.CYBER_SKELETON_36,
+            HudPalmStyle.CYBER_SKELETON_48 -> {
                 drawCyberSkeleton3D(canvas, centerX, centerY, radiusPx, landmarks)
             }
             HudPalmStyle.GLOWING_PALM -> {
@@ -514,6 +529,7 @@ class DynamicIslandView @JvmOverloads constructor(
                 VolumeDirection.STEADY -> primaryTheme
             }
             is HudVisualState.AirTapFeedback -> Color.parseColor("#00E676")
+            is HudVisualState.EyeBlinkFeedback -> Color.parseColor("#FF4D8D")
             is HudVisualState.RadialSelectorActive -> primaryTheme
             is HudVisualState.PausedNotice -> Color.parseColor("#FFB300")
         }

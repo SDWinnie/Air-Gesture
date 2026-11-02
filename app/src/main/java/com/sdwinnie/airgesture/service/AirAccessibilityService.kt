@@ -164,6 +164,20 @@ class AirAccessibilityService : AccessibilityService() {
         return injectAirTapClick(0.5f, 0.5f)
     }
 
+    /**
+     * Injects rapid double tap at the specified normalized position to like / heart (เช่น บน TikTok, Reels, IG, Shorts).
+     */
+    fun injectHeartDoubleTap(normX: Float = 0.5f, normY: Float = 0.5f): Boolean {
+        return injectAirTapDoubleClick(normX, normY)
+    }
+
+    /**
+     * Injects vertical scroll triggered by Eye Blinks (1 Blink = Down, 2 Blinks = Up).
+     */
+    fun injectBlinkScroll(scrollUp: Boolean, sensitivity: Float = 1.0f): Boolean {
+        return injectSmoothVerticalScroll(handMovedUp = scrollUp, normalizedSpeed = 3.2f, sensitivity = sensitivity)
+    }
+
     fun injectSmoothVerticalScroll(
         handMovedUp: Boolean,
         normalizedSpeed: Float,

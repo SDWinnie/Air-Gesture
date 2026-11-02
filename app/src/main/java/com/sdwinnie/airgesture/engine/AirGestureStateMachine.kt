@@ -8,6 +8,7 @@ import com.sdwinnie.airgesture.model.HandPosture
 import com.sdwinnie.airgesture.model.Landmark3D
 import com.sdwinnie.airgesture.model.RadialTriggerPreset
 import com.sdwinnie.airgesture.model.ScrollGesturePreset
+import com.sdwinnie.airgesture.model.VisionBalanceMode
 import com.sdwinnie.airgesture.model.VolumeGesturePreset
 import kotlin.math.abs
 import kotlin.math.hypot
@@ -61,6 +62,9 @@ class AirGestureStateMachine(
 
     var currentDetectedPosture: HandPosture = HandPosture.NONE
         private set
+
+    val eyeAnalyzer = EyeGazeBlinkAnalyzer()
+    val visionCalibrator = com.sdwinnie.airgesture.vision.BalancedVisionCalibrator()
 
     private val singleHandLock = SingleHandLockTracker()
     private val filterBank = LandmarkBankOneEuroFilter()
@@ -126,6 +130,8 @@ class AirGestureStateMachine(
         radialAnchorCenter = null
         radialEverLeftCancelZone = false
         radialReleaseFrames = 0
+        eyeAnalyzer.reset()
+        visionCalibrator.reset()
     }
 
     data class StepOutput(
@@ -136,15 +142,21 @@ class AirGestureStateMachine(
         val events: List<GestureEvent>,
         val cursorNormX: Float = 0.5f,
         val cursorNormY: Float = 0.5f,
-        val skeletonData: HandSkeletonAnalyzer.HandSkeletonData? = null
+        val skeletonData: HandSkeletonAnalyzer.HandSkeletonData? = null,
+        val eyeContactActive: Boolean = false,
+        val eyeFeedbackText: String? = null
     )
 
     fun process(
         rawFrame: HandFrame?,
         nowMs: Long,
-        config: AirGestureConfig = AirGestureConfig()
+        config: AirGestureConfig = AirGestureConfig(),
+        eyeFrame: EyeGazeBlinkAnalyzer.EyeFrameData? = null
     ): StepOutput {
         val events = mutableListOf<GestureEvent>()
+        val eyeRes = eyeAnalyzer.process(eyeFrame, nowMs, config)
+        events.addAll(eyeRes.events)
+
         val gatedFrame = singleHandLock.filterSingleHand(rawFrame, nowMs, config.handLockMode)
         val lockedLabel = singleHandLock.lockedSide?.thaiLabel ?: config.handLockMode.displayName.take(14)
 
@@ -178,11 +190,30 @@ class AirGestureStateMachine(
                 currentMode = Mode.DORMANT
                 events.add(GestureEvent.SleepDynamicIsland)
             }
-            return StepOutput(currentMode, null, HandPosture.NONE, lockedLabel, events)
+            return StepOutput(
+                mode = currentMode,
+                smoothedFrame = null,
+                posture = HandPosture.NONE,
+                lockedHandLabel = lockedLabel,
+                events = events,
+                eyeContactActive = eyeRes.isLookingAtScreen,
+                eyeFeedbackText = eyeRes.feedbackText
+            )
         }
 
         lastHandSeenMs = nowMs
-        val frame = filterBank.filter(gatedFrame)
+        val filteredFrame = filterBank.filter(gatedFrame)
+        val frame = if (config.visionBalanceMode == VisionBalanceMode.ADAPTIVE_EDGE_SOFT_MARGIN) {
+            val balanced = visionCalibrator.calibrateLandmarks(
+                raw = filteredFrame.landmarks,
+                timestampMs = filteredFrame.timestampMs,
+                mode = config.visionBalanceMode,
+                smoothingFactor = config.balanceSmoothingFactor
+            )
+            filteredFrame.copy(landmarks = balanced)
+        } else {
+            filteredFrame
+        }
         val landmarks = frame.landmarks
         val scale = HandGeometry.palmScale(landmarks)
         val palmCenter = HandGeometry.palmCentroid(landmarks)
@@ -202,7 +233,8 @@ class AirGestureStateMachine(
             palmScale = scale,
             airTapTrigger = config.airTapTrigger,
             airTapSensitivity = config.airTapSensitivity,
-            enableAirTap = config.enableAirTap
+            enableAirTap = config.enableAirTap,
+            density = config.skeletonDensity
         )
 
         val posture = if (skeleton.classifiedPosture != HandPosture.NONE) {
@@ -238,7 +270,9 @@ class AirGestureStateMachine(
             events = events,
             cursorNormX = smoothedCursorX,
             cursorNormY = smoothedCursorY,
-            skeletonData = skeleton
+            skeletonData = skeleton,
+            eyeContactActive = eyeRes.isLookingAtScreen,
+            eyeFeedbackText = eyeRes.feedbackText
         )
     }
 

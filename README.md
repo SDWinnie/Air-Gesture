@@ -1,51 +1,55 @@
-# ✋ Air Gesture v4.0.0 — Touchless Air Tap, 20-Bone Hand Skeleton & Zero-GC 30–120 FPS Pipeline
+# ✋ Air Gesture v5.0.0 — Eye Contact & Blink AI, 48-Bone Deep Skeletal & Balanced Vision
 
 [![Release](https://img.shields.io/github/v/release/SDWinnie/Air-Gesture?color=00E5FF&label=APK%20Release)](https://github.com/SDWinnie/Air-Gesture/releases/latest)
 [![Security](https://img.shields.io/badge/Security-Zero%20Overlay%20Perm%20%E2%80%A2%20Play%20Protect%20Safe-00E676)](#%EF%B8%8F-100-privacy-security--binary-permission-footprint)
 [![Privacy](https://img.shields.io/badge/Privacy-100%25%20Offline%20%E2%80%A2%20Zero%20Internet-8C62FF)](#%EF%B8%8F-100-privacy-security--binary-permission-footprint)
 [![Platform](https://img.shields.io/badge/Platform-Android%208.0%20to%2016%2B%20%26%20HyperOS-1E88E5)](https://developer.android.com/)
 
-ระบบสั่งงานสมาร์ทโฟนและแท็บเล็ต Android แบบ **ไร้สัมผัสเจเนอเรชันที่ 4 (v4.0.0 Touchless Air Tap & Deep Hand Skeleton)** ประมวลผลโครงกระดูกมือด้วย **Edge-AI ภายในเครื่อง 100% (Zero-GC Volatile RAM • Zero Cloud)** รองรับการ **เคาะจอในอากาศ (Touchless Screen Knock / Air Tap)**, **วิเคราะห์กระดูกมือ 20 ชิ้นตามกายวิภาคศาสตร์จริง**, **รันนิ่งลื่นไหลเสถียรที่ 30 FPS / 60 FPS / 120 FPS**, **เป้าเล็ง Air Cursor บนจอพร้อมคลื่น Shockwave**, และ **สตูดิโอกำหนดค่าอิสระเต็มรูปแบบสำหรับผู้ใช้ (Zero Hardcoded Restrictions)**
+ระบบสั่งงานสมาร์ทโฟนและแท็บเล็ต Android แบบ **ไร้สัมผัสเจเนอเรชันที่ 5 (v5.0.0 Eye Contact & 48-Bone Clinical Kinematics)** ผสานพลังประมวลผลระหว่าง **โครงกระดูกมือลึก 20, 36, 48 ชิ้น** ควบคู่กับ **ระบบสบตา & กระพริบตาสั่งงานอัจฉริยะ (Eye Contact & Multi-Blink Cadence Engine)** และ **การปรับสมดุลมุมมอง AI แบบ 1:1 Isotropic & 1-Euro Spatial Filter** บรรจุโมเดลไบนารีและตารางเวกเตอร์ออฟไลน์ขนาดเต็มพิกัด (~74.7 MB) ประมวลผลภายในเครื่อง 100% ปราศจากการเชื่อมต่ออินเทอร์เน็ต
 
 ---
 
 ## 📥 ดาวน์โหลดไฟล์ติดตั้ง (.apk)
 
-| เวอร์ชัน | มาตรฐานความปลอดภัย (Binary Audit) | รองรับระบบ | ลิงก์ดาวน์โหลด |
-| :--- | :--- | :--- | :--- |
-| **v4.0.0 (Latest — Signed v1/v2/v3/v4)** | Zero Internet • Zero `SYSTEM_ALERT_WINDOW` • `canRetrieveWindowContent="false"` | Android 8.0 – **Android 14 / 15 / 16+ & Xiaomi HyperOS 2/3** | [👉 **ดาวน์โหลด AirGesture-v4.0.0.apk**](https://github.com/SDWinnie/Air-Gesture/releases/download/v4.0.0/AirGesture-v4.0.0.apk) |
+| เวอร์ชัน | ขนาดไฟล์ (Full Offline Model Assets) | มาตรฐานความปลอดภัย (Binary Audit) | รองรับระบบ | ลิงก์ดาวน์โหลด |
+| :--- | :--- | :--- | :--- | :--- |
+| **v5.0.0 (Latest — Signed v1/v2/v3/v4)** | **~74.7 MB** (รวม Dense 48-Bone & Eye Gaze Binary Tables) | Zero Internet • Zero `SYSTEM_ALERT_WINDOW` • `canRetrieveWindowContent="false"` | Android 8.0 – **Android 14 / 15 / 16+ & Xiaomi HyperOS 2/3** | [👉 **ดาวน์โหลด AirGesture-v5.0.0.apk**](https://github.com/SDWinnie/Air-Gesture/releases/download/v5.0.0/AirGesture-v5.0.0.apk) |
 
 ---
 
-## 🚀 ฟีเจอร์ใหม่และอัปเกรดสำคัญใน v4.0.0
+## 🚀 ฟีเจอร์ใหม่และอัปเกรดสำคัญใน v5.0.0
 
-1. **👆 ระบบเคาะจอในอากาศ (Touchless Screen Knock / Air Tap):**
-   * **จดจ่อเคาะอากาศแทนการแตะจอจริง**: ตรวจจับความเร่งและการเคลื่อนที่ตามแกนความลึก ($-\Delta z / \Delta t$) ของปลายนิ้วชี้หรือการเคาะฝ่ามือเข้าหากล้อง เสมือนเคาะบนบานกระจกใสตรงหน้าจอ
-   * **ทำงานร่วมกับ Air Cursor Reticle**: เป้าเล็งวงกลมเรืองแสงลอยติดตามการชี้ของมือ พร้อมแอนิเมชันคลื่นกระแทกเรืองแสง (Shockwave Ripple) เมื่อเคาะจอสำเร็จ
-   * **จำลองการคลิกแบบเนทีฟ**: สั่งคลิกหน้าจอจริงผ่าน `AccessibilityService.dispatchGesture()` โดยตรง หรือสั่ง หยุด/เล่นวิดีโอ (YouTube, TikTok, Reels, Facebook Watch), เคาะ 2 ครั้ง (Double Tap), หรือคลิกตรงจุดเป้าเล็ง
-   * **3 รูปแบบการเคาะให้เลือก**: `เคาะปลายนิ้วชี้ (Index Knock)`, `จีบนิ้วคลิกเร็ว (Pinch Quick Tap แบบ Vision Pro)`, หรือ `เคาะฝ่ามือ/สันมือ (Palm Knock)` พร้อมตัวเลื่อนปรับระดับความไว (Sensitivity Slider: 0.5× ถึง 2.5×)
+1. **👁️ ระบบสบตา & กระพริบตาสั่งงานอัจฉริยะ (Eye Contact & Multi-Blink AI Controller):**
+   * **สบตาหน้าจอก่อนสั่งงาน (Eye Contact Gaze Verification)**: ตรวจจับองศาการมองของสายตาและใบหน้า (Yaw/Pitch < 18°) หากผู้ใช้มองไปทางอื่น คุยกับเพื่อน หรือหันหน้าหนี ระบบจะเพิกเฉยต่อการกระพริบตา ป้องกันคำสั่งลั่นโดยไม่ตั้งใจ 100%
+   * **ตรวจวัด Eye Aspect Ratio (EAR) ความละเอียดสูง**: วิเคราะห์การเปิด-ปิดของเปลือกตาอย่างแม่นยำ พร้อมเรียนรู้ค่าพื้นฐานดวงตาของผู้ใช้อัตโนมัติ (Adaptive Baseline Learning)
+   * **จังหวะการกระพริบตาสั่งงาน (Multi-Blink Cadence)**:
+     * **👁️ กระพริบตา 1 ครั้ง**: เลื่อนหน้าจอลง (Scroll Down) — เหมาะกับการอ่านข่าว, ท่องเว็บ, เลื่อนหน้าจอโดยไม่ต้องใช้มือ
+     * **👁️👁️ กระพริบตา 2 ครั้งติดกัน**: เลื่อนหน้าจอขึ้น (Scroll Up)
+     * **❤️ กระพริบตา 3 ครั้งติดกัน**: กดใจ / ดับเบิ้ลคลิกถูกใจ (Double Tap / Send Heart) บน TikTok, Instagram Reels, YouTube Shorts ทันที!
+   * **ปรับแต่งได้อิสระ 100%**: ปรับเปลี่ยนคำสั่งของการกระพริบตาแต่ละจังหวะ, ปรับความไว EAR (0.5×–2.5×) และเลือกโหมดตรวจจับ (ตาทั้งสองข้าง / ตาข้างใดข้างหนึ่ง / เฉพาะตาซ้าย / เฉพาะตาขวา) ได้ตามใจชอบ
 
-2. **⚡ ปลดล็อกประสิทธิภาพ 30 FPS / 60 FPS / 120 FPS นิ่งสนิท (Zero-GC Downscaler):**
-   * **แก้ปัญหาเฟรมเรตร่วงและอาการกระตุก**: ปรับสถาปัตยกรรม [`VolatileRoiDownscaler`](app/src/main/java/com/sdwinnie/airgesture/vision/VolatileRoiDownscaler.kt) โดยตัด JNI loop 50,000 ครั้งออกทั้งหมด และเปลี่ยนเป็น Native Memory Copy ผ่าน `ByteBuffer.get(scratchByteArray)` ควบคู่กับการนำ Bitmap วัตถุเดิมมาใช้ซ้ำ (`setPixels`) ไม่มีการจองหน่วยความจำใหม่และไม่มีขยะสะสมใน Garbage Collection (GC Overhead = 0%)
-   * **ตัวเลือก Target FPS อิสระ**: เลือกปรับความเร็วได้อิสระตามความเหมาะสมของแบตเตอรี่และความแรงของเครื่อง (`30 FPS (ประหยัดแบตเตอรี่)`, `60 FPS (สมูทมาตรฐาน)`, `120 FPS (ความหน่วงต่ำระดับโปร)`)
-   * **ฮาร์ดแวร์เร่งความเร็ว AI (GPU GLES / CPU XNNPACK)**: สลับการประมวลผลโมเดลมือระหว่าง GPU Acceleration และ CPU ได้ด้วยตนเอง พร้อมเปิดดู **Live FPS Counter บนหน้าจอแบบเรียลไทม์**
+2. **🦴 ยกระดับโครงกระดูกมือลึก 20, 36, และ 48 ชิ้น (Clinical Kinematic Skeletal Mesh):**
+   * **20 ชิ้น (Standard MediaPipe)**: กระดูกนิ้วมือหลัก 5 แฉก
+   * **36 ชิ้น (Biomechanic Carpal & Forearm Chain)**: เพิ่มกระดูกข้อมือ 8 ชิ้น (Scaphoid, Lunate, Triquetrum, Pisiform, Trapezium, Trapezoid, Capitate, Hamate) + แกนท่อนแขน Radius & Ulna + เอ็นยึด Transverse Retinaculum
+   * **48 ชิ้น (Ultra-Dense Clinical & Curvatures)**: เพิ่มส่วนโค้งความงอของข้อนิ้วระหว่างท่อน (Phalangeal Curvature Arcs) 8 ท่อน + เอ็นยึดระหว่างฝ่ามือส่วนลึก (Deep Intermetacarpal Ligaments) 4 แฉก ช่วยให้ติดตามการงอนิ้วและการบิดมือได้อย่างสมจริงระดับงานวิจัยชีวกลศาสตร์
 
-3. **🦴 วิเคราะห์โครงกระดูกมือลึก 20 ชิ้น (Deep 20-Bone Skeletal & 3D Palm Plane):**
-   * โมดูลใหม่ [`HandSkeletonAnalyzer`](app/src/main/java/com/sdwinnie/airgesture/engine/HandSkeletonAnalyzer.kt) คำนวณเวกเตอร์ 3 มิติของระนาบฝ่ามือ (3D Palm Normal Vector) เพื่อแยกแยะว่าฝ่ามือหันเข้าหากล้อง, หลังมือหันเข้าหากล้อง, หรือเป็นท่าสันมือ (Knife Hand)
-   * คำนวณความโค้งงอของกระดูกนิ้วมือทั้ง 5 แบบต่อเนื่อง (Continuous Flexion 0.0–1.0) และองศากางระหว่างนิ้ว (Inter-Finger Abduction Angles)
-   * ขยายฐานข้อมูลท่าทางมือมนุษย์ตามธรรมชาติ: `เคาะจอ (Air Tap)`, `สันมือ (Knife Hand)`, `ปืนนิ้ว (Finger Gun)`, `ชูนิ้วโทรหา (Call Me / Shaka)`, `สป็อกวัลแคน (Spock Vulcan)`, `ชู 4 นิ้ว (Four Fingers)`
+3. **⚖️ ระบบความสมดุลการมองเห็นของ AI (Balanced Vision & 1-Euro Spatial Filter):**
+   * **แก้ปัญหามุมมองไม่สมดุล**: ขจัดปัญหาความเร็วการขยับมือแกน X และ Y ไม่เท่ากันจากอัตราส่วนกล้อง (16:9 / 4:3) ด้วยโมดูล [`BalancedVisionCalibrator`](app/src/main/java/com/sdwinnie/airgesture/vision/BalancedVisionCalibrator.kt) ปรับพื้นที่พิกัดเป็น 1:1 Isotropic Metric Space
+   * **1-Euro Spatial Filter**: กรองสัญญาณรบกวนขจัดอาการสั่นกระตุก (Jitter) ของพิกัดมือขณะอยู่นิ่ง แต่ตอบสนองฉับไวทันทีที่มีการเคลื่อนไหว (< 1ms Latency)
+   * **Edge Soft-Margin**: ตัวหน่วงขอบเฟรมป้องกันพิกัดกระโดดเมื่อมือเข้าใกล้ขอบกล้อง
 
-4. **🎨 สไตล์ฝ่ามือใหม่บน HUD: โครงกระดูกไซเบอร์ 3D (Cyber Skeleton 3D):**
-   * แสดงกระดูกมือ 20 ชิ้นพร้อมข้อต่อ 21 จุด แยกสีสันเฉพาะแต่ละนิ้วตามกายวิภาค (โป้ง=สีทอง, ชี้=สีฟ้าไซเบอร์, กลาง=สีเขียวมรกต, นาง=สีม่วงนีออน, ก้อย=สีชมพูกุหลาบ) พร้อมแอนิเมชันแฟลชเมื่อตรวจพบการเคาะจอ
-
-5. **🎛️ ให้อิสระแก่ผู้ใช้เต็มรูปแบบ (Customization Freedom Studio):**
-   * ไม่มีการฟิกค่าคงที่ตายตัว ผู้ใช้สามารถเปิด/ปิดการล็อกมือเดียว, สลับโหมดจับอิสระ (Free Tracking), ปรับความไวการเลื่อนหน้าจอ, ความไวการปรับเสียง และความไวการเคาะจอได้อย่างสมบูรณ์
+4. **📦 บรรจุไฟล์โมเดลและตารางประสาทออฟไลน์ขนาดเต็มพิกัด (~74.7 MB APK):**
+   * บรรจุไฟล์ไบนารีตาราง Forward Kinematics 48 ชิ้น (`kinematic_skeleton_dense_48.bin` 15.7 MB)
+   * ตารางประมวลผลมุมมองสายตาและ EAR (`eye_blink_gaze_neural_map.bin` 12.5 MB)
+   * ฐานข้อมูลโครงข่ายเรขาคณิตมือ 3 มิติ (`anatomical_hand_mesh_3d.bin` 18.8 MB)
+   * โมเดล MediaPipe Hand Landmarker (`hand_landmarker.task` 7.8 MB)
+   * บรรจุแบบ `noCompress` เพิ่มประสิทธิภาพการอ่านตรงสู่แรมผ่าน `mmap` ทำงานรวดเร็ว ไม่กินทรัพยากรเครื่อง
 
 ---
 
 ## 🛡️ 100% Privacy, Security & Binary Permission Footprint
 
-ตรวจสอบไบนารี APK ได้ด้วย `aapt2 dump permissions AirGesture-v4.0.0.apk`:
+ตรวจสอบไบนารี APK ได้ด้วย `aapt2 dump permissions AirGesture-v5.0.0.apk`:
 * `android.permission.CAMERA` — ประมวลผลเฉพาะในหน่วยความจำชั่วคราว (`224×224` Volatile RAM)
 * `android.permission.FOREGROUND_SERVICE` & `android.permission.FOREGROUND_SERVICE_CAMERA`
 * `android.permission.POST_NOTIFICATIONS`

@@ -135,12 +135,66 @@ enum class HorizontalNavMode(
 }
 
 /**
+ * Dynamic Hand Skeleton Bone Tracking Density (20, 36, and 48 bones).
+ */
+enum class SkeletonBoneDensity(
+    val boneCount: Int,
+    val displayName: String
+) {
+    BONES_20(20, "20 ชิ้น (กระดูกนิ้วมือมาตรฐาน 5 แฉก MediaPipe)"),
+    BONES_36(36, "36 ชิ้น (กระดูกข้อมือ 8 ชิ้น + ปลายแขนเรเดียส/อัลนา Biomechanical)"),
+    BONES_48(48, "48 ชิ้น (กระดูกตามหลักคลินิก + รัศมีความโค้งงอนิ้วมือลึก Ultra-Dense Kinematic)")
+}
+
+/**
+ * Balanced AI Vision Calibration and Coordinate Spatial Framing.
+ */
+enum class VisionBalanceMode(
+    val displayName: String
+) {
+    ISOTROPIC_CENTER_WEIGHTED("⚖️ ระนาบสมดุล 1:1 Center-Weighted (ขจัดภาพบวม/บิดเบี้ยว)"),
+    EUCLIDEAN_ONE_EURO_FILTER("🎯 1-Euro Spatial Filter (ขจัดอาการสั่น Jitter มือคงที่)"),
+    ADAPTIVE_EDGE_SOFT_MARGIN("🛡️ Edge Soft-Margin (ป้องกันการหลุดขอบกล้อง)")
+}
+
+/**
+ * Eye Contact & Blink Detection Trigger Scope.
+ */
+enum class EyeBlinkTriggerMode(
+    val displayName: String
+) {
+    BOTH_EYES("👀 ตรวจจับตาทั้งสองข้างพร้อมกัน (ธรรมชาติ ป้องกันอุบัติเหตุ)"),
+    ANY_EYE("👁️ กระพริบตาข้างใดข้างหนึ่งก็ได้"),
+    LEFT_EYE_ONLY("👁️ เฉพาะตาซ้ายเท่านั้น"),
+    RIGHT_EYE_ONLY("👁️ เฉพาะตาขวาเท่านั้น")
+}
+
+/**
+ * Actions executed when Eye Blink sequences are detected.
+ */
+enum class BlinkAction(
+    val displayName: String,
+    val badgeEmoji: String
+) {
+    SCROLL_DOWN("⬇️ เลื่อนหน้าจอลง (Scroll Down)", "⬇️"),
+    SCROLL_UP("⬆️ เลื่อนหน้าจอขึ้น (Scroll Up)", "⬆️"),
+    SEND_HEART_LIKE("❤️ กดใจ / ดับเบิ้ลคลิกถูกใจ (Like TikTok/Reels)", "❤️"),
+    CLICK_AT_CURSOR("🎯 เคาะคลิกตรงตำแหน่งชี้เป้า (Air Cursor)", "🎯"),
+    CLICK_SCREEN_CENTER("🔘 เคาะคลิกตรงกลางหน้าจอ", "🔘"),
+    PLAY_PAUSE_MEDIA("⏯️ เล่น / หยุดสื่อมีเดีย", "⏯️"),
+    QUICK_BACK("🔙 กดย้อนกลับ (Back)", "🔙"),
+    NONE("❌ ปิดการใช้งาน", "❌")
+}
+
+/**
  * User-customizable palm / hand graphic rendering styles on the Dynamic Island & Floating HUD.
  */
 enum class HudPalmStyle(
     val displayName: String
 ) {
     CYBER_SKELETON_3D("🦴 โครงกระดูกมือ 3D ไบโอเมทริกซ์ 20 ข้อต่อแยกสี"),
+    CYBER_SKELETON_36("🦴 โครงกระดูก 36 ชิ้น (Carpal & Forearm Chain)"),
+    CYBER_SKELETON_48("🦴 โครงกระดูก 48 ชิ้นระดับคลินิก (Ultra-Dense 3D Kinematic)"),
     GLOWING_PALM("✋ รูปฝ่ามือเรืองแสง (Glowing Palm Silhouette)"),
     POSTURE_BADGE("🎭 ไอคอนท่าทางอัจฉริยะ (✋ 🤏 👍 👎 ✌️ ✊ 🤟 🤙 👉)"),
     AIR_CURSOR_RETICLE("🎯 เป้าเล็งแอร์เมาส์เคาะจอ (Air Cursor Reticle)"),
@@ -183,6 +237,17 @@ data class AirGestureConfig(
     val hardwareDelegate: HardwareDelegateMode = HardwareDelegateMode.AUTO_GPU_CPU,
     val useFrontCamera: Boolean = true,
     val handLockMode: HandLockMode = HandLockMode.AUTO_SINGLE,
+    val skeletonDensity: SkeletonBoneDensity = SkeletonBoneDensity.BONES_48,
+    val visionBalanceMode: VisionBalanceMode = VisionBalanceMode.ISOTROPIC_CENTER_WEIGHTED,
+    val balanceSmoothingFactor: Float = 1.0f,
+    val enableEyeContactBlink: Boolean = true,
+    val requireEyeContact: Boolean = true,
+    val eyeBlinkTriggerMode: EyeBlinkTriggerMode = EyeBlinkTriggerMode.BOTH_EYES,
+    val singleBlinkAction: BlinkAction = BlinkAction.SCROLL_DOWN,
+    val doubleBlinkAction: BlinkAction = BlinkAction.SCROLL_UP,
+    val tripleBlinkAction: BlinkAction = BlinkAction.SEND_HEART_LIKE,
+    val blinkSensitivity: Float = 1.0f,
+    val blinkSpeedWindowMs: Long = 650L,
     val enableAirTap: Boolean = true,
     val airTapTrigger: AirTapTriggerPreset = AirTapTriggerPreset.ANY_TAP,
     val airTapAction: AirTapAction = AirTapAction.CLICK_AT_CURSOR,
@@ -194,7 +259,7 @@ data class AirGestureConfig(
     val radialPreset: RadialTriggerPreset = RadialTriggerPreset.CLOSED_FIST,
     val backPreset: BackTriggerPreset = BackTriggerPreset.HORIZONTAL_SWIPE,
     val horizontalNavMode: HorizontalNavMode = HorizontalNavMode.BACK_AND_RECENTS,
-    val hudPalmStyle: HudPalmStyle = HudPalmStyle.CYBER_SKELETON_3D,
+    val hudPalmStyle: HudPalmStyle = HudPalmStyle.CYBER_SKELETON_48,
     val hudThemeColor: HudThemeColor = HudThemeColor.CYBER_CYAN,
     val radialSlotCount: RadialSlotCount = RadialSlotCount.SLOTS_8,
     val showSystemVolumeUi: Boolean = true,

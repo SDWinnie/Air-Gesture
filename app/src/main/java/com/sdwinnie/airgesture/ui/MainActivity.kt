@@ -33,7 +33,9 @@ import com.sdwinnie.airgesture.model.AirGestureConfig
 import com.sdwinnie.airgesture.model.AirTapAction
 import com.sdwinnie.airgesture.model.AirTapTriggerPreset
 import com.sdwinnie.airgesture.model.BackTriggerPreset
+import com.sdwinnie.airgesture.model.BlinkAction
 import com.sdwinnie.airgesture.model.CameraResolution
+import com.sdwinnie.airgesture.model.EyeBlinkTriggerMode
 import com.sdwinnie.airgesture.model.HandLockMode
 import com.sdwinnie.airgesture.model.HardwareDelegateMode
 import com.sdwinnie.airgesture.model.HorizontalNavMode
@@ -44,8 +46,10 @@ import com.sdwinnie.airgesture.model.RadialAppSlot
 import com.sdwinnie.airgesture.model.RadialSlotCount
 import com.sdwinnie.airgesture.model.RadialTriggerPreset
 import com.sdwinnie.airgesture.model.ScrollGesturePreset
+import com.sdwinnie.airgesture.model.SkeletonBoneDensity
 import com.sdwinnie.airgesture.model.TargetFps
 import com.sdwinnie.airgesture.model.TelemetrySnapshot
+import com.sdwinnie.airgesture.model.VisionBalanceMode
 import com.sdwinnie.airgesture.model.VisionBufferSize
 import com.sdwinnie.airgesture.model.VolumeDirection
 import com.sdwinnie.airgesture.model.VolumeGesturePreset
@@ -322,6 +326,114 @@ class MainActivity : AppCompatActivity() {
             persistAndReloadConfig(currentConfig.copy(airTapSensitivity = clean))
         }
 
+        // --- Eye Contact & Multi-Blink Controls ---
+        binding.switchEnableEyeBlink.isChecked = currentConfig.enableEyeContactBlink
+        binding.switchEnableEyeBlink.setOnCheckedChangeListener { _, isChecked ->
+            if (suppressConfigListeners) return@setOnCheckedChangeListener
+            persistAndReloadConfig(currentConfig.copy(enableEyeContactBlink = isChecked))
+            refreshGestureStudioLabels()
+        }
+
+        binding.switchRequireEyeContact.isChecked = currentConfig.requireEyeContact
+        binding.switchRequireEyeContact.setOnCheckedChangeListener { _, isChecked ->
+            if (suppressConfigListeners) return@setOnCheckedChangeListener
+            persistAndReloadConfig(currentConfig.copy(requireEyeContact = isChecked))
+            refreshGestureStudioLabels()
+        }
+
+        binding.btnPickEyeBlinkScope.setOnClickListener {
+            showEnumSingleChoiceDialog(
+                title = "เลือกโหมดตรวจจับดวงตา (Scope)",
+                entries = EyeBlinkTriggerMode.entries,
+                current = currentConfig.eyeBlinkTriggerMode,
+                labelOf = { it.displayName }
+            ) { chosen ->
+                persistAndReloadConfig(currentConfig.copy(eyeBlinkTriggerMode = chosen))
+                refreshGestureStudioLabels()
+            }
+        }
+
+        binding.btnPickSingleBlink.setOnClickListener {
+            showEnumSingleChoiceDialog(
+                title = "เลือกคำสั่งกระพริบตา 1 ครั้ง (Single Blink)",
+                entries = BlinkAction.entries,
+                current = currentConfig.singleBlinkAction,
+                labelOf = { it.displayName }
+            ) { chosen ->
+                persistAndReloadConfig(currentConfig.copy(singleBlinkAction = chosen))
+                refreshGestureStudioLabels()
+            }
+        }
+
+        binding.btnPickDoubleBlink.setOnClickListener {
+            showEnumSingleChoiceDialog(
+                title = "เลือกคำสั่งกระพริบตา 2 ครั้ง (Double Blink)",
+                entries = BlinkAction.entries,
+                current = currentConfig.doubleBlinkAction,
+                labelOf = { it.displayName }
+            ) { chosen ->
+                persistAndReloadConfig(currentConfig.copy(doubleBlinkAction = chosen))
+                refreshGestureStudioLabels()
+            }
+        }
+
+        binding.btnPickTripleBlink.setOnClickListener {
+            showEnumSingleChoiceDialog(
+                title = "เลือกคำสั่งกระพริบตา 3 ครั้ง (Triple Blink - กดใจ/ถูกใจ)",
+                entries = BlinkAction.entries,
+                current = currentConfig.tripleBlinkAction,
+                labelOf = { it.displayName }
+            ) { chosen ->
+                persistAndReloadConfig(currentConfig.copy(tripleBlinkAction = chosen))
+                refreshGestureStudioLabels()
+            }
+        }
+
+        val blinkSens = ((currentConfig.blinkSensitivity * 10f).roundToInt() / 10f).coerceIn(0.5f, 2.5f)
+        binding.sliderBlinkSens.value = blinkSens
+        binding.tvBlinkSensLabel.text = "ความไวการตรวจจับกระพริบตา: ${String.format(Locale.US, "%.1f", blinkSens)}x (EAR สมดุล)"
+        binding.sliderBlinkSens.addOnChangeListener { _, value, fromUser ->
+            if (!fromUser || suppressConfigListeners) return@addOnChangeListener
+            val clean = (value * 10f).roundToInt() / 10f
+            binding.tvBlinkSensLabel.text = "ความไวการตรวจจับกระพริบตา: ${String.format(Locale.US, "%.1f", clean)}x (EAR สมดุล)"
+            persistAndReloadConfig(currentConfig.copy(blinkSensitivity = clean))
+        }
+
+        // --- Bone Density & Vision Balance Controls ---
+        binding.btnPickBoneDensity.setOnClickListener {
+            showEnumSingleChoiceDialog(
+                title = "เลือกระดับความละเอียดกระดูกมือ (20, 36, 48 ชิ้น)",
+                entries = SkeletonBoneDensity.entries,
+                current = currentConfig.skeletonDensity,
+                labelOf = { it.displayName }
+            ) { chosen ->
+                persistAndReloadConfig(currentConfig.copy(skeletonDensity = chosen))
+                refreshGestureStudioLabels()
+            }
+        }
+
+        binding.btnPickVisionBalance.setOnClickListener {
+            showEnumSingleChoiceDialog(
+                title = "เลือกโหมดความสมดุลการมองเห็นของ AI",
+                entries = VisionBalanceMode.entries,
+                current = currentConfig.visionBalanceMode,
+                labelOf = { it.displayName }
+            ) { chosen ->
+                persistAndReloadConfig(currentConfig.copy(visionBalanceMode = chosen))
+                refreshGestureStudioLabels()
+            }
+        }
+
+        val balanceSmoothing = ((currentConfig.balanceSmoothingFactor * 10f).roundToInt() / 10f).coerceIn(0.5f, 2.5f)
+        binding.sliderBalanceSmoothing.value = balanceSmoothing
+        binding.tvBalanceSmoothingLabel.text = "ตัวกรองความนิ่งและสมดุลพิกัด (1-Euro Smoothing): ${String.format(Locale.US, "%.1f", balanceSmoothing)}x"
+        binding.sliderBalanceSmoothing.addOnChangeListener { _, value, fromUser ->
+            if (!fromUser || suppressConfigListeners) return@addOnChangeListener
+            val clean = (value * 10f).roundToInt() / 10f
+            binding.tvBalanceSmoothingLabel.text = "ตัวกรองความนิ่งและสมดุลพิกัด (1-Euro Smoothing): ${String.format(Locale.US, "%.1f", clean)}x"
+            persistAndReloadConfig(currentConfig.copy(balanceSmoothingFactor = clean))
+        }
+
         binding.btnPickScrollPreset.setOnClickListener {
             showEnumSingleChoiceDialog(
                 title = "เลือกท่าเลื่อนหน้าจอขึ้น / ลง",
@@ -459,6 +571,12 @@ class MainActivity : AppCompatActivity() {
         binding.btnPickHandLock.text = currentConfig.handLockMode.displayName
         binding.btnPickAirTapStyle.text = currentConfig.airTapTrigger.displayName
         binding.btnPickAirTapAction.text = currentConfig.airTapAction.displayName
+        binding.btnPickEyeBlinkScope.text = currentConfig.eyeBlinkTriggerMode.displayName
+        binding.btnPickSingleBlink.text = currentConfig.singleBlinkAction.displayName
+        binding.btnPickDoubleBlink.text = currentConfig.doubleBlinkAction.displayName
+        binding.btnPickTripleBlink.text = currentConfig.tripleBlinkAction.displayName
+        binding.btnPickBoneDensity.text = currentConfig.skeletonDensity.displayName
+        binding.btnPickVisionBalance.text = currentConfig.visionBalanceMode.displayName
         binding.btnPickScrollPreset.text = currentConfig.scrollPreset.displayName
         binding.btnPickVolumePreset.text = currentConfig.volumePreset.displayName
         binding.btnPickRadialPreset.text = currentConfig.radialPreset.displayName
@@ -468,6 +586,9 @@ class MainActivity : AppCompatActivity() {
 
         binding.tvActiveGestureSummary.text =
             "• เคาะจอสัมผัส (Air Tap): ${if (currentConfig.enableAirTap) "${currentConfig.airTapTrigger.badgeEmoji} ${currentConfig.airTapTrigger.displayName} -> ${currentConfig.airTapAction.displayName}" else "ปิดการใช้งาน"}\n" +
+                "• สบตา & กระพริบตา (Eye Contact): ${if (currentConfig.enableEyeContactBlink) "1 ครั้ง=${currentConfig.singleBlinkAction.badgeEmoji} • 2 ครั้ง=${currentConfig.doubleBlinkAction.badgeEmoji} • 3 ครั้ง=${currentConfig.tripleBlinkAction.badgeEmoji}" else "ปิดการใช้งาน"}\n" +
+                "• โครงกระดูกมือ: ${currentConfig.skeletonDensity.displayName}\n" +
+                "• สมดุลการมองเห็น AI: ${currentConfig.visionBalanceMode.displayName}\n" +
                 "• ล็อกมือ: ${currentConfig.handLockMode.displayName}\n" +
                 "• เลื่อนจอ: ${currentConfig.scrollPreset.displayName}\n" +
                 "• ลด/เพิ่มเสียง: ${currentConfig.volumePreset.displayName}\n" +
