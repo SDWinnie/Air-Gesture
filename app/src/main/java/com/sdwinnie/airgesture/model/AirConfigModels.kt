@@ -269,7 +269,7 @@ data class AirGestureConfig(
     val showLiveCalibrationPreview: Boolean = false,
     val enableGeminiAi: Boolean = false,
     val geminiApiKey: String = "",
-    val geminiModelName: String = "gemini-2.5-flash",
+    val geminiModelName: String = "gemini-2.0-flash",
     val enableVoiceCommands: Boolean = false,
     val enableVoiceTts: Boolean = true,
     val enableLongDistanceBooster: Boolean = true

@@ -927,8 +927,11 @@ class MainActivity : AppCompatActivity() {
             }
             binding.btnTestGeminiKey.isEnabled = false
             Toast.makeText(this, "กำลังทดสอบเชื่อมต่อ Google Gemini...", Toast.LENGTH_SHORT).show()
-            com.sdwinnie.airgesture.ai.GeminiAiCoProcessor().testConnection(key, currentConfig.geminiModelName) { success, msg ->
+            com.sdwinnie.airgesture.ai.GeminiAiCoProcessor().testConnection(key, currentConfig.geminiModelName) { success, msg, verifiedModel ->
                 binding.btnTestGeminiKey.isEnabled = true
+                if (success && verifiedModel.isNotBlank() && verifiedModel != currentConfig.geminiModelName) {
+                    persistAndReloadConfig(currentConfig.copy(geminiModelName = verifiedModel))
+                }
                 MaterialAlertDialogBuilder(this)
                     .setTitle(if (success) "การเชื่อมต่อสำเร็จ" else "การเชื่อมต่อไม่สำเร็จ")
                     .setMessage(msg)

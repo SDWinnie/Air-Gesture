@@ -519,4 +519,20 @@ class AirGestureEngineTest {
         )
         assertEquals("Idle sentry must operate at 30 FPS (33ms interval)", 33L, intervalIdle)
     }
+
+    @Test
+    fun `gemini configuration defaults to valid official model and sanitizes deprecated models`() {
+        val defaultConfig = AirGestureConfig()
+        assertEquals("gemini-2.0-flash", defaultConfig.geminiModelName)
+
+        val candidateModels = com.sdwinnie.airgesture.ai.GeminiAiCoProcessor.CANDIDATE_MODELS
+        assertTrue(candidateModels.isNotEmpty())
+        assertEquals("gemini-2.0-flash", candidateModels.first())
+        assertFalse(candidateModels.contains("gemini-2.5-flash"))
+
+        // PreferenceStore sanitization check
+        assertEquals("gemini-2.0-flash", com.sdwinnie.airgesture.security.PreferenceStore.sanitizeGeminiModel("gemini-2.5-flash"))
+        assertEquals("gemini-1.5-flash", com.sdwinnie.airgesture.security.PreferenceStore.sanitizeGeminiModel("gemini-1.5-flash"))
+        assertEquals("gemini-2.0-flash", com.sdwinnie.airgesture.security.PreferenceStore.sanitizeGeminiModel(""))
+    }
 }
