@@ -122,6 +122,22 @@ class AirAccessibilityService : AccessibilityService() {
         return performGlobalAction(GLOBAL_ACTION_BACK)
     }
 
+    fun performGoHome(): Boolean {
+        return performGlobalAction(GLOBAL_ACTION_HOME)
+    }
+
+    fun performOpenRecents(): Boolean {
+        return performGlobalAction(GLOBAL_ACTION_RECENTS)
+    }
+
+    fun performTakeScreenshot(): Boolean {
+        return if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+            performGlobalAction(GLOBAL_ACTION_TAKE_SCREENSHOT)
+        } else {
+            false
+        }
+    }
+
     fun injectAirTapClick(normX: Float? = null, normY: Float? = null): Boolean {
         val (screenW, screenH) = currentScreenDimensions()
         val targetX = if (normX != null) (normX * screenW).coerceIn(12f, screenW - 12f) else (screenW * 0.5f)

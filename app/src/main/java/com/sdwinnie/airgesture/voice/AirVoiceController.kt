@@ -41,12 +41,17 @@ class AirVoiceController(
     enum class VoiceCommand(val thaiPhrase: String, val ttsFeedback: String) {
         SCROLL_DOWN("เลื่อนลง", "เลื่อนลงแล้วค่ะ"),
         SCROLL_UP("เลื่อนขึ้น", "เลื่อนขึ้นแล้วค่ะ"),
-        SEND_HEART("กดใจ", "กดใจเรียบร้อยค่ะ"),
+        SEND_HEART("กดใจ", "ส่งหัวใจเรียบร้อยค่ะ"),
         QUICK_BACK("ย้อนกลับ", "ย้อนกลับแล้วค่ะ"),
+        GO_HOME("หน้าแรก", "กลับหน้าหลักแล้วค่ะ"),
+        OPEN_RECENTS("สลับแอป", "เปิดหน้าสลับแอปค่ะ"),
         VOLUME_UP("เพิ่มเสียง", "เพิ่มเสียงค่ะ"),
         VOLUME_DOWN("ลดเสียง", "ลดเสียงค่ะ"),
+        VOLUME_MUTE("ปิดเสียง", "ปิดเสียงแล้วค่ะ"),
         MEDIA_PLAY_PAUSE("เล่น/หยุด", "สลับการเล่นสื่อค่ะ"),
-        APP_MENU("เมนูแอป", "เปิดวงกลมเลือกแอปค่ะ")
+        APP_MENU("เมนูแอป", "เปิดวงกลมเลือกแอปค่ะ"),
+        TAKE_SCREENSHOT("แคปหน้าจอ", "บันทึกภาพหน้าจอแล้วค่ะ"),
+        LOCK_HAND("ล็อกมือ", "สลับโหมดล็อกมือค่ะ")
     }
 
     private val mainHandler = Handler(Looper.getMainLooper())
@@ -236,17 +241,32 @@ class AirVoiceController(
                 text.contains("ย้อนกลับ") || text.contains("กลับ") || text == "back" ->
                     VoiceCommand.QUICK_BACK
 
+                text.contains("หน้าแรก") || text.contains("หน้าหลัก") || text.contains("โฮม") || text == "home" ->
+                    VoiceCommand.GO_HOME
+
+                text.contains("สลับแอป") || text.contains("แอปทั้งหมด") || text.contains("recents") || text.contains("overview") ->
+                    VoiceCommand.OPEN_RECENTS
+
                 text.contains("เพิ่มเสียง") || text.contains("ดังขึ้น") || text.contains("volume up") || text == "ดัง" ->
                     VoiceCommand.VOLUME_UP
 
                 text.contains("ลดเสียง") || text.contains("เบาลง") || text.contains("volume down") || text == "เบา" ->
                     VoiceCommand.VOLUME_DOWN
 
+                text.contains("ปิดเสียง") || text.contains("เงียบ") || text == "mute" ->
+                    VoiceCommand.VOLUME_MUTE
+
                 text.contains("หยุด") || text.contains("เล่น") || text.contains("pause") || text.contains("play") ->
                     VoiceCommand.MEDIA_PLAY_PAUSE
 
                 text.contains("เลือกแอป") || text.contains("เมนูแอป") || text.contains("วงกลมแอป") || text == "menu" ->
                     VoiceCommand.APP_MENU
+
+                text.contains("แคปหน้าจอ") || text.contains("ถ่ายหน้าจอ") || text.contains("แคปจอ") || text.contains("screenshot") ->
+                    VoiceCommand.TAKE_SCREENSHOT
+
+                text.contains("ล็อกมือ") || text.contains("ปลดล็อกมือ") || text.contains("สลับมือ") || text == "lock hand" ->
+                    VoiceCommand.LOCK_HAND
 
                 else -> null
             }

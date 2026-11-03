@@ -333,6 +333,14 @@ class AirGestureForegroundService : LifecycleService() {
                 a11y?.performQuickBack()
                 AirGestureRuntimeBus.updateTelemetry { it.copy(lastActionSummary = "🎙️ คำสั่งเสียง: ย้อนกลับ 🔙") }
             }
+            AirVoiceController.VoiceCommand.GO_HOME -> {
+                a11y?.performGoHome()
+                AirGestureRuntimeBus.updateTelemetry { it.copy(lastActionSummary = "🎙️ คำสั่งเสียง: กลับหน้าหลัก 🏠") }
+            }
+            AirVoiceController.VoiceCommand.OPEN_RECENTS -> {
+                a11y?.performOpenRecents()
+                AirGestureRuntimeBus.updateTelemetry { it.copy(lastActionSummary = "🎙️ คำสั่งเสียง: สลับแอป 📱") }
+            }
             AirVoiceController.VoiceCommand.VOLUME_UP -> {
                 volumeController.applyPinchDelta(0.08f, activeConfig.volumeSensitivity, activeConfig.showSystemVolumeUi)
                 AirGestureRuntimeBus.updateTelemetry { it.copy(lastActionSummary = "🎙️ คำสั่งเสียง: เพิ่มเสียง 🔊") }
@@ -341,12 +349,24 @@ class AirGestureForegroundService : LifecycleService() {
                 volumeController.applyPinchDelta(-0.08f, activeConfig.volumeSensitivity, activeConfig.showSystemVolumeUi)
                 AirGestureRuntimeBus.updateTelemetry { it.copy(lastActionSummary = "🎙️ คำสั่งเสียง: ลดเสียง 🔉") }
             }
+            AirVoiceController.VoiceCommand.VOLUME_MUTE -> {
+                volumeController.applyPinchDelta(-1.0f, activeConfig.volumeSensitivity, activeConfig.showSystemVolumeUi)
+                AirGestureRuntimeBus.updateTelemetry { it.copy(lastActionSummary = "🎙️ คำสั่งเสียง: ปิดเสียง 🔇") }
+            }
             AirVoiceController.VoiceCommand.MEDIA_PLAY_PAUSE -> {
                 a11y?.injectMediaPlayPause()
                 AirGestureRuntimeBus.updateTelemetry { it.copy(lastActionSummary = "🎙️ คำสั่งเสียง: เล่น/หยุดสื่อ ⏯️") }
             }
             AirVoiceController.VoiceCommand.APP_MENU -> {
-                AirGestureRuntimeBus.updateTelemetry { it.copy(lastActionSummary = "🎙️ คำสั่งเสียง: เรียกเมนูแอป") }
+                AirGestureRuntimeBus.updateTelemetry { it.copy(lastActionSummary = "🎙️ คำสั่งเสียง: เรียกเมนูแอป 🎡") }
+            }
+            AirVoiceController.VoiceCommand.TAKE_SCREENSHOT -> {
+                a11y?.performTakeScreenshot()
+                AirGestureRuntimeBus.updateTelemetry { it.copy(lastActionSummary = "🎙️ คำสั่งเสียง: บันทึกหน้าจอ 📸") }
+            }
+            AirVoiceController.VoiceCommand.LOCK_HAND -> {
+                gestureStateMachine.reset()
+                AirGestureRuntimeBus.updateTelemetry { it.copy(lastActionSummary = "🎙️ คำสั่งเสียง: รีเซ็ต/สลับการล็อกมือ 🔒") }
             }
         }
     }

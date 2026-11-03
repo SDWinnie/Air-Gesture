@@ -324,6 +324,10 @@ class MainActivity : AppCompatActivity() {
             persistAndReloadConfig(currentConfig.copy(enableVoiceTts = isChecked))
         }
 
+        binding.btnViewVoiceCommandsGuide.setOnClickListener {
+            showVoiceCommandsGuideDialog()
+        }
+
         binding.switchEnableAirTap.isChecked = currentConfig.enableAirTap
         binding.switchEnableAirTap.setOnCheckedChangeListener { _, isChecked ->
             if (suppressConfigListeners) return@setOnCheckedChangeListener
@@ -1094,6 +1098,47 @@ class MainActivity : AppCompatActivity() {
             binding.tvGeminiKeyStatus.text = "โมเดลที่ใช้งาน: ${choice.displayName} ($keyInfo)"
             binding.tvGeminiKeyStatus.setTextColor(ContextCompat.getColor(this, R.color.accent_emerald))
         }
+    }
+
+    private fun showVoiceCommandsGuideDialog() {
+        val guide = """
+            🎙️ รายการคำสั่งเสียงที่รองรับ (พูดได้ทั้งไทยและอังกฤษ):
+
+            1. ⬇️ "เลื่อนลง" / "ลง" / "scroll down"
+               → เลื่อนหน้าจอลงทีละช่วง
+            2. ⬆️ "เลื่อนขึ้น" / "ขึ้น" / "scroll up"
+               → เลื่อนหน้าจอขึ้นทีละช่วง
+            3. ❤️ "กดใจ" / "ถูกใจ" / "like" / "หัวใจ"
+               → ส่งหัวใจ (ดับเบิลคลิกกลางจอใน TikTok/Reels)
+            4. 🔙 "ย้อนกลับ" / "กลับ" / "back"
+               → กดย้อนกลับ
+            5. 🏠 "หน้าแรก" / "หน้าหลัก" / "home"
+               → กลับหน้าจอโฮม
+            6. 📱 "สลับแอป" / "แอปทั้งหมด" / "recents"
+               → เปิดหน้ารายการสลับแอป
+            7. 🔊 "เพิ่มเสียง" / "ดังขึ้น" / "volume up"
+               → เร่งเสียงสื่อ
+            8. 🔉 "ลดเสียง" / "เบาลง" / "volume down"
+               → ลดเสียงสื่อ
+            9. 🔇 "ปิดเสียง" / "เงียบ" / "mute"
+               → ปิดเสียงสื่อทันที
+            10. ⏯️ "เล่น" / "หยุด" / "play" / "pause"
+               → สลับเล่น/หยุดเพลงหรือวิดีโอ
+            11. 🎡 "เมนูแอป" / "เลือกแอป" / "menu"
+               → เปิดวงกลมเลือกแอป 360° บนจอ
+            12. 📸 "แคปหน้าจอ" / "ถ่ายหน้าจอ" / "screenshot"
+               → บันทึกภาพหน้าจอทันที
+            13. 🔒 "ล็อกมือ" / "ปลดล็อกมือ" / "lock hand"
+               → สลับโหมดล็อกการตรวจจับ 1 มือ
+
+            💡 เคล็ดลับ: ระบบจะพูดตอบกลับด้วยเสียง TTS ภาษาไทย เมื่อทำตามคำสั่งสำเร็จ!
+        """.trimIndent()
+
+        MaterialAlertDialogBuilder(this)
+            .setTitle("🎙️ คำสั่งเสียงทั้งหมด (Voice Navigation)")
+            .setMessage(guide)
+            .setPositiveButton("เข้าใจแล้ว", null)
+            .show()
     }
 
     @SuppressLint("SetTextI18n")

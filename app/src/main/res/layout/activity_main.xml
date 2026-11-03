@@ -688,6 +688,18 @@
                             android:text="🔊 เสียงตอบกลับเมื่อสั่งงานสำเร็จ (Voice Confirmation TTS)"
                             android:textColor="@color/text_primary"
                             android:textSize="12.5sp" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnViewVoiceCommandsGuide"
+                            style="@style/Widget.Material3.Button.TonalButton"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="10dp"
+                            android:text="📖 ดูรายการคำสั่งเสียงทั้งหมด (13 คำสั่ง)"
+                            android:textAllCaps="false"
+                            android:textColor="@color/text_primary"
+                            android:textSize="12sp"
+                            app:cornerRadius="12dp" />
                     </LinearLayout>
 
                     <!-- Air Tap / Screen Knock Studio Card -->

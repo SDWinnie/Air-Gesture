@@ -568,4 +568,15 @@ class AirGestureEngineTest {
         val cloudConfig = AirGestureConfig(enableGeminiAi = true, geminiModelName = "gemini-3.8-flash")
         assertEquals(com.sdwinnie.airgesture.model.AiModelChoice.GEMINI_3_8_FLASH, cloudConfig.currentAiModelChoice)
     }
+
+    @Test
+    fun `voice command suite provides 13 essential touchless navigation actions`() {
+        val commands = com.sdwinnie.airgesture.voice.AirVoiceController.VoiceCommand.entries
+        assertEquals("Must support exactly 13 voice commands", 13, commands.size)
+        assertTrue(commands.any { it.name == "GO_HOME" })
+        assertTrue(commands.any { it.name == "OPEN_RECENTS" })
+        assertTrue(commands.any { it.name == "TAKE_SCREENSHOT" })
+        assertTrue(commands.any { it.name == "VOLUME_MUTE" })
+        assertTrue(commands.any { it.name == "LOCK_HAND" })
+    }
 }
