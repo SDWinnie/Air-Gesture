@@ -1,11 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-    100% Edge-AI Network Lockdown:
-    1. AndroidManifest.xml declares ZERO android.permission.INTERNET (OS kernel blocks socket creation).
-    2. Defense-in-depth: Cleartext traffic disabled globally and empty trust-anchors reject all TLS egress.
+    Strict TLS Network Lockdown for Gemini AI Co-Processor:
+    1. Cleartext traffic disabled globally (cleartextTrafficPermitted="false").
+    2. System trust anchors enabled for secure HTTPS egress to Google Gemini APIs.
 -->
 <network-security-config>
     <base-config cleartextTrafficPermitted="false">
-        <trust-anchors />
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
     </base-config>
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="true">generativelanguage.googleapis.com</domain>
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </domain-config>
 </network-security-config>

@@ -32,7 +32,13 @@ class EyeGazeBlinkAnalyzer(
         val innerCanthusX: Float,
         val outerCanthusX: Float,
         val apertureHeight: Float,
-        val apertureWidth: Float
+        val apertureWidth: Float,
+        val upperLidLateralY: Float = upperLidY,
+        val upperLidMedialY: Float = upperLidY,
+        val lowerLidLateralY: Float = lowerLidY,
+        val lowerLidMedialY: Float = lowerLidY,
+        val eyebrowCenterY: Float = upperLidY - 0.05f,
+        val cheekApexY: Float = lowerLidY + 0.06f
     )
 
     data class EyeFrameData(
@@ -46,7 +52,8 @@ class EyeGazeBlinkAnalyzer(
         val isLockedOn: Boolean = false,
         val leftEyeTrack: EyeTrackPoints? = null,
         val rightEyeTrack: EyeTrackPoints? = null,
-        val trackingTrackCount: Int = 12
+        val trackingTrackCount: Int = 32,
+        val isSquintOrSmile: Boolean = false
     ) {
         val averageEar: Float get() = (leftEar + rightEar) * 0.5f
 
@@ -63,7 +70,7 @@ class EyeGazeBlinkAnalyzer(
         val events: List<GestureEvent>,
         val feedbackText: String?,
         val isLockedOn: Boolean = false,
-        val trackCount: Int = 12
+        val trackCount: Int = 32
     )
 
     private var wasEyeClosed = false
@@ -142,7 +149,11 @@ class EyeGazeBlinkAnalyzer(
             baselineEar = 0.95f * baselineEar + 0.05f * curEar
         }
 
-        val isEyeClosedNow = curEar < blinkThreshold
+        val isEyeClosedNow = curEar < blinkThreshold && !eyeFrame.isSquintOrSmile
+
+        if (eyeFrame.isSquintOrSmile) {
+            feedback = "😊 ตรวจพบรอยยิ้ม/หยีตา (ระบบแยกแยะอัจฉริยะ)"
+        }
 
         // Evaluate Blink State Transition
         if (isEyeClosedNow && !wasEyeClosed) {

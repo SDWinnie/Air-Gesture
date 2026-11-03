@@ -115,6 +115,8 @@ class DualStreamCameraController(
         activeConfig = config
         previewSurface = optionalPreviewSurface?.takeIf { it.isValid }
         downscaler.ensureDimension(config.visionBufferSize.dimension)
+        downscaler.virtualZoomFactor = if (config.enableLongDistanceBooster) 1.45f else 1.0f
+        downscaler.enableContrastBoost = config.enableLongDistanceBooster
         cameraYieldedToOtherApp = false
         trackerReady.set(false)
         isRunning.set(true)
@@ -163,6 +165,8 @@ class DualStreamCameraController(
             newConfig.hardwareDelegate != activeConfig.hardwareDelegate
         activeConfig = newConfig
         downscaler.ensureDimension(newConfig.visionBufferSize.dimension)
+        downscaler.virtualZoomFactor = if (newConfig.enableLongDistanceBooster) 1.45f else 1.0f
+        downscaler.enableContrastBoost = newConfig.enableLongDistanceBooster
         if (!isRunning.get()) return
         if (requiresReopen) {
             val savedPreview = previewSurface

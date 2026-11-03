@@ -50,9 +50,11 @@ class TouchlessActionDispatcher(
         eyeContactActive: Boolean = false,
         lastBlinkFeedback: String? = null,
         isEyeLocked: Boolean = false,
-        eyeTrackCount: Int = 12
+        eyeTrackCount: Int = 32
     ): DispatchOutcome {
         val totalSlots = config.radialSlotCount.count
+        val geminiActive = config.enableGeminiAi && config.geminiApiKey.isNotBlank()
+        val voiceListening = config.enableVoiceCommands
 
         for (event in events) {
             when (event) {
@@ -239,7 +241,9 @@ class TouchlessActionDispatcher(
                         eyeContactActive = eyeContactActive,
                         lastBlinkFeedback = lastBlinkFeedback,
                         isEyeLocked = isEyeLocked,
-                        eyeTrackCount = eyeTrackCount
+                        eyeTrackCount = eyeTrackCount,
+                        geminiActive = geminiActive,
+                        voiceListening = voiceListening
                     )
                 } else {
                     HudVisualState.Dormant
@@ -284,7 +288,9 @@ class TouchlessActionDispatcher(
                     eyeContactActive = eyeContactActive,
                     lastBlinkFeedback = lastBlinkFeedback,
                     isEyeLocked = isEyeLocked,
-                    eyeTrackCount = eyeTrackCount
+                    eyeTrackCount = eyeTrackCount,
+                    geminiActive = geminiActive,
+                    voiceListening = voiceListening
                 )
             }
         }

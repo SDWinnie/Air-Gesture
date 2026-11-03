@@ -43,7 +43,7 @@ class PreferenceStore(context: Context) {
 
         return AirGestureConfig(
             resolution = readEnum(KEY_RESOLUTION, CameraResolution.RES_1080P, CameraResolution::valueOf),
-            targetFps = readEnum(KEY_TARGET_FPS, TargetFps.FPS_30, TargetFps::valueOf),
+            targetFps = readEnum(KEY_TARGET_FPS, TargetFps.FPS_60, TargetFps::valueOf),
             visionBufferSize = readEnum(KEY_VISION_BUFFER, VisionBufferSize.ROI_192, VisionBufferSize::valueOf),
             hardwareDelegate = readEnum(KEY_HARDWARE_DELEGATE, HardwareDelegateMode.AUTO_GPU_CPU, HardwareDelegateMode::valueOf),
             useFrontCamera = prefs.getBoolean(KEY_FRONT_CAMERA, true),
@@ -77,7 +77,13 @@ class PreferenceStore(context: Context) {
             showFpsCounter = prefs.getBoolean(KEY_SHOW_FPS, true),
             scrollSensitivity = prefs.getFloat(KEY_SCROLL_SENS, 1.0f).coerceIn(0.5f, 2.5f),
             volumeSensitivity = prefs.getFloat(KEY_VOL_SENS, 1.0f).coerceIn(0.5f, 2.5f),
-            showLiveCalibrationPreview = prefs.getBoolean(KEY_SHOW_PREVIEW, false)
+            showLiveCalibrationPreview = prefs.getBoolean(KEY_SHOW_PREVIEW, false),
+            enableGeminiAi = prefs.getBoolean(KEY_ENABLE_GEMINI, false),
+            geminiApiKey = prefs.getString(KEY_GEMINI_API_KEY, "") ?: "",
+            geminiModelName = prefs.getString(KEY_GEMINI_MODEL, "gemini-2.5-flash") ?: "gemini-2.5-flash",
+            enableVoiceCommands = prefs.getBoolean(KEY_ENABLE_VOICE, false),
+            enableVoiceTts = prefs.getBoolean(KEY_ENABLE_VOICE_TTS, true),
+            enableLongDistanceBooster = prefs.getBoolean(KEY_ENABLE_LONG_DISTANCE, true)
         )
     }
 
@@ -119,6 +125,12 @@ class PreferenceStore(context: Context) {
             .putFloat(KEY_SCROLL_SENS, config.scrollSensitivity)
             .putFloat(KEY_VOL_SENS, config.volumeSensitivity)
             .putBoolean(KEY_SHOW_PREVIEW, config.showLiveCalibrationPreview)
+            .putBoolean(KEY_ENABLE_GEMINI, config.enableGeminiAi)
+            .putString(KEY_GEMINI_API_KEY, config.geminiApiKey)
+            .putString(KEY_GEMINI_MODEL, config.geminiModelName)
+            .putBoolean(KEY_ENABLE_VOICE, config.enableVoiceCommands)
+            .putBoolean(KEY_ENABLE_VOICE_TTS, config.enableVoiceTts)
+            .putBoolean(KEY_ENABLE_LONG_DISTANCE, config.enableLongDistanceBooster)
             .apply()
     }
 
@@ -172,6 +184,12 @@ class PreferenceStore(context: Context) {
         private const val KEY_SCROLL_SENS = "scroll_sensitivity"
         private const val KEY_VOL_SENS = "volume_sensitivity"
         private const val KEY_SHOW_PREVIEW = "show_live_preview"
+        private const val KEY_ENABLE_GEMINI = "enable_gemini_ai"
+        private const val KEY_GEMINI_API_KEY = "gemini_api_key"
+        private const val KEY_GEMINI_MODEL = "gemini_model_name"
+        private const val KEY_ENABLE_VOICE = "enable_voice_commands"
+        private const val KEY_ENABLE_VOICE_TTS = "enable_voice_tts"
+        private const val KEY_ENABLE_LONG_DISTANCE = "enable_long_distance_booster"
         private const val KEY_RADIAL_SLOT_PREFIX = "radial_slot_pkg_"
     }
 }

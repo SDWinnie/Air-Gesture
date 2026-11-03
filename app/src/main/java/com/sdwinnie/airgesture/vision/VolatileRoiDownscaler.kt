@@ -5,17 +5,22 @@ import android.media.Image
 import java.nio.ByteBuffer
 
 /**
- * Ultra-Fast Isotropic 1:1 Volatile-RAM Downscaler & Zero-GC Buffer Reuser (v4.0).
+ * Ultra-Fast Isotropic 1:1 Volatile-RAM Downscaler & Zero-GC Buffer Reuser (v6.0).
  *
  * - Solves the 30-120 FPS bottleneck by replacing per-pixel ByteBuffer.get() JNI method calls
  *   with single-pass bulk native memcpy (ByteBuffer.get(ByteArray)).
  * - Reuses a single pre-allocated volatile Bitmap buffer across frames (zero GC pressure).
  * - Implements true 1:1 isotropic letterboxing with zero aspect ratio squashing distortion.
+ * - Long-Distance & Wide-Angle Vision Booster (1.5 - 3.5m):
+ *   Supports dynamic focal zoom (1.0x - 2.2x) and contrast equalization for distant hands/eyes.
  */
 class VolatileRoiDownscaler(initialDimension: Int = 224) {
 
     var targetDimension: Int = initialDimension
         private set
+
+    var virtualZoomFactor: Float = 1.0f
+    var enableContrastBoost: Boolean = false
 
     fun getVolatileArgbBuffer(): IntArray = argbScratch
 
@@ -108,15 +113,21 @@ class VolatileRoiDownscaler(initialDimension: Int = 224) {
         val uRaw = uScratch
         val vRaw = vScratch
 
+        val zoom = virtualZoomFactor.coerceIn(1.0f, 2.4f)
+        val invZoom = 1.0f / zoom
+        val contrast = if (enableContrastBoost) 1.20f else 1.0f
+
         for (oy in 0 until scaledH) {
-            val uy = ((oy + 0.5f) * invScaledH).coerceIn(0f, 0.9999f)
+            val rawUy = ((oy + 0.5f) * invScaledH).coerceIn(0f, 0.9999f)
+            val uy = if (zoom > 1.01f) (0.5f + (rawUy - 0.5f) * invZoom).coerceIn(0f, 0.9999f) else rawUy
             val rowOffset = (padTop + oy) * dim + padLeft
 
             for (ox in 0 until scaledW) {
-                var ux = ((ox + 0.5f) * invScaledW).coerceIn(0f, 0.9999f)
+                var rawUx = ((ox + 0.5f) * invScaledW).coerceIn(0f, 0.9999f)
                 if (mirrorHorizontally) {
-                    ux = (1.0f - ux).coerceIn(0f, 0.9999f)
+                    rawUx = (1.0f - rawUx).coerceIn(0f, 0.9999f)
                 }
+                val ux = if (zoom > 1.01f) (0.5f + (rawUx - 0.5f) * invZoom).coerceIn(0f, 0.9999f) else rawUx
 
                 val nsx: Float
                 val nsy: Float
@@ -148,7 +159,8 @@ class VolatileRoiDownscaler(initialDimension: Int = 224) {
                 val uIndex = (hvY * uRowStride + hvX * uPixelStride).coerceIn(0, uLen - 1)
                 val vIndex = (hvY * vRowStride + hvX * vPixelStride).coerceIn(0, vLen - 1)
 
-                val yVal = (yRaw[yIndex].toInt() and 0xFF) - 16
+                val rawYVal = (yRaw[yIndex].toInt() and 0xFF) - 16
+                val yVal = if (contrast > 1.01f && rawYVal > 0) ((rawYVal * contrast).toInt()).coerceIn(0, 235) else rawYVal
                 val uVal = (uRaw[uIndex].toInt() and 0xFF) - 128
                 val vVal = (vRaw[vIndex].toInt() and 0xFF) - 128
 

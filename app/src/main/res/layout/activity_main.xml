@@ -654,6 +654,42 @@
                             app:strokeColor="@color/stroke_subtle" />
                     </LinearLayout>
 
+                    <!-- Experimental Voice Navigation & Speech Feedback Card (v6.0) -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="14dp"
+                        android:background="@drawable/bg_hero_bento"
+                        android:orientation="vertical"
+                        android:padding="16dp">
+
+                        <com.google.android.material.materialswitch.MaterialSwitch
+                            android:id="@+id/switchVoiceCommands"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="🎙️ ระบบสั่งงานด้วยเสียง (Voice Navigation - ทดลอง)"
+                            android:textColor="@color/text_primary"
+                            android:textSize="14sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="4dp"
+                            android:text="สั่งงานด้วยเสียงพูดภาษาไทย/อังกฤษ: 'เลื่อนลง', 'เลื่อนขึ้น', 'กดใจ', 'ย้อนกลับ', 'เพิ่มเสียง', 'ลดเสียง', 'หยุด' ทำงานร่วมกับระบบท่าทางมือและดวงตาได้อย่างสมบูรณ์แบบ"
+                            android:textColor="@color/text_secondary"
+                            android:textSize="11.5sp" />
+
+                        <com.google.android.material.materialswitch.MaterialSwitch
+                            android:id="@+id/switchVoiceTts"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="10dp"
+                            android:text="🔊 เสียงตอบกลับเมื่อสั่งงานสำเร็จ (Voice Confirmation TTS)"
+                            android:textColor="@color/text_primary"
+                            android:textSize="12.5sp" />
+                    </LinearLayout>
+
                     <!-- Air Tap / Screen Knock Studio Card -->
                     <LinearLayout
                         android:layout_width="match_parent"
@@ -1544,6 +1580,103 @@
                                 android:layout_width="match_parent"
                                 android:layout_height="match_parent" />
                         </com.google.android.material.card.MaterialCardView>
+                    </LinearLayout>
+
+                    <!-- Google Gemini Free AI Co-Processor Card (v6.0) -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="14dp"
+                        android:background="@drawable/bg_glass_bento"
+                        android:orientation="vertical"
+                        android:padding="16dp">
+
+                        <com.google.android.material.materialswitch.MaterialSwitch
+                            android:id="@+id/switchGeminiAi"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="🤖 ผู้ช่วย AI ฟรี Google Gemini (AI Co-Processor)"
+                            android:textColor="@color/text_primary"
+                            android:textSize="13sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="4dp"
+                            android:text="ช่วยประมวลผลควบคู่ในพื้นหลังเพื่อลดภาระของ CPU/GPU ในเครื่อง ปรับเทียบเจตนาท่าทางมือ และแก้ปัญหาการสับสนข้ามมือ (ฟรีผ่าน Google AI Studio)"
+                            android:textColor="@color/text_secondary"
+                            android:textSize="11.5sp" />
+
+                        <TextView
+                            android:id="@+id/tvGeminiKeyStatus"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:text="สถานะ: ยังไม่ได้ใส่ API Key (สลับใช้ระบบเครื่อง 100%)"
+                            android:textColor="@color/accent_emerald"
+                            android:textSize="11.5sp"
+                            android:textStyle="bold" />
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="10dp"
+                            android:orientation="horizontal">
+
+                            <com.google.android.material.button.MaterialButton
+                                android:id="@+id/btnConfigureGeminiKey"
+                                style="@style/Widget.Material3.Button.OutlinedButton"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:layout_marginEnd="6dp"
+                                android:text="🔑 ตั้งค่า API Key"
+                                android:textAllCaps="false"
+                                android:textColor="@color/text_primary"
+                                android:textSize="12sp"
+                                app:cornerRadius="12dp"
+                                app:strokeColor="@color/stroke_subtle" />
+
+                            <com.google.android.material.button.MaterialButton
+                                android:id="@+id/btnTestGeminiKey"
+                                style="@style/Widget.Material3.Button.TonalButton"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:layout_marginStart="6dp"
+                                android:text="⚡ ทดสอบการเชื่อมต่อ"
+                                android:textAllCaps="false"
+                                android:textSize="12sp"
+                                app:cornerRadius="12dp" />
+                        </LinearLayout>
+                    </LinearLayout>
+
+                    <!-- Wide-Angle & Long-Distance Camera Vision Booster Card (v6.0) -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="14dp"
+                        android:background="@drawable/bg_glass_bento"
+                        android:orientation="vertical"
+                        android:padding="16dp">
+
+                        <com.google.android.material.materialswitch.MaterialSwitch
+                            android:id="@+id/switchLongDistanceBooster"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="🔭 ตัวเร่งวิสัยทัศน์ระยะไกล 1.5 - 3.5 เมตร (Long-Distance Booster)"
+                            android:textColor="@color/text_primary"
+                            android:textSize="13sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="4dp"
+                            android:text="ปรับมุมมองกว้างและซูมโฟกัสจำลอง 1.45x ควบคู่ Dynamic Contrast อัตโนมัติ เพื่อให้กล้องหน้ามองเห็นมือและดวงตาได้คมชัดแม้ยืนไกล อยู่บนเตียง โซฟา หรือห้องครัว"
+                            android:textColor="@color/text_secondary"
+                            android:textSize="11.5sp" />
                     </LinearLayout>
                 </LinearLayout>
 

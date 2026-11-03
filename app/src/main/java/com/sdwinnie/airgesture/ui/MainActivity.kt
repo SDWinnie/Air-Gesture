@@ -107,6 +107,23 @@ class MainActivity : AppCompatActivity() {
         refreshPermissionChecklist()
     }
 
+    private val audioPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            currentConfig = currentConfig.copy(enableVoiceCommands = true)
+            preferenceStore.saveConfig(currentConfig)
+            AirGestureForegroundService.notifyConfigUpdated(this)
+            binding.switchVoiceCommands.isChecked = true
+            Toast.makeText(this, "🎙️ เปิดระบบสั่งงานด้วยเสียงแล้ว", Toast.LENGTH_SHORT).show()
+        } else {
+            binding.switchVoiceCommands.isChecked = false
+            currentConfig = currentConfig.copy(enableVoiceCommands = false)
+            preferenceStore.saveConfig(currentConfig)
+            Toast.makeText(this, "⚠️ โปรดอนุญาตสิทธิ์ไมโครโฟนเพื่อใช้งานระบบเสียง", Toast.LENGTH_SHORT).show()
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
@@ -277,6 +294,34 @@ class MainActivity : AppCompatActivity() {
                 persistAndReloadConfig(currentConfig.copy(handLockMode = chosen))
                 refreshGestureStudioLabels()
             }
+        }
+
+        binding.switchVoiceCommands.isChecked = currentConfig.enableVoiceCommands
+        binding.switchVoiceTts.isChecked = currentConfig.enableVoiceTts
+
+        binding.switchVoiceCommands.setOnCheckedChangeListener { _, isChecked ->
+            if (suppressConfigListeners) return@setOnCheckedChangeListener
+            if (isChecked) {
+                val hasAudioPerm = ContextCompat.checkSelfPermission(
+                    this,
+                    Manifest.permission.RECORD_AUDIO
+                ) == PackageManager.PERMISSION_GRANTED
+                if (!hasAudioPerm) {
+                    audioPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                    return@setOnCheckedChangeListener
+                }
+            }
+            persistAndReloadConfig(currentConfig.copy(enableVoiceCommands = isChecked))
+            Toast.makeText(
+                this,
+                if (isChecked) "🎙️ เปิดระบบสั่งงานด้วยเสียง (พูด 'เลื่อนลง', 'กดใจ', ฯลฯ)" else "ปิดระบบสั่งงานด้วยเสียง",
+                Toast.LENGTH_SHORT
+            ).show()
+        }
+
+        binding.switchVoiceTts.setOnCheckedChangeListener { _, isChecked ->
+            if (suppressConfigListeners) return@setOnCheckedChangeListener
+            persistAndReloadConfig(currentConfig.copy(enableVoiceTts = isChecked))
         }
 
         binding.switchEnableAirTap.isChecked = currentConfig.enableAirTap
@@ -855,6 +900,52 @@ class MainActivity : AppCompatActivity() {
                 AirGestureRuntimeBus.bindCalibrationPreviewSurface(null)
             }
         }
+
+        binding.switchGeminiAi.isChecked = currentConfig.enableGeminiAi
+        binding.switchLongDistanceBooster.isChecked = currentConfig.enableLongDistanceBooster
+        updateGeminiKeyStatusText()
+
+        binding.switchGeminiAi.setOnCheckedChangeListener { _, isChecked ->
+            if (suppressConfigListeners) return@setOnCheckedChangeListener
+            if (isChecked && currentConfig.geminiApiKey.isBlank()) {
+                showGeminiApiKeyDialog()
+                return@setOnCheckedChangeListener
+            }
+            persistAndReloadConfig(currentConfig.copy(enableGeminiAi = isChecked))
+        }
+
+        binding.btnConfigureGeminiKey.setOnClickListener {
+            showGeminiApiKeyDialog()
+        }
+
+        binding.btnTestGeminiKey.setOnClickListener {
+            val key = currentConfig.geminiApiKey
+            if (key.isBlank()) {
+                Toast.makeText(this, "โปรดใส่ API Key ก่อนทำการทดสอบ", Toast.LENGTH_SHORT).show()
+                showGeminiApiKeyDialog()
+                return@setOnClickListener
+            }
+            binding.btnTestGeminiKey.isEnabled = false
+            Toast.makeText(this, "กำลังทดสอบเชื่อมต่อ Google Gemini...", Toast.LENGTH_SHORT).show()
+            com.sdwinnie.airgesture.ai.GeminiAiCoProcessor().testConnection(key, currentConfig.geminiModelName) { success, msg ->
+                binding.btnTestGeminiKey.isEnabled = true
+                MaterialAlertDialogBuilder(this)
+                    .setTitle(if (success) "การเชื่อมต่อสำเร็จ" else "การเชื่อมต่อไม่สำเร็จ")
+                    .setMessage(msg)
+                    .setPositiveButton("ตกลง", null)
+                    .show()
+            }
+        }
+
+        binding.switchLongDistanceBooster.setOnCheckedChangeListener { _, isChecked ->
+            if (suppressConfigListeners) return@setOnCheckedChangeListener
+            persistAndReloadConfig(currentConfig.copy(enableLongDistanceBooster = isChecked))
+            Toast.makeText(
+                this,
+                if (isChecked) "🔭 เปิดตัวเร่งระยะไกล 1.5 - 3.5 ม. (Focal Zoom + Contrast)" else "ปิดตัวเร่งระยะไกล",
+                Toast.LENGTH_SHORT
+            ).show()
+        }
     }
 
     private fun setupCalibrationPreviewSurface() {
@@ -900,6 +991,42 @@ class MainActivity : AppCompatActivity() {
         preferenceStore.saveConfig(updated)
         AirGestureRuntimeBus.updateVisualConfig(updated)
         AirGestureForegroundService.notifyConfigUpdated(this)
+    }
+
+    private fun showGeminiApiKeyDialog() {
+        val input = android.widget.EditText(this).apply {
+            hint = "AIzaSy..."
+            setText(currentConfig.geminiApiKey)
+            setSingleLine(true)
+            setPadding(48, 32, 48, 32)
+        }
+        MaterialAlertDialogBuilder(this)
+            .setTitle("🔑 ตั้งค่า Google AI Studio API Key (ฟรี)")
+            .setMessage("นำ API Key ฟรีจาก Google AI Studio (aistudio.google.com) มาใส่ที่นี่เพื่อเปิดใช้ AI Co-Processor ประมวลผลในพื้นหลัง")
+            .setView(input)
+            .setPositiveButton("บันทึก") { _, _ ->
+                val key = input.text.toString().trim()
+                currentConfig = currentConfig.copy(geminiApiKey = key, enableGeminiAi = key.isNotBlank())
+                preferenceStore.saveConfig(currentConfig)
+                binding.switchGeminiAi.isChecked = currentConfig.enableGeminiAi
+                updateGeminiKeyStatusText()
+                AirGestureForegroundService.notifyConfigUpdated(this)
+                Toast.makeText(this, if (key.isNotBlank()) "บันทึก Gemini API Key เรียบร้อย" else "ล้างคีย์แล้ว", Toast.LENGTH_SHORT).show()
+            }
+            .setNegativeButton("ยกเลิก", null)
+            .show()
+    }
+
+    private fun updateGeminiKeyStatusText() {
+        val key = currentConfig.geminiApiKey
+        if (key.isNotBlank()) {
+            val masked = if (key.length > 8) "${key.take(4)}...${key.takeLast(4)}" else "***"
+            binding.tvGeminiKeyStatus.text = "สถานะ: พร้อมใช้งาน ($masked)"
+            binding.tvGeminiKeyStatus.setTextColor(ContextCompat.getColor(this, R.color.accent_emerald))
+        } else {
+            binding.tvGeminiKeyStatus.text = "สถานะ: ยังไม่ได้ใส่ API Key (สลับใช้ระบบเครื่อง 100%)"
+            binding.tvGeminiKeyStatus.setTextColor(ContextCompat.getColor(this, R.color.accent_amber))
+        }
     }
 
     @SuppressLint("SetTextI18n")

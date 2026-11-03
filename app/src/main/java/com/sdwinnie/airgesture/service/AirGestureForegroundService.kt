@@ -15,6 +15,7 @@ import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleService
 import com.sdwinnie.airgesture.R
+import com.sdwinnie.airgesture.ai.GeminiAiCoProcessor
 import com.sdwinnie.airgesture.engine.AirGestureStateMachine
 import com.sdwinnie.airgesture.engine.EyeGazeBlinkAnalyzer
 import com.sdwinnie.airgesture.input.RadialAppSlotManager
@@ -29,6 +30,7 @@ import com.sdwinnie.airgesture.ui.MainActivity
 import com.sdwinnie.airgesture.vision.DualStreamCameraController
 import com.sdwinnie.airgesture.vision.MediaPipeHandTracker
 import com.sdwinnie.airgesture.vision.ThermalAndDutyController
+import com.sdwinnie.airgesture.voice.AirVoiceController
 
 /**
  * Crash-Hardened Camera Foreground Service (v2.0) for Android 14, 15, and 16+.
@@ -46,6 +48,8 @@ class AirGestureForegroundService : LifecycleService() {
     private lateinit var thermalController: ThermalAndDutyController
     private lateinit var handTracker: MediaPipeHandTracker
     private lateinit var cameraController: DualStreamCameraController
+    private lateinit var geminiAi: GeminiAiCoProcessor
+    private lateinit var voiceController: AirVoiceController
 
     private val gestureStateMachine = AirGestureStateMachine()
 
@@ -67,6 +71,18 @@ class AirGestureForegroundService : LifecycleService() {
         actionDispatcher = TouchlessActionDispatcher(volumeController, radialSlotManager)
         thermalController = ThermalAndDutyController(this)
         handTracker = MediaPipeHandTracker(this)
+
+        geminiAi = GeminiAiCoProcessor().apply {
+            onStateChanged = { state ->
+                AirGestureRuntimeBus.updateTelemetry {
+                    it.copy(geminiStatusSummary = state.lastInferenceSummary)
+                }
+            }
+        }
+
+        voiceController = AirVoiceController(this) { cmd, feedback ->
+            handleVoiceCommand(cmd, feedback)
+        }
 
         cameraController = DualStreamCameraController(
             context = this,
@@ -108,12 +124,17 @@ class AirGestureForegroundService : LifecycleService() {
             ACTION_RELOAD_CONFIG -> {
                 activeConfig = preferenceStore.loadConfig()
                 AirGestureRuntimeBus.updateVisualConfig(activeConfig)
+                voiceController.enableTtsFeedback = activeConfig.enableVoiceTts
+                voiceController.setEnabled(activeConfig.enableVoiceCommands)
                 if (engineRunning) {
                     if (!manuallyPaused) {
                         cameraController.applyUpdatedConfig(activeConfig)
                     }
                     AirGestureRuntimeBus.updateTelemetry {
-                        it.copy(visionBufferSummary = activeConfig.visionBufferSize.displayName)
+                        it.copy(
+                            visionBufferSummary = activeConfig.visionBufferSize.displayName,
+                            voiceStatusSummary = if (activeConfig.enableVoiceCommands) "เปิด (พร้อมรับเสียง)" else "ปิด"
+                        )
                     }
                 }
                 return START_NOT_STICKY
@@ -155,6 +176,9 @@ class AirGestureForegroundService : LifecycleService() {
         AirGestureRuntimeBus.updateVisualConfig(activeConfig)
         gestureStateMachine.reset()
 
+        voiceController.enableTtsFeedback = activeConfig.enableVoiceTts
+        voiceController.setEnabled(activeConfig.enableVoiceCommands)
+
         thermalController.startMonitoring { thermalLevel ->
             AirGestureRuntimeBus.updateTelemetry { it.copy(thermalStatus = thermalLevel) }
         }
@@ -173,7 +197,8 @@ class AirGestureForegroundService : LifecycleService() {
                 visionBufferSummary = activeConfig.visionBufferSize.displayName,
                 thermalStatus = thermalController.currentThermalStatus,
                 currentPosture = "พร้อมรับท่าทาง (ยกฝ่ามือ)",
-                lastActionSummary = "แสดงฝ่ามือหน้ากล้องเพื่อปลุก Dynamic Island"
+                lastActionSummary = "แสดงฝ่ามือหน้ากล้องเพื่อปลุก Dynamic Island",
+                voiceStatusSummary = if (activeConfig.enableVoiceCommands) "เปิด (พร้อมรับเสียง)" else "ปิด"
             )
         }
     }
@@ -181,6 +206,7 @@ class AirGestureForegroundService : LifecycleService() {
     private fun toggleManualPause() {
         manuallyPaused = !manuallyPaused
         if (manuallyPaused) {
+            voiceController.stopListening()
             cameraController.stop()
             gestureStateMachine.reset()
             AirGestureRuntimeBus.updateHudState(HudVisualState.PausedNotice("PAUSED BY USER"))
@@ -194,6 +220,7 @@ class AirGestureForegroundService : LifecycleService() {
             }
         } else {
             activeConfig = preferenceStore.loadConfig()
+            voiceController.setEnabled(activeConfig.enableVoiceCommands)
             AirGestureRuntimeBus.updateHudState(HudVisualState.Dormant)
             cameraController.start(activeConfig, AirGestureRuntimeBus.liveCalibrationSurface)
             AirGestureRuntimeBus.updateTelemetry {
@@ -256,6 +283,22 @@ class AirGestureForegroundService : LifecycleService() {
             AirGestureStateMachine.Mode.FIST_RADIAL_MENU -> "🎡 วงกลมเลือกแอปบนหน้าจอ"
         }
 
+        if (activeConfig.enableGeminiAi && activeConfig.geminiApiKey.isNotBlank()) {
+            geminiAi.evaluateAmbiguityAsync(
+                apiKey = activeConfig.geminiApiKey,
+                modelName = activeConfig.geminiModelName,
+                candidatePosture = step.posture,
+                observedHandSide = step.smoothedFrame?.handSide ?: com.sdwinnie.airgesture.model.HandSide.UNKNOWN,
+                leftEar = eyeFrame?.leftEar ?: 0.3f,
+                rightEar = eyeFrame?.rightEar ?: 0.3f,
+                isEyeLocked = step.eyeLockedOn
+            ) { geminiRes ->
+                if (geminiRes != null && geminiRes.recognizedIntent != "IDLE") {
+                    AirLogger.d("Service", "Gemini AI calibrated: ${geminiRes.recognizedIntent} (${geminiRes.aiCommentary})")
+                }
+            }
+        }
+
         AirGestureRuntimeBus.updateTelemetry { prev ->
             prev.copy(
                 serviceRunning = true,
@@ -268,6 +311,43 @@ class AirGestureForegroundService : LifecycleService() {
                 currentPosture = postureText,
                 lastActionSummary = outcome.actionSummary
             )
+        }
+    }
+
+    private fun handleVoiceCommand(cmd: AirVoiceController.VoiceCommand, feedback: String) {
+        val a11y = com.sdwinnie.airgesture.service.AirAccessibilityService.activeInstance
+        when (cmd) {
+            AirVoiceController.VoiceCommand.SCROLL_DOWN -> {
+                a11y?.injectBlinkScroll(scrollUp = true, sensitivity = activeConfig.scrollSensitivity)
+                AirGestureRuntimeBus.updateTelemetry { it.copy(lastActionSummary = "🎙️ คำสั่งเสียง: เลื่อนลง ↓") }
+            }
+            AirVoiceController.VoiceCommand.SCROLL_UP -> {
+                a11y?.injectBlinkScroll(scrollUp = false, sensitivity = activeConfig.scrollSensitivity)
+                AirGestureRuntimeBus.updateTelemetry { it.copy(lastActionSummary = "🎙️ คำสั่งเสียง: เลื่อนขึ้น ↑") }
+            }
+            AirVoiceController.VoiceCommand.SEND_HEART -> {
+                a11y?.injectHeartDoubleTap(0.5f, 0.5f)
+                AirGestureRuntimeBus.updateTelemetry { it.copy(lastActionSummary = "🎙️ คำสั่งเสียง: ส่งหัวใจ / ถูกใจ ❤️") }
+            }
+            AirVoiceController.VoiceCommand.QUICK_BACK -> {
+                a11y?.performQuickBack()
+                AirGestureRuntimeBus.updateTelemetry { it.copy(lastActionSummary = "🎙️ คำสั่งเสียง: ย้อนกลับ 🔙") }
+            }
+            AirVoiceController.VoiceCommand.VOLUME_UP -> {
+                volumeController.applyPinchDelta(0.08f, activeConfig.volumeSensitivity, activeConfig.showSystemVolumeUi)
+                AirGestureRuntimeBus.updateTelemetry { it.copy(lastActionSummary = "🎙️ คำสั่งเสียง: เพิ่มเสียง 🔊") }
+            }
+            AirVoiceController.VoiceCommand.VOLUME_DOWN -> {
+                volumeController.applyPinchDelta(-0.08f, activeConfig.volumeSensitivity, activeConfig.showSystemVolumeUi)
+                AirGestureRuntimeBus.updateTelemetry { it.copy(lastActionSummary = "🎙️ คำสั่งเสียง: ลดเสียง 🔉") }
+            }
+            AirVoiceController.VoiceCommand.MEDIA_PLAY_PAUSE -> {
+                a11y?.injectMediaPlayPause()
+                AirGestureRuntimeBus.updateTelemetry { it.copy(lastActionSummary = "🎙️ คำสั่งเสียง: เล่น/หยุดสื่อ ⏯️") }
+            }
+            AirVoiceController.VoiceCommand.APP_MENU -> {
+                AirGestureRuntimeBus.updateTelemetry { it.copy(lastActionSummary = "🎙️ คำสั่งเสียง: เรียกเมนูแอป") }
+            }
         }
     }
 
@@ -371,6 +451,8 @@ class AirGestureForegroundService : LifecycleService() {
         engineRunning = false
         manuallyPaused = false
         AirGestureRuntimeBus.onPreviewSurfaceChanged = null
+        runCatching { voiceController.release() }
+        runCatching { geminiAi.release() }
         runCatching { thermalController.stopMonitoring() }
         runCatching { cameraController.stop() }
         runCatching { handTracker.close() }

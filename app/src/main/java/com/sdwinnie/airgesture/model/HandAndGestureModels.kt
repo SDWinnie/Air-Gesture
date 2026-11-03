@@ -27,7 +27,12 @@ enum class HandPosture(val emoji: String, val thaiName: String) {
     CALL_ME_SHAKA("🤙", "ท่าโทรมา (Shaka)"),
     FINGER_GUN("👉", "ท่าปืนนิ้ว"),
     SPOCK_VULCAN("🖖", "ท่าแยกร่องนิ้ว"),
-    KNIFE_HAND("✋", "ท่าสันมือ")
+    KNIFE_HAND("✋", "ท่าสันมือ"),
+    AIR_SNAP("🫰", "ท่าจีบดีดนิ้ว (Air Snap)"),
+    SHAKA_WAVE("🤙", "ท่าชากาโยกมือ (Shaka Wave)"),
+    TWO_FINGER_TAP("✌️", "ท่าแตะ 2 นิ้ว (Two-Finger Tap)"),
+    PALM_PUSH("🫸", "ท่าผลักฝ่ามือ (Palm Push)"),
+    INDEX_BECKON("🫵", "ท่ากวักนิ้วชี้ (Index Beckon)")
 }
 
 data class HandFrame(
@@ -127,7 +132,9 @@ sealed interface HudVisualState {
         val eyeContactActive: Boolean = false,
         val lastBlinkFeedback: String? = null,
         val isEyeLocked: Boolean = false,
-        val eyeTrackCount: Int = 0
+        val eyeTrackCount: Int = 0,
+        val geminiActive: Boolean = false,
+        val voiceListening: Boolean = false
     ) : HudVisualState
 
     data class EyeBlinkFeedback(

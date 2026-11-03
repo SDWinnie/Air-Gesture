@@ -453,10 +453,48 @@ class AirGestureEngineTest {
         val res2 = tracker.analyzeEyeFrame(buffer, dim, 116L, cfg)
         assertNotNull("Frame 2 must be detected", res2)
         assertTrue("Second consecutive frame must achieve lock-on", res2!!.isLockedOn)
-        assertEquals("Must track 12 high-density tracks", 12, res2.trackingTrackCount)
+        assertEquals("Must track 32 high-density tracks", 32, res2.trackingTrackCount)
         assertNotNull("Left eye track must be extracted", res2.leftEyeTrack)
         assertNotNull("Right eye track must be extracted", res2.rightEyeTrack)
         assertTrue("EAR must be open (> 0.22)", res2.averageEar > 0.22f)
+    }
+
+    @Test
+    fun `squint and smile discrimination prevents false blink triggers`() {
+        val analyzer = EyeGazeBlinkAnalyzer()
+        val cfg = AirGestureConfig(enableEyeContactBlink = true)
+
+        // Simulate squinting / smiling (eyes narrow but isSquintOrSmile = true)
+        val squintFrame = EyeGazeBlinkAnalyzer.EyeFrameData(
+            leftEar = 0.15f,
+            rightEar = 0.15f,
+            isFaceDetected = true,
+            isSquintOrSmile = true
+        )
+
+        val res = analyzer.process(squintFrame, 100L, cfg)
+        assertTrue("Events must not contain any blink when smiling/squinting", res.events.filterIsInstance<GestureEvent.EyeBlinkTriggered>().isEmpty())
+        assertTrue("Feedback should inform about smile/squint detection", res.feedbackText?.contains("ยิ้ม") == true || res.feedbackText?.contains("หยีตา") == true)
+    }
+
+    @Test
+    fun `single hand lock tracker strictly rejects opposite hand cross-screen jumping`() {
+        val lockTracker = SingleHandLockTracker()
+        val rightHandCenter = makeOpenPalm(cx = 0.65f, cy = 0.5f, handSide = HandSide.RIGHT)
+        val leftHandFar = makeOpenPalm(cx = 0.15f, cy = 0.5f, handSide = HandSide.LEFT)
+
+        // Step 1: Right hand is presented and locked
+        val accepted1 = lockTracker.filterSingleHand(rightHandCenter, 100L, HandLockMode.AUTO_SINGLE)
+        assertNotNull("Initial right hand must be accepted", accepted1)
+        assertEquals(HandSide.RIGHT, lockTracker.lockedSide)
+
+        // Step 2: Sudden opposite left hand appearing on the opposite side of the screen must be rejected!
+        val rejectedLeft = lockTracker.filterSingleHand(leftHandFar, 150L, HandLockMode.AUTO_SINGLE)
+        assertNull("Opposite left hand jumping across screen must be rejected to prevent 2-hand confusion", rejectedLeft)
+
+        // Step 3: Continued right hand interaction must be smoothly accepted
+        val acceptedRight2 = lockTracker.filterSingleHand(rightHandCenter.copy(timestampMs = 200L), 200L, HandLockMode.AUTO_SINGLE)
+        assertNotNull("Continued right hand must be accepted", acceptedRight2)
     }
 
     @Test

@@ -225,6 +225,18 @@ class DynamicIslandView @JvmOverloads constructor(
                     pillRect.centerY() + dp(12.5f),
                     subPaint
                 )
+
+                if (st.geminiActive || st.voiceListening) {
+                    emojiPaint.textSize = dp(11f)
+                    var rightBadgeX = pillRect.right - dp(16f)
+                    if (st.voiceListening) {
+                        canvas.drawText("🎙️", rightBadgeX, pillRect.centerY() + dp(4f), emojiPaint)
+                        rightBadgeX -= dp(14f)
+                    }
+                    if (st.geminiActive) {
+                        canvas.drawText("🤖", rightBadgeX, pillRect.centerY() + dp(4f), emojiPaint)
+                    }
+                }
             }
 
             is HudVisualState.VolumeSlider -> {

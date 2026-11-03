@@ -266,7 +266,13 @@ data class AirGestureConfig(
     val showFpsCounter: Boolean = true,
     val scrollSensitivity: Float = 1.0f,
     val volumeSensitivity: Float = 1.0f,
-    val showLiveCalibrationPreview: Boolean = false
+    val showLiveCalibrationPreview: Boolean = false,
+    val enableGeminiAi: Boolean = false,
+    val geminiApiKey: String = "",
+    val geminiModelName: String = "gemini-2.5-flash",
+    val enableVoiceCommands: Boolean = false,
+    val enableVoiceTts: Boolean = true,
+    val enableLongDistanceBooster: Boolean = true
 )
 
 data class RadialAppSlot(
@@ -291,5 +297,7 @@ data class TelemetrySnapshot(
     val inferenceLatencyMs: Float = 0f,
     val thermalStatus: Int = 0,
     val currentPosture: String = "Dormant",
-    val lastActionSummary: String = "รอแสดงท่ามือหน้ากล้อง..."
+    val lastActionSummary: String = "รอแสดงท่ามือหน้ากล้อง...",
+    val geminiStatusSummary: String = "100% On-Device (เครื่องล้วน)",
+    val voiceStatusSummary: String = "ปิด"
 )

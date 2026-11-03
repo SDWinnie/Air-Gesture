@@ -536,12 +536,19 @@ object HandSkeletonAnalyzer {
         val ringCurl = flexion[3] < 0.40f
         val pinkyCurl = flexion[4] < 0.40f
 
-        // 1. Pinch Candidate
+        val middlePinchDistNorm = dist2D(landmarks[THUMB_TIP], landmarks[MIDDLE_TIP]) / scale
+
+        // 1. Air Snap (ดีดนิ้ว: โป้งประกบกลาง)
+        if (middlePinchDistNorm < 0.24f && ringCurl && pinkyCurl && !HandGeometry.isFullFist(landmarks, scale)) {
+            return HandPosture.AIR_SNAP
+        }
+
+        // 2. Pinch Candidate
         if (pinchDistNorm < 0.26f && !HandGeometry.isFullFist(landmarks, scale)) {
             return HandPosture.PINCH_OK
         }
 
-        // 2. Thumbs Up / Down
+        // 3. Thumbs Up / Down
         if (indexCurl && middleCurl && ringCurl && pinkyCurl && thumbExt) {
             val tip = landmarks[THUMB_TIP]
             val mcp = landmarks[THUMB_MCP]
@@ -549,57 +556,74 @@ object HandSkeletonAnalyzer {
             if ((tip.y - mcp.y) > 0.26f * scale) return HandPosture.THUMB_DOWN
         }
 
-        // 3. Closed Fist
+        // 4. Closed Fist
         if (indexCurl && middleCurl && ringCurl && pinkyCurl && !thumbExt) {
             return HandPosture.CLOSED_FIST
         }
 
-        // 4. Knife Hand (สันมือ)
+        // 5. Knife Hand (สันมือ)
         if (isKnifeHand && indexExt && middleExt && ringExt && pinkyExt) {
             return HandPosture.KNIFE_HAND
         }
 
-        // 5. Pointing One (ชี้ 1 นิ้ว)
-        if (indexExt && middleCurl && ringCurl && pinkyCurl && !thumbExt) {
-            return HandPosture.POINTING_ONE
+        // 6. Two-Finger Tap (แตะ 2 นิ้ว: ชี้+กลางแนบชิดกัน)
+        if (indexExt && middleExt && ringCurl && pinkyCurl && spreads[1] < 12.0f) {
+            return HandPosture.TWO_FINGER_TAP
         }
 
-        // 6. Finger Gun (ปืนนิ้ว: โป้ง+ชี้)
-        if (indexExt && thumbExt && middleCurl && ringCurl && pinkyCurl) {
-            return HandPosture.FINGER_GUN
-        }
-
-        // 7. Victory / Peace (ชู 2 นิ้ว)
+        // 7. Victory / Peace (ชู 2 นิ้วแยกกว้าง)
         if (indexExt && middleExt && ringCurl && pinkyCurl && !thumbExt) {
             return HandPosture.VICTORY_PEACE
         }
 
-        // 8. I Love You (โป้ง+ชี้+ก้อย)
+        // 8. Index Beckon (กวักนิ้วชี้) / Pointing One (ชี้ 1 นิ้ว)
+        if (indexExt && middleCurl && ringCurl && pinkyCurl) {
+            val indexPip = landmarks[INDEX_PIP]
+            val indexTip = landmarks[INDEX_TIP]
+            if (indexTip.z - indexPip.z < -0.15f * scale) {
+                return HandPosture.INDEX_BECKON
+            }
+            if (!thumbExt) {
+                return HandPosture.POINTING_ONE
+            }
+        }
+
+        // 9. Finger Gun (ปืนนิ้ว: โป้ง+ชี้)
+        if (indexExt && thumbExt && middleCurl && ringCurl && pinkyCurl) {
+            return HandPosture.FINGER_GUN
+        }
+
+        // 10. I Love You (โป้ง+ชี้+ก้อย)
         if (thumbExt && indexExt && pinkyExt && middleCurl && ringCurl) {
             return HandPosture.I_LOVE_YOU
         }
 
-        // 9. Call Me / Shaka (โป้ง+ก้อย)
+        // 11. Call Me / Shaka Wave (โป้ง+ก้อย)
         if (thumbExt && pinkyExt && indexCurl && middleCurl && ringCurl) {
             return HandPosture.CALL_ME_SHAKA
         }
 
-        // 10. Spock Vulcan (ชู 4 นิ้วโดยแยกกลางกับนาง)
+        // 12. Spock Vulcan (ชู 4 นิ้วโดยแยกกลางกับนาง)
         if (indexExt && middleExt && ringExt && pinkyExt && spreads[1] > 20f) {
             return HandPosture.SPOCK_VULCAN
         }
 
-        // 11. Three Fingers (ชู 3 นิ้ว)
+        // 13. Three Fingers (ชู 3 นิ้ว)
         if (indexExt && middleExt && ringExt && pinkyCurl) {
             return HandPosture.THREE_FINGERS
         }
 
-        // 12. Four Fingers (ชู 4 นิ้ว โป้งเก็บ)
+        // 14. Four Fingers (ชู 4 นิ้ว โป้งเก็บ)
         if (indexExt && middleExt && ringExt && pinkyExt && !thumbExt) {
             return HandPosture.FOUR_FINGERS
         }
 
-        // 13. Open Palm (แบมือ 5 นิ้ว)
+        // 15. Palm Push (ผลักฝ่ามือเข้าหากล้อง)
+        if (thumbExt && indexExt && middleExt && ringExt && pinkyExt && landmarks[INDEX_TIP].z < landmarks[WRIST].z - 0.20f * scale) {
+            return HandPosture.PALM_PUSH
+        }
+
+        // 16. Open Palm (แบมือ 5 นิ้ว)
         if (thumbExt && indexExt && middleExt && ringExt && pinkyExt) {
             return HandPosture.OPEN_PALM
         }

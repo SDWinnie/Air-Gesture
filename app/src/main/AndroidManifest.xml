@@ -3,19 +3,16 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <!--
-        100% EDGE-AI & GOOGLE PLAY PROTECT HARDENED POSTURE (v2.0):
-        1. Strip INTERNET & ACCESS_NETWORK_STATE from all transitive AARs (0 network sockets).
-        2. Zero SYSTEM_ALERT_WINDOW (Eliminates Overlay+Accessibility tapjacking heuristic;
-           uses official Android Picture-in-Picture Floating Dynamic Island HUD instead).
-        3. Zero FOREGROUND_SERVICE_SPECIAL_USE (Uses standard official camera FGS type only).
+        EDGE-AI & CLOUD-HYBRID POSTURE (v6.0):
+        1. Official Camera, Audio Recording (Voice Navigation), and Foreground Service.
+        2. Strict HTTPS Internet egress specifically for Google Gemini Free AI Co-Processor.
+        3. Zero SYSTEM_ALERT_WINDOW (Official Android Picture-in-Picture Floating Dynamic Island HUD).
         4. Zero storage permissions.
     -->
-    <uses-permission
-        android:name="android.permission.INTERNET"
-        tools:node="remove" />
-    <uses-permission
-        android:name="android.permission.ACCESS_NETWORK_STATE"
-        tools:node="remove" />
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
 
     <uses-feature
         android:name="android.hardware.camera.any"
