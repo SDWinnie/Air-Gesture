@@ -152,6 +152,25 @@ class EyeGazeBlinkAnalyzer(
             baselineEar = 0.95f * baselineEar + 0.05f * curEar
         }
 
+        // Anti-rebound refractory lockout: prevents double-triggering after an action fires
+        if (nowMs - lastActionFiredMs < 950L) {
+            wasEyeClosed = false
+            eyeClosedStartMs = -1L
+            pendingBlinkCount = 0
+            blinkWindowExpireMs = -1L
+            return AnalysisResult(
+                isLookingAtScreen = isLooking,
+                gazeConfidence = eyeFrame.confidence,
+                leftEar = eyeFrame.leftEar,
+                rightEar = eyeFrame.rightEar,
+                pendingBlinkCount = 0,
+                events = emptyList(),
+                feedbackText = feedback ?: "⏳ หน่วงเวลาป้องกันเบิ้ลคำสั่ง...",
+                isLockedOn = eyeFrame.isLockedOn,
+                trackCount = eyeFrame.trackingTrackCount
+            )
+        }
+
         val isEyeClosedNow = curEar < blinkThreshold && !eyeFrame.isSquintOrSmile
 
         if (eyeFrame.isSquintOrSmile) {
@@ -174,7 +193,7 @@ class EyeGazeBlinkAnalyzer(
             if (blinkDuration in 40L..480L) {
                 // If eye contact is strictly required, ensure user was looking at screen
                 val validEyeContact = !config.requireEyeContact || isLooking
-                if (validEyeContact && (nowMs - lastActionFiredMs) > 320L) {
+                if (validEyeContact && (nowMs - lastActionFiredMs) > 950L) {
                     pendingBlinkCount++
                     blinkWindowExpireMs = nowMs + config.blinkSpeedWindowMs
 

@@ -83,6 +83,9 @@ class AirGestureForegroundService : LifecycleService() {
         voiceController = AirVoiceController(this) { cmd, feedback ->
             handleVoiceCommand(cmd, feedback)
         }
+        voiceController.onAppLaunchRequested = { pkgOrAction, name ->
+            handleAppLaunch(pkgOrAction, name)
+        }
 
         cameraController = DualStreamCameraController(
             context = this,
@@ -368,6 +371,29 @@ class AirGestureForegroundService : LifecycleService() {
                 gestureStateMachine.reset()
                 AirGestureRuntimeBus.updateTelemetry { it.copy(lastActionSummary = "🎙️ คำสั่งเสียง: รีเซ็ต/สลับการล็อกมือ 🔒") }
             }
+        }
+    }
+
+    private fun handleAppLaunch(pkgOrAction: String, name: String) {
+        runCatching {
+            val intent = if (pkgOrAction.startsWith("android.")) {
+                Intent(pkgOrAction).apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) }
+            } else {
+                packageManager.getLaunchIntentForPackage(pkgOrAction)?.apply {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+            }
+            if (intent != null) {
+                startActivity(intent)
+            } else {
+                val webIntent = Intent(Intent.ACTION_VIEW, android.net.Uri.parse("https://www.google.com/search?q=$name")).apply {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                startActivity(webIntent)
+            }
+            AirGestureRuntimeBus.updateTelemetry { it.copy(lastActionSummary = "🎙️ AI สั่งเปิดแอป: $name 🚀") }
+        }.onFailure { t ->
+            AirLogger.w("ForegroundService", "Failed to launch app $pkgOrAction: ${t.message}")
         }
     }
 

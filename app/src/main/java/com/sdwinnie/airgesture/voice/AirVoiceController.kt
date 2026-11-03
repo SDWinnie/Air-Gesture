@@ -72,6 +72,14 @@ class AirVoiceController(
     @Volatile
     var enableTtsFeedback = true
 
+    @Volatile
+    private var isTtsSpeaking = false
+
+    @Volatile
+    private var ttsFinishedTimeMs = 0L
+
+    var onAppLaunchRequested: ((appPackageOrAction: String, appName: String) -> Unit)? = null
+
     init {
         runCatching {
             toneGen = ToneGenerator(AudioManager.STREAM_NOTIFICATION, 65)
@@ -89,6 +97,19 @@ class AirVoiceController(
                     textToSpeech?.language = Locale.getDefault()
                     ttsReady = true
                 }
+                textToSpeech?.setOnUtteranceProgressListener(object : android.speech.tts.UtteranceProgressListener() {
+                    override fun onStart(utteranceId: String?) {
+                        isTtsSpeaking = true
+                    }
+                    override fun onDone(utteranceId: String?) {
+                        isTtsSpeaking = false
+                        ttsFinishedTimeMs = System.currentTimeMillis()
+                    }
+                    override fun onError(utteranceId: String?) {
+                        isTtsSpeaking = false
+                        ttsFinishedTimeMs = System.currentTimeMillis()
+                    }
+                })
                 AirLogger.d("VoiceController", "TextToSpeech initialized (ready=$ttsReady)")
             }
         }
@@ -281,8 +302,55 @@ class AirVoiceController(
 
     private fun processRecognizedMatches(matches: List<String>, isPartial: Boolean = false) {
         val now = System.currentTimeMillis()
-        if (now - lastCommandFiredMs < 600L) return
 
+        // 1. Acoustic Echo Suppression: Ignore mic input while TTS is actively speaking or dissipating
+        if (isTtsSpeaking || (now - ttsFinishedTimeMs) < 850L) {
+            AirLogger.d("VoiceController", "Suppressed voice input during TTS feedback to prevent double-trigger echo")
+            return
+        }
+
+        // 2. Strict debounce cooldown (1400ms) to prevent double firing
+        if (now - lastCommandFiredMs < 1400L) {
+            AirLogger.d("VoiceController", "Voice debounce active: ${now - lastCommandFiredMs}ms < 1400ms")
+            return
+        }
+
+        // 3. Never execute discrete actions on partial results
+        if (isPartial) return
+
+        // 4. System App & Action Controller: "เปิด YouTube", "เปิด Chrome", "เปิด กล้อง", "เปิด การตั้งค่า", etc.
+        for (raw in matches) {
+            val text = raw.lowercase().trim()
+            val norm = normalizeAcousticText(text)
+            val appTarget = when {
+                norm.contains("เปิดยูทูป") || norm.contains("เปิดyoutube") || text.contains("open youtube") ->
+                    "com.google.android.youtube" to "YouTube"
+                norm.contains("เปิดติ๊กต๊อก") || norm.contains("เปิดtiktok") || text.contains("open tiktok") ->
+                    "com.zhiliaoapp.musically" to "TikTok"
+                norm.contains("เปิดเฟส") || norm.contains("เปิดfacebook") || text.contains("open facebook") ->
+                    "com.facebook.katana" to "Facebook"
+                norm.contains("เปิดไลน์") || norm.contains("เปิดline") || text.contains("open line") ->
+                    "jp.naver.line.android" to "LINE"
+                norm.contains("เปิดโครม") || norm.contains("เปิดchrome") || norm.contains("เปิดเว็บ") || text.contains("open chrome") ->
+                    "com.android.chrome" to "Google Chrome"
+                norm.contains("เปิดกล้อง") || text.contains("open camera") ->
+                    "android.media.action.IMAGE_CAPTURE" to "กล้องถ่ายภาพ"
+                norm.contains("เปิดการตั้งค่า") || norm.contains("เปิดตั้งค่า") || text.contains("open settings") ->
+                    "android.settings.SETTINGS" to "การตั้งค่าระบบ"
+                else -> null
+            }
+            if (appTarget != null) {
+                lastCommandFiredMs = now
+                val (pkg, name) = appTarget
+                val feedback = "กำลังเปิด $name ค่ะ"
+                AirLogger.d("VoiceController", "System Voice App Launched: $name ($pkg)")
+                speakFeedback(feedback)
+                onAppLaunchRequested?.invoke(pkg, name)
+                return
+            }
+        }
+
+        // 5. Match the 13 canonical touchless navigation commands
         for (raw in matches) {
             val command = matchVoiceCommand(raw)
             if (command != null) {
