@@ -18,8 +18,8 @@ android {
         applicationId = "com.sdwinnie.airgesture"
         minSdk = 26
         targetSdk = 35
-        versionCode = 9
-        versionName = "6.0.1"
+        versionCode = 10
+        versionName = "6.1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 

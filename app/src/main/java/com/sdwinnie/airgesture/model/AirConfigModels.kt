@@ -230,6 +230,59 @@ enum class RadialSlotCount(
     SLOTS_15(15, "15 แอป (24° เต็มวงล้อ)")
 }
 
+/**
+ * AI Model selection choices for Air Gesture Co-Processor.
+ * Allows instant selection between modern Google Gemini Cloud models and On-Device Neural processing.
+ */
+enum class AiModelChoice(
+    val modelId: String,
+    val displayName: String,
+    val description: String,
+    val isCloud: Boolean
+) {
+    GEMINI_3_8_FLASH(
+        "gemini-3.8-flash",
+        "⚡ Gemini 3.8 Flash (แนะนำล่าสุด - เร็วสุด)",
+        "ประมวลผลเร็วที่สุด แม่นยำสูงสุดสำหรับตรวจจับสายตาและมือ",
+        true
+    ),
+    GEMINI_FLASH_LATEST(
+        "gemini-flash-latest",
+        "🚀 Gemini Flash Latest (อัปเดตอัตโนมัติ)",
+        "เชื่อมต่อโมเดลล่าสุดจาก Google AI Studio เสมอ",
+        true
+    ),
+    GEMINI_FLASH_LITE(
+        "gemini-flash-lite-latest",
+        "🍃 Gemini Flash Lite (ประหยัดพลังงาน)",
+        "ลดภาระการรับส่งข้อมูล ประหยัดแบตเตอรี่สูงสุด",
+        true
+    ),
+    GEMINI_3_5_FLASH(
+        "gemini-3.5-flash",
+        "🛡️ Gemini 3.5 Flash (เสถียรภาพสูง)",
+        "โมเดลเวอร์ชันเสถียร รองรับการทำงานยาวนานต่อเนื่อง",
+        true
+    ),
+    ON_DEVICE_NEURAL(
+        "on-device",
+        "📱 On-Device Neural (ประมวลผลบนเครื่อง 100%)",
+        "ทำงานออฟไลน์ 100% บนเครื่อง ไม่ใช้เน็ต ไม่ต้องใช้คีย์",
+        false
+    );
+
+    companion object {
+        fun fromModelId(id: String): AiModelChoice {
+            val trimmed = id.trim().lowercase()
+            return entries.firstOrNull { it.modelId.lowercase() == trimmed }
+                ?: if (trimmed.contains("lite")) GEMINI_FLASH_LITE
+                else if (trimmed.contains("3.5")) GEMINI_3_5_FLASH
+                else if (trimmed == "on-device") ON_DEVICE_NEURAL
+                else GEMINI_3_8_FLASH
+        }
+    }
+}
+
 data class AirGestureConfig(
     val resolution: CameraResolution = CameraResolution.RES_1080P,
     val targetFps: TargetFps = TargetFps.FPS_60,
@@ -269,11 +322,18 @@ data class AirGestureConfig(
     val showLiveCalibrationPreview: Boolean = false,
     val enableGeminiAi: Boolean = false,
     val geminiApiKey: String = "",
-    val geminiModelName: String = "gemini-2.0-flash",
+    val geminiModelName: String = "gemini-3.8-flash",
     val enableVoiceCommands: Boolean = false,
     val enableVoiceTts: Boolean = true,
     val enableLongDistanceBooster: Boolean = true
-)
+) {
+    val currentAiModelChoice: AiModelChoice
+        get() = if (!enableGeminiAi || geminiModelName.equals("on-device", ignoreCase = true)) {
+            AiModelChoice.ON_DEVICE_NEURAL
+        } else {
+            AiModelChoice.fromModelId(geminiModelName)
+        }
+}
 
 data class RadialAppSlot(
     val slotIndex: Int,

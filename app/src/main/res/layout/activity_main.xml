@@ -1582,7 +1582,7 @@
                         </com.google.android.material.card.MaterialCardView>
                     </LinearLayout>
 
-                    <!-- Google Gemini Free AI Co-Processor Card (v6.0) -->
+                    <!-- Google Gemini & AI Model Selector Card (v6.1) -->
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
@@ -1595,7 +1595,7 @@
                             android:id="@+id/switchGeminiAi"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:text="🤖 ผู้ช่วย AI ฟรี Google Gemini (AI Co-Processor)"
+                            android:text="🤖 ระบบผู้ช่วย AI Co-Processor"
                             android:textColor="@color/text_primary"
                             android:textSize="13sp"
                             android:textStyle="bold" />
@@ -1604,7 +1604,7 @@
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="4dp"
-                            android:text="ช่วยประมวลผลควบคู่ในพื้นหลังเพื่อลดภาระของ CPU/GPU ในเครื่อง ปรับเทียบเจตนาท่าทางมือ และแก้ปัญหาการสับสนข้ามมือ (ฟรีผ่าน Google AI Studio)"
+                            android:text="เลือกโมเดล AI ช่วยประมวลผลเพื่อลดภาระ CPU/GPU ในเครื่อง ปรับเทียบเจตนาท่าทางมือ และแก้ปัญหาการสับสนข้ามมือ (พร้อมใช้งานทันที ไม่ต้องใส่คีย์)"
                             android:textColor="@color/text_secondary"
                             android:textSize="11.5sp" />
 
@@ -1613,7 +1613,7 @@
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="8dp"
-                            android:text="สถานะ: ยังไม่ได้ใส่ API Key (สลับใช้ระบบเครื่อง 100%)"
+                            android:text="โมเดลที่ใช้งาน: ⚡ Gemini 3.8 Flash (พร้อมใช้งานทันที)"
                             android:textColor="@color/accent_emerald"
                             android:textSize="11.5sp"
                             android:textStyle="bold" />
@@ -1625,31 +1625,47 @@
                             android:orientation="horizontal">
 
                             <com.google.android.material.button.MaterialButton
-                                android:id="@+id/btnConfigureGeminiKey"
-                                style="@style/Widget.Material3.Button.OutlinedButton"
+                                android:id="@+id/btnSelectAiModel"
+                                style="@style/Widget.Material3.Button.TonalButton"
                                 android:layout_width="0dp"
                                 android:layout_height="wrap_content"
                                 android:layout_weight="1"
                                 android:layout_marginEnd="6dp"
-                                android:text="🔑 ตั้งค่า API Key"
+                                android:text="🤖 เลือกโมเดล AI"
+                                android:textAllCaps="false"
+                                android:textColor="@color/text_primary"
+                                android:textSize="12sp"
+                                app:cornerRadius="12dp" />
+
+                            <com.google.android.material.button.MaterialButton
+                                android:id="@+id/btnTestGeminiKey"
+                                style="@style/Widget.Material3.Button.OutlinedButton"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:layout_marginStart="6dp"
+                                android:text="⚡ ทดสอบโมเดล"
                                 android:textAllCaps="false"
                                 android:textColor="@color/text_primary"
                                 android:textSize="12sp"
                                 app:cornerRadius="12dp"
                                 app:strokeColor="@color/stroke_subtle" />
-
-                            <com.google.android.material.button.MaterialButton
-                                android:id="@+id/btnTestGeminiKey"
-                                style="@style/Widget.Material3.Button.TonalButton"
-                                android:layout_width="0dp"
-                                android:layout_height="wrap_content"
-                                android:layout_weight="1"
-                                android:layout_marginStart="6dp"
-                                android:text="⚡ ทดสอบการเชื่อมต่อ"
-                                android:textAllCaps="false"
-                                android:textSize="12sp"
-                                app:cornerRadius="12dp" />
                         </LinearLayout>
+
+                        <TextView
+                            android:id="@+id/btnCustomKeyOptional"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_gravity="end"
+                            android:layout_marginTop="8dp"
+                            android:clickable="true"
+                            android:focusable="true"
+                            android:background="?attr/selectableItemBackground"
+                            android:paddingHorizontal="4dp"
+                            android:paddingVertical="2dp"
+                            android:text="🔑 ตั้งค่า Custom API Key (ตัวเลือกเสริม)"
+                            android:textColor="@color/text_muted"
+                            android:textSize="11sp" />
                     </LinearLayout>
 
                     <!-- Wide-Angle & Long-Distance Camera Vision Booster Card (v6.0) -->

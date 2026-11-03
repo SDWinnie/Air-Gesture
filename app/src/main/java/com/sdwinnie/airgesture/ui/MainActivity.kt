@@ -903,41 +903,57 @@ class MainActivity : AppCompatActivity() {
 
         binding.switchGeminiAi.isChecked = currentConfig.enableGeminiAi
         binding.switchLongDistanceBooster.isChecked = currentConfig.enableLongDistanceBooster
-        updateGeminiKeyStatusText()
+        updateAiModelStatusText()
 
         binding.switchGeminiAi.setOnCheckedChangeListener { _, isChecked ->
             if (suppressConfigListeners) return@setOnCheckedChangeListener
-            if (isChecked && currentConfig.geminiApiKey.isBlank()) {
-                showGeminiApiKeyDialog()
-                return@setOnCheckedChangeListener
+            if (isChecked) {
+                val targetModel = if (currentConfig.geminiModelName.equals("on-device", ignoreCase = true)) {
+                    "gemini-3.8-flash"
+                } else {
+                    currentConfig.geminiModelName
+                }
+                persistAndReloadConfig(currentConfig.copy(enableGeminiAi = true, geminiModelName = targetModel))
+                Toast.makeText(this, "เปิดใช้งานผู้ช่วย AI Co-Processor", Toast.LENGTH_SHORT).show()
+            } else {
+                persistAndReloadConfig(currentConfig.copy(enableGeminiAi = false))
+                Toast.makeText(this, "สลับใช้ระบบประมวลผลบนเครื่อง 100%", Toast.LENGTH_SHORT).show()
             }
-            persistAndReloadConfig(currentConfig.copy(enableGeminiAi = isChecked))
+            updateAiModelStatusText()
         }
 
-        binding.btnConfigureGeminiKey.setOnClickListener {
-            showGeminiApiKeyDialog()
+        binding.btnSelectAiModel.setOnClickListener {
+            showAiModelSelectionDialog()
         }
 
         binding.btnTestGeminiKey.setOnClickListener {
-            val key = currentConfig.geminiApiKey
-            if (key.isBlank()) {
-                Toast.makeText(this, "โปรดใส่ API Key ก่อนทำการทดสอบ", Toast.LENGTH_SHORT).show()
-                showGeminiApiKeyDialog()
-                return@setOnClickListener
-            }
             binding.btnTestGeminiKey.isEnabled = false
-            Toast.makeText(this, "กำลังทดสอบเชื่อมต่อ Google Gemini...", Toast.LENGTH_SHORT).show()
-            com.sdwinnie.airgesture.ai.GeminiAiCoProcessor().testConnection(key, currentConfig.geminiModelName) { success, msg, verifiedModel ->
+            val isCloud = currentConfig.enableGeminiAi && !currentConfig.geminiModelName.equals("on-device", ignoreCase = true)
+            Toast.makeText(
+                this,
+                if (isCloud) "กำลังทดสอบโมเดล AI Cloud (${currentConfig.geminiModelName})..." else "กำลังตรวจสอบระบบ AI บนเครื่อง...",
+                Toast.LENGTH_SHORT
+            ).show()
+
+            com.sdwinnie.airgesture.ai.GeminiAiCoProcessor().testConnection(
+                apiKey = currentConfig.geminiApiKey,
+                preferredModel = if (currentConfig.enableGeminiAi) currentConfig.geminiModelName else "on-device"
+            ) { success, msg, verifiedModel ->
                 binding.btnTestGeminiKey.isEnabled = true
-                if (success && verifiedModel.isNotBlank() && verifiedModel != currentConfig.geminiModelName) {
+                if (success && verifiedModel.isNotBlank() && verifiedModel != currentConfig.geminiModelName && verifiedModel != "on-device") {
                     persistAndReloadConfig(currentConfig.copy(geminiModelName = verifiedModel))
                 }
+                updateAiModelStatusText()
                 MaterialAlertDialogBuilder(this)
                     .setTitle(if (success) "การเชื่อมต่อสำเร็จ" else "การเชื่อมต่อไม่สำเร็จ")
                     .setMessage(msg)
                     .setPositiveButton("ตกลง", null)
                     .show()
             }
+        }
+
+        binding.btnCustomKeyOptional.setOnClickListener {
+            showGeminiApiKeyDialog()
         }
 
         binding.switchLongDistanceBooster.setOnCheckedChangeListener { _, isChecked ->
@@ -996,39 +1012,87 @@ class MainActivity : AppCompatActivity() {
         AirGestureForegroundService.notifyConfigUpdated(this)
     }
 
+    private fun showAiModelSelectionDialog() {
+        val currentChoice = if (!currentConfig.enableGeminiAi) {
+            com.sdwinnie.airgesture.model.AiModelChoice.ON_DEVICE_NEURAL
+        } else {
+            com.sdwinnie.airgesture.model.AiModelChoice.fromModelId(currentConfig.geminiModelName)
+        }
+
+        val entries = com.sdwinnie.airgesture.model.AiModelChoice.entries.toTypedArray()
+        val items = entries.map { "${it.displayName}\n• ${it.description}" }.toTypedArray()
+        val selectedIndex = entries.indexOf(currentChoice).coerceAtLeast(0)
+
+        MaterialAlertDialogBuilder(this)
+            .setTitle("🤖 เลือกโมเดล AI สำหรับประมวลผล")
+            .setSingleChoiceItems(items, selectedIndex) { dialog, which ->
+                val chosen = entries[which]
+                val updatedConfig = if (chosen == com.sdwinnie.airgesture.model.AiModelChoice.ON_DEVICE_NEURAL) {
+                    currentConfig.copy(
+                        enableGeminiAi = false,
+                        geminiModelName = "on-device"
+                    )
+                } else {
+                    currentConfig.copy(
+                        enableGeminiAi = true,
+                        geminiModelName = chosen.modelId
+                    )
+                }
+                persistAndReloadConfig(updatedConfig)
+                binding.switchGeminiAi.isChecked = updatedConfig.enableGeminiAi
+                updateAiModelStatusText()
+                dialog.dismiss()
+                Toast.makeText(this, "เลือกโมเดล: ${chosen.displayName}", Toast.LENGTH_SHORT).show()
+            }
+            .setNegativeButton("ปิด", null)
+            .show()
+    }
+
     private fun showGeminiApiKeyDialog() {
         val input = android.widget.EditText(this).apply {
-            hint = "AIzaSy..."
+            hint = "คัดลอกคีย์ส่วนตัวมาใส่ที่นี่ (ปล่อยว่างเพื่อใช้คีย์ฟรีของแอป)"
             setText(currentConfig.geminiApiKey)
             setSingleLine(true)
             setPadding(48, 32, 48, 32)
         }
         MaterialAlertDialogBuilder(this)
-            .setTitle("🔑 ตั้งค่า Google AI Studio API Key (ฟรี)")
-            .setMessage("นำ API Key ฟรีจาก Google AI Studio (aistudio.google.com) มาใส่ที่นี่เพื่อเปิดใช้ AI Co-Processor ประมวลผลในพื้นหลัง")
+            .setTitle("🔑 Custom Google AI Studio API Key (ตัวเลือกเสริม)")
+            .setMessage("หากคุณมี Google AI Studio API Key ส่วนตัว สามารถใส่ได้ที่นี่ หรือกด 'ใช้คีย์เริ่มต้นของแอป' เพื่อใช้งาน Built-in Free Cloud ได้ทันที")
             .setView(input)
             .setPositiveButton("บันทึก") { _, _ ->
                 val key = input.text.toString().trim()
-                currentConfig = currentConfig.copy(geminiApiKey = key, enableGeminiAi = key.isNotBlank())
+                currentConfig = currentConfig.copy(geminiApiKey = key)
                 preferenceStore.saveConfig(currentConfig)
-                binding.switchGeminiAi.isChecked = currentConfig.enableGeminiAi
-                updateGeminiKeyStatusText()
+                updateAiModelStatusText()
                 AirGestureForegroundService.notifyConfigUpdated(this)
-                Toast.makeText(this, if (key.isNotBlank()) "บันทึก Gemini API Key เรียบร้อย" else "ล้างคีย์แล้ว", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, if (key.isNotBlank()) "บันทึก Custom Key เรียบร้อย" else "สลับใช้ Built-in Free Cloud ของแอป", Toast.LENGTH_SHORT).show()
+            }
+            .setNeutralButton("ใช้คีย์เริ่มต้นของแอป") { _, _ ->
+                currentConfig = currentConfig.copy(geminiApiKey = "")
+                preferenceStore.saveConfig(currentConfig)
+                updateAiModelStatusText()
+                AirGestureForegroundService.notifyConfigUpdated(this)
+                Toast.makeText(this, "สลับใช้คีย์เริ่มต้นของแอปแล้ว", Toast.LENGTH_SHORT).show()
             }
             .setNegativeButton("ยกเลิก", null)
             .show()
     }
 
-    private fun updateGeminiKeyStatusText() {
-        val key = currentConfig.geminiApiKey
-        if (key.isNotBlank()) {
-            val masked = if (key.length > 8) "${key.take(4)}...${key.takeLast(4)}" else "***"
-            binding.tvGeminiKeyStatus.text = "สถานะ: พร้อมใช้งาน ($masked)"
+    private fun updateAiModelStatusText() {
+        val choice = com.sdwinnie.airgesture.model.AiModelChoice.fromModelId(currentConfig.geminiModelName)
+        if (!currentConfig.enableGeminiAi || choice == com.sdwinnie.airgesture.model.AiModelChoice.ON_DEVICE_NEURAL) {
+            binding.tvGeminiKeyStatus.text = "โมเดลที่ใช้งาน: 📱 On-Device Neural (ประมวลผลบนเครื่อง 100% ไม่ใช้เน็ต)"
             binding.tvGeminiKeyStatus.setTextColor(ContextCompat.getColor(this, R.color.accent_emerald))
         } else {
-            binding.tvGeminiKeyStatus.text = "สถานะ: ยังไม่ได้ใส่ API Key (สลับใช้ระบบเครื่อง 100%)"
-            binding.tvGeminiKeyStatus.setTextColor(ContextCompat.getColor(this, R.color.accent_amber))
+            val key = currentConfig.geminiApiKey
+            val keyInfo = if (key.isNotBlank()) {
+                val masked = if (key.length > 8) "${key.take(4)}...${key.takeLast(4)}" else "***"
+                "Custom Key: $masked"
+            } else {
+                "พร้อมใช้งานทันที ไม่ต้องใส่คีย์"
+            }
+            binding.tvGeminiKeyStatus.text = "โมเดลที่ใช้งาน: ${choice.displayName} ($keyInfo)"
+            binding.tvGeminiKeyStatus.setTextColor(ContextCompat.getColor(this, R.color.accent_emerald))
         }
     }
 

@@ -523,16 +523,49 @@ class AirGestureEngineTest {
     @Test
     fun `gemini configuration defaults to valid official model and sanitizes deprecated models`() {
         val defaultConfig = AirGestureConfig()
-        assertEquals("gemini-2.0-flash", defaultConfig.geminiModelName)
+        assertEquals("gemini-3.8-flash", defaultConfig.geminiModelName)
 
         val candidateModels = com.sdwinnie.airgesture.ai.GeminiAiCoProcessor.CANDIDATE_MODELS
         assertTrue(candidateModels.isNotEmpty())
-        assertEquals("gemini-2.0-flash", candidateModels.first())
+        assertEquals("gemini-3.8-flash", candidateModels.first())
         assertFalse(candidateModels.contains("gemini-2.5-flash"))
 
         // PreferenceStore sanitization check
-        assertEquals("gemini-2.0-flash", com.sdwinnie.airgesture.security.PreferenceStore.sanitizeGeminiModel("gemini-2.5-flash"))
-        assertEquals("gemini-1.5-flash", com.sdwinnie.airgesture.security.PreferenceStore.sanitizeGeminiModel("gemini-1.5-flash"))
-        assertEquals("gemini-2.0-flash", com.sdwinnie.airgesture.security.PreferenceStore.sanitizeGeminiModel(""))
+        assertEquals("gemini-3.8-flash", com.sdwinnie.airgesture.security.PreferenceStore.sanitizeGeminiModel("gemini-2.5-flash"))
+        assertEquals("gemini-3.8-flash", com.sdwinnie.airgesture.security.PreferenceStore.sanitizeGeminiModel("gemini-2.0-flash"))
+        assertEquals("gemini-3.8-flash", com.sdwinnie.airgesture.security.PreferenceStore.sanitizeGeminiModel("gemini-1.5-flash"))
+        assertEquals("gemini-3.8-flash", com.sdwinnie.airgesture.security.PreferenceStore.sanitizeGeminiModel(""))
+        assertEquals("on-device", com.sdwinnie.airgesture.security.PreferenceStore.sanitizeGeminiModel("on-device"))
+        assertEquals("gemini-3.8-flash", com.sdwinnie.airgesture.security.PreferenceStore.sanitizeGeminiModel("gemini-3.8-flash"))
+    }
+
+    @Test
+    fun `ai model selection and key resolution operates with seamless built-in defaults`() {
+        // Built-in default key resolution
+        val defaultKey = com.sdwinnie.airgesture.ai.GeminiAiCoProcessor.resolveEffectiveKey(null)
+        assertTrue(defaultKey.isNotBlank())
+        assertEquals(defaultKey, com.sdwinnie.airgesture.ai.GeminiAiCoProcessor.resolveEffectiveKey(""))
+        assertEquals("user-custom-key-xyz", com.sdwinnie.airgesture.ai.GeminiAiCoProcessor.resolveEffectiveKey("user-custom-key-xyz"))
+
+        // AiModelChoice resolution
+        assertEquals(
+            com.sdwinnie.airgesture.model.AiModelChoice.GEMINI_3_8_FLASH,
+            com.sdwinnie.airgesture.model.AiModelChoice.fromModelId("gemini-3.8-flash")
+        )
+        assertEquals(
+            com.sdwinnie.airgesture.model.AiModelChoice.GEMINI_FLASH_LATEST,
+            com.sdwinnie.airgesture.model.AiModelChoice.fromModelId("gemini-flash-latest")
+        )
+        assertEquals(
+            com.sdwinnie.airgesture.model.AiModelChoice.ON_DEVICE_NEURAL,
+            com.sdwinnie.airgesture.model.AiModelChoice.fromModelId("on-device")
+        )
+
+        // Config helper resolution
+        val offlineConfig = AirGestureConfig(enableGeminiAi = false)
+        assertEquals(com.sdwinnie.airgesture.model.AiModelChoice.ON_DEVICE_NEURAL, offlineConfig.currentAiModelChoice)
+
+        val cloudConfig = AirGestureConfig(enableGeminiAi = true, geminiModelName = "gemini-3.8-flash")
+        assertEquals(com.sdwinnie.airgesture.model.AiModelChoice.GEMINI_3_8_FLASH, cloudConfig.currentAiModelChoice)
     }
 }

@@ -80,7 +80,7 @@ class PreferenceStore(context: Context) {
             showLiveCalibrationPreview = prefs.getBoolean(KEY_SHOW_PREVIEW, false),
             enableGeminiAi = prefs.getBoolean(KEY_ENABLE_GEMINI, false),
             geminiApiKey = prefs.getString(KEY_GEMINI_API_KEY, "") ?: "",
-            geminiModelName = sanitizeGeminiModel(prefs.getString(KEY_GEMINI_MODEL, "gemini-2.0-flash")),
+            geminiModelName = sanitizeGeminiModel(prefs.getString(KEY_GEMINI_MODEL, "gemini-3.8-flash")),
             enableVoiceCommands = prefs.getBoolean(KEY_ENABLE_VOICE, false),
             enableVoiceTts = prefs.getBoolean(KEY_ENABLE_VOICE_TTS, true),
             enableLongDistanceBooster = prefs.getBoolean(KEY_ENABLE_LONG_DISTANCE, true)
@@ -148,9 +148,14 @@ class PreferenceStore(context: Context) {
         const val RADIAL_SLOT_COUNT = 15
 
         fun sanitizeGeminiModel(raw: String?): String {
-            if (raw.isNullOrBlank()) return "gemini-2.0-flash"
+            if (raw.isNullOrBlank()) return "gemini-3.8-flash"
             val trimmed = raw.trim()
-            return if (trimmed.contains("2.5") || trimmed.isBlank()) "gemini-2.0-flash" else trimmed
+            if (trimmed.equals("on-device", ignoreCase = true)) return "on-device"
+            return if (trimmed.contains("2.5") || trimmed.contains("2.0") || trimmed.contains("1.5") || trimmed.isBlank()) {
+                "gemini-3.8-flash"
+            } else {
+                trimmed
+            }
         }
         private const val PREFS_NAME = "air_gesture_edge_prefs"
         private const val KEY_DISCLOSURE_ACCEPTED = "prominent_disclosure_accepted"

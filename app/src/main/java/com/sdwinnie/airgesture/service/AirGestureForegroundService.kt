@@ -283,7 +283,7 @@ class AirGestureForegroundService : LifecycleService() {
             AirGestureStateMachine.Mode.FIST_RADIAL_MENU -> "🎡 วงกลมเลือกแอปบนหน้าจอ"
         }
 
-        if (activeConfig.enableGeminiAi && activeConfig.geminiApiKey.isNotBlank()) {
+        if (activeConfig.enableGeminiAi && !activeConfig.geminiModelName.equals("on-device", ignoreCase = true)) {
             geminiAi.evaluateAmbiguityAsync(
                 apiKey = activeConfig.geminiApiKey,
                 modelName = activeConfig.geminiModelName,
