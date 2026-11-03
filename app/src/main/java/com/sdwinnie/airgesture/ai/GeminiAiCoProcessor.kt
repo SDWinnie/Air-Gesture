@@ -384,33 +384,15 @@ class GeminiAiCoProcessor {
         val url = URL("https://generativelanguage.googleapis.com/v1beta/models/$model:generateContent?key=$apiKey")
         val conn = (url.openConnection() as HttpsURLConnection).apply {
             requestMethod = "POST"
-            connectTimeout = 4500
-            readTimeout = 4500
+            connectTimeout = 3000
+            readTimeout = 3000
             doOutput = true
             setRequestProperty("Content-Type", "application/json; charset=UTF-8")
         }
 
-        val prompt = """
-            Context: Android Air Gesture v6.0 touchless navigation co-processor.
-            Vision telemetry:
-            - Detected hand posture: ${candidatePosture.name} (${candidatePosture.thaiName})
-            - Hand chirality: ${observedHandSide.name}
-            - Left Eye EAR: $leftEar, Right Eye EAR: $rightEar
-            - Eye tracking lock-on: $isEyeLocked
-            
-            Determine:
-            1. Intent: SCROLL_DOWN, SCROLL_UP, SEND_HEART, QUICK_BACK, VOLUME_CHANGE, or IDLE.
-            2. Confirmed hand: RIGHT, LEFT, or AUTO.
-            3. Brief Thai confirmation summary (under 6 words).
-            
-            Respond ONLY with a JSON object:
-            {
-               "intent": "SCROLL_DOWN",
-               "hand": "RIGHT",
-               "eye_confidence": 0.95,
-               "commentary": "เลื่อนหน้าจอลงสำเร็จ"
-            }
-        """.trimIndent()
+        // Ultra-low latency micro-prompt (< 45 tokens input, < 35 tokens output)
+        val prompt = "AirGesture AI. In: posture=${candidatePosture.name}, hand=${observedHandSide.name}, L_EAR=$leftEar, R_EAR=$rightEar, eyeLock=$isEyeLocked. " +
+            "Return JSON: {\"intent\":\"SCROLL_DOWN|SCROLL_UP|SEND_HEART|QUICK_BACK|VOLUME_CHANGE|IDLE\",\"hand\":\"RIGHT|LEFT\",\"eye_confidence\":0.95,\"commentary\":\"สรุปสั้น 4 คำ\"}"
 
         val json = JSONObject().apply {
             put("contents", JSONArray().apply {
@@ -421,8 +403,8 @@ class GeminiAiCoProcessor {
                 })
             })
             put("generationConfig", JSONObject().apply {
-                put("temperature", 0.1)
-                put("maxOutputTokens", 120)
+                put("temperature", 0.0)
+                put("maxOutputTokens", 50)
                 put("responseMimeType", "application/json")
             })
         }

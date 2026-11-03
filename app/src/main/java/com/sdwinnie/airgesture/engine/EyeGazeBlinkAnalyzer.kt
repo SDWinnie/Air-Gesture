@@ -53,12 +53,15 @@ class EyeGazeBlinkAnalyzer(
         val leftEyeTrack: EyeTrackPoints? = null,
         val rightEyeTrack: EyeTrackPoints? = null,
         val trackingTrackCount: Int = 32,
-        val isSquintOrSmile: Boolean = false
+        val isSquintOrSmile: Boolean = false,
+        val irisGazeRatioX: Float = 0.5f,
+        val irisGazeRatioY: Float = 0.5f,
+        val isIrisCentered: Boolean = true
     ) {
         val averageEar: Float get() = (leftEar + rightEar) * 0.5f
 
         val isLookingAtScreen: Boolean
-            get() = isFaceDetected && abs(gazeYawDeg) < 24.0f && abs(gazePitchDeg) < 24.0f
+            get() = isFaceDetected && abs(gazeYawDeg) < 24.0f && abs(gazePitchDeg) < 24.0f && isIrisCentered
     }
 
     data class AnalysisResult(

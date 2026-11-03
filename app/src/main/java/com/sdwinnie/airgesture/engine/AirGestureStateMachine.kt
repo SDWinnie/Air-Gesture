@@ -224,10 +224,14 @@ class AirGestureStateMachine(
 
         updateNormalizedVelocity(palmCenter, scale, frame.timestampMs)
 
-        // Smooth Air Cursor tracking (index tip or palm center)
+        // Precision Fingertip-Centric Air Cursor tracking with velocity-adaptive smoothing
         val targetCursorX = landmarks[HandGeometry.INDEX_TIP].x
         val targetCursorY = landmarks[HandGeometry.INDEX_TIP].y
-        val cursorAlpha = (0.35f * config.airCursorSensitivity).coerceIn(0.15f, 0.70f)
+        val deltaCursor = kotlin.math.hypot(targetCursorX - smoothedCursorX, targetCursorY - smoothedCursorY)
+        val dynamicFactor = (deltaCursor * 14.0f).coerceIn(0.0f, 1.0f)
+        val baseAlpha = (0.22f * config.airCursorSensitivity).coerceIn(0.12f, 0.42f)
+        val boostAlpha = (0.75f * config.airCursorSensitivity).coerceIn(0.45f, 0.88f)
+        val cursorAlpha = baseAlpha + (boostAlpha - baseAlpha) * dynamicFactor
         smoothedCursorX += (targetCursorX - smoothedCursorX) * cursorAlpha
         smoothedCursorY += (targetCursorY - smoothedCursorY) * cursorAlpha
 

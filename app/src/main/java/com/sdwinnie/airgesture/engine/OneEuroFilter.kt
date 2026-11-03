@@ -65,18 +65,63 @@ class OneEuroFilter1D(
 }
 
 /**
- * 21-Landmark 3D Filter Bank with automatic tracking-gap reset.
+ * 21-Landmark Dual-Zone 3D Filter Bank with specialized Fingertip Kinematics
+ * and automatic tracking-gap reset.
+ *
+ * Kinematic Zoning:
+ * - Zone 0 (Wrist / MCPs): Balanced cutoff for wrist & palm core inertia.
+ * - Zone 1 (DIP / IP joints): Intermediate dampening.
+ * - Zone 2 (Fingertips 4, 8, 12, 16, 20): Ultra-low stationary cutoff (0.55 Hz) to eliminate
+ *   fine-motor tremor/jitter when aiming the Air Cursor or holding a posture, paired with a high
+ *   acceleration coefficient (beta = 26.0) for zero-lag flicks, pinch clicks, and swipes.
  */
 class LandmarkBankOneEuroFilter(
-    minCutoffHz: Float = 1.7f,
-    beta: Float = 18.0f,
-    derivativeCutoffHz: Float = 2.5f,
+    val palmMinCutoffHz: Float = 1.4f,
+    val palmBeta: Float = 15.0f,
+    val fingertipMinCutoffHz: Float = 0.55f,
+    val fingertipBeta: Float = 26.0f,
+    val derivativeCutoffHz: Float = 2.8f,
     private val resetGapMs: Long = 350L
 ) {
-    private val xFilters = Array(21) { OneEuroFilter1D(minCutoffHz, beta, derivativeCutoffHz) }
-    private val yFilters = Array(21) { OneEuroFilter1D(minCutoffHz, beta, derivativeCutoffHz) }
-    private val zFilters = Array(21) { OneEuroFilter1D(minCutoffHz, beta * 0.5f, derivativeCutoffHz) }
+    companion object {
+        val FINGERTIP_INDICES = intArrayOf(4, 8, 12, 16, 20)
+        val DIP_INDICES = intArrayOf(3, 7, 11, 15, 19)
+
+        fun isFingertip(index: Int): Boolean = index in FINGERTIP_INDICES
+        fun isDipJoint(index: Int): Boolean = index in DIP_INDICES
+    }
+
+    private val xFilters: Array<OneEuroFilter1D>
+    private val yFilters: Array<OneEuroFilter1D>
+    private val zFilters: Array<OneEuroFilter1D>
     private var lastFrameMs: Long = -1L
+
+    init {
+        xFilters = Array(21) { i ->
+            val (minCut, betaVal) = when {
+                isFingertip(i) -> fingertipMinCutoffHz to fingertipBeta
+                isDipJoint(i) -> 0.90f to 22.0f
+                else -> palmMinCutoffHz to palmBeta
+            }
+            OneEuroFilter1D(minCut, betaVal, derivativeCutoffHz)
+        }
+        yFilters = Array(21) { i ->
+            val (minCut, betaVal) = when {
+                isFingertip(i) -> fingertipMinCutoffHz to fingertipBeta
+                isDipJoint(i) -> 0.90f to 22.0f
+                else -> palmMinCutoffHz to palmBeta
+            }
+            OneEuroFilter1D(minCut, betaVal, derivativeCutoffHz)
+        }
+        zFilters = Array(21) { i ->
+            val (minCut, betaVal) = when {
+                isFingertip(i) -> fingertipMinCutoffHz to (fingertipBeta * 0.6f)
+                isDipJoint(i) -> 0.90f to 12.0f
+                else -> palmMinCutoffHz to (palmBeta * 0.5f)
+            }
+            OneEuroFilter1D(minCut, betaVal, derivativeCutoffHz)
+        }
+    }
 
     fun reset() {
         for (i in 0 until 21) {

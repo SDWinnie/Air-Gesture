@@ -163,6 +163,35 @@ object HandGeometry {
         return dist2D(landmarks[THUMB_TIP], landmarks[INDEX_TIP]) / scale
     }
 
+    /**
+     * Computes the high-precision 3D Euclidean distance between two fingertips, normalized by palm scale.
+     */
+    fun fingertipApertureDistance(
+        landmarks: List<Landmark3D>,
+        tipA: Int = THUMB_TIP,
+        tipB: Int = INDEX_TIP,
+        scale: Float = palmScale(landmarks)
+    ): Float {
+        val a = landmarks[tipA]
+        val b = landmarks[tipB]
+        val dx = a.x - b.x
+        val dy = a.y - b.y
+        val dz = a.z - b.z
+        return (sqrt(dx * dx + dy * dy + dz * dz) / scale).coerceAtLeast(0f)
+    }
+
+    /**
+     * Computes index fingertip 2D pointing direction vector (from INDEX_DIP to INDEX_TIP).
+     */
+    fun indexFingertipPointingRay(landmarks: List<Landmark3D>): Pair<Float, Float> {
+        val dip = landmarks[INDEX_DIP]
+        val tip = landmarks[INDEX_TIP]
+        val dx = tip.x - dip.x
+        val dy = tip.y - dip.y
+        val len = hypot(dx, dy).coerceAtLeast(1e-5f)
+        return (dx / len) to (dy / len)
+    }
+
     fun isThumbExtendedOutward(landmarks: List<Landmark3D>, scale: Float = palmScale(landmarks)): Boolean {
         val mcp = landmarks[THUMB_MCP]
         val ip = landmarks[THUMB_IP]

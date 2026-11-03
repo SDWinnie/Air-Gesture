@@ -209,8 +209,15 @@ class AirVoiceController(
             val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
                 putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
                 putExtra(RecognizerIntent.EXTRA_LANGUAGE, "th-TH")
+                putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, "th-TH")
+                putExtra(RecognizerIntent.EXTRA_ONLY_RETURN_LANGUAGE_PREFERENCE, "th-TH")
+                putExtra("android.speech.extra.ADDITIONAL_LANGUAGES", arrayOf("en-US", "th-TH"))
+                putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, true)
                 putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
-                putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 3)
+                putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 5)
+                putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS, 1500L)
+                putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, 1200L)
+                putExtra("android.speech.extra.DICTATION_MODE", true)
             }
             recognizer.startListening(intent)
             isListening = true
@@ -221,59 +228,66 @@ class AirVoiceController(
 
     private var lastCommandFiredMs = 0L
 
+    companion object {
+        private val TONE_MARKS_REGEX = Regex("[\u0E48\u0E49\u0E4A\u0E4B\u0E4C\u0E47]")
+
+        fun normalizeAcousticText(input: String): String {
+            return input.lowercase()
+                .replace(TONE_MARKS_REGEX, "")
+                .replace(Regex("[\\s\\p{Punct}]+"), "")
+        }
+
+        private val COMMAND_KEYWORDS: List<Pair<VoiceCommand, List<String>>> = listOf(
+            VoiceCommand.SCROLL_DOWN to listOf("เลื่อนลง", "เลือนลง", "ปัดลง", "รูดลง", "scrolldown", "scroll down", "ลง", "สโครลดาวน์"),
+            VoiceCommand.SCROLL_UP to listOf("เลื่อนขึ้น", "เลือนขึ้น", "ปัดขึ้น", "รูดขึ้น", "scrollup", "scroll up", "ขึ้น", "สโครลอัพ"),
+            VoiceCommand.SEND_HEART to listOf("กดใจ", "กอดใจ", "ถูกใจ", "กดไลค์", "ส่งใจ", "หัวใจ", "like", "heart", "love", "ไลค์"),
+            VoiceCommand.QUICK_BACK to listOf("ย้อนกลับ", "ยอนกลับ", "กลับไป", "ย้อน", "กลับ", "แบ็ค", "back"),
+            VoiceCommand.GO_HOME to listOf("หน้าแรก", "หน้าหลัก", "โฮม", "กลับหน้าหลัก", "home", "desktop"),
+            VoiceCommand.OPEN_RECENTS to listOf("สลับแอป", "เปิดแอป", "แอปทั้งหมด", "แท็บ", "recent", "recents", "overview"),
+            VoiceCommand.VOLUME_UP to listOf("เพิ่มเสียง", "เพิมเสียง", "ดังขึ้น", "เร่งเสียง", "volumeup", "volume up", "ดัง"),
+            VoiceCommand.VOLUME_DOWN to listOf("ลดเสียง", "เบาลง", "หรี่เสียง", "volumedown", "volume down", "เบา"),
+            VoiceCommand.VOLUME_MUTE to listOf("ปิดเสียง", "เงียบ", "มิ้ว", "มิวท์", "mute", "silence"),
+            VoiceCommand.MEDIA_PLAY_PAUSE to listOf("เล่น", "หยุด", "เพลง", "พอส", "pause", "play", "เปิดเพลง", "หยุดเพลง"),
+            VoiceCommand.APP_MENU to listOf("เลือกแอป", "เมนูแอป", "วงกลมแอป", "วงล้อ", "menu", "radial"),
+            VoiceCommand.TAKE_SCREENSHOT to listOf("แคปหน้าจอ", "แคปจอ", "ถ่ายหน้าจอ", "บันทึกจอ", "screenshot", "capture"),
+            VoiceCommand.LOCK_HAND to listOf("ล็อกมือ", "ปลดล็อกมือ", "สลับมือ", "ล็อก", "lock", "switch hand")
+        )
+
+        fun matchVoiceCommand(rawText: String): VoiceCommand? {
+            val text = rawText.lowercase().trim()
+            val normText = normalizeAcousticText(text)
+
+            var bestCmd: VoiceCommand? = null
+            var bestMatchLen = 0
+
+            for ((cmd, keywords) in COMMAND_KEYWORDS) {
+                for (kw in keywords) {
+                    val normKw = normalizeAcousticText(kw)
+                    if (text == kw || normText == normKw) {
+                        return cmd // Exact match wins immediately
+                    }
+                    if (text.contains(kw) || normText.contains(normKw)) {
+                        val matchLen = kw.length
+                        if (matchLen > bestMatchLen) {
+                            bestMatchLen = matchLen
+                            bestCmd = cmd
+                        }
+                    }
+                }
+            }
+            return bestCmd
+        }
+    }
+
     private fun processRecognizedMatches(matches: List<String>, isPartial: Boolean = false) {
         val now = System.currentTimeMillis()
         if (now - lastCommandFiredMs < 600L) return
 
         for (raw in matches) {
-            val text = raw.lowercase().trim()
-
-            val command = when {
-                text.contains("เลื่อนลง") || text.contains("scroll down") || text.contains("ปัดลง") || text == "ลง" || text == "down" ->
-                    VoiceCommand.SCROLL_DOWN
-
-                text.contains("เลื่อนขึ้น") || text.contains("scroll up") || text.contains("ปัดขึ้น") || text == "ขึ้น" || text == "up" ->
-                    VoiceCommand.SCROLL_UP
-
-                text.contains("กดใจ") || text.contains("ถูกใจ") || text.contains("like") || text.contains("heart") || text.contains("หัวใจ") ->
-                    VoiceCommand.SEND_HEART
-
-                text.contains("ย้อนกลับ") || text.contains("กลับ") || text == "back" ->
-                    VoiceCommand.QUICK_BACK
-
-                text.contains("หน้าแรก") || text.contains("หน้าหลัก") || text.contains("โฮม") || text == "home" ->
-                    VoiceCommand.GO_HOME
-
-                text.contains("สลับแอป") || text.contains("แอปทั้งหมด") || text.contains("recents") || text.contains("overview") ->
-                    VoiceCommand.OPEN_RECENTS
-
-                text.contains("เพิ่มเสียง") || text.contains("ดังขึ้น") || text.contains("volume up") || text == "ดัง" ->
-                    VoiceCommand.VOLUME_UP
-
-                text.contains("ลดเสียง") || text.contains("เบาลง") || text.contains("volume down") || text == "เบา" ->
-                    VoiceCommand.VOLUME_DOWN
-
-                text.contains("ปิดเสียง") || text.contains("เงียบ") || text == "mute" ->
-                    VoiceCommand.VOLUME_MUTE
-
-                text.contains("หยุด") || text.contains("เล่น") || text.contains("pause") || text.contains("play") ->
-                    VoiceCommand.MEDIA_PLAY_PAUSE
-
-                text.contains("เลือกแอป") || text.contains("เมนูแอป") || text.contains("วงกลมแอป") || text == "menu" ->
-                    VoiceCommand.APP_MENU
-
-                text.contains("แคปหน้าจอ") || text.contains("ถ่ายหน้าจอ") || text.contains("แคปจอ") || text.contains("screenshot") ->
-                    VoiceCommand.TAKE_SCREENSHOT
-
-                text.contains("ล็อกมือ") || text.contains("ปลดล็อกมือ") || text.contains("สลับมือ") || text == "lock hand" ->
-                    VoiceCommand.LOCK_HAND
-
-                else -> null
-            }
-
+            val command = matchVoiceCommand(raw)
             if (command != null) {
                 lastCommandFiredMs = now
-                AirLogger.d("VoiceController", "Matched VoiceCommand: ${command.name} from phrase: '$text'")
+                AirLogger.d("VoiceController", "Acoustic AI Matched: ${command.name} from phrase: '$raw'")
                 speakFeedback(command.ttsFeedback)
                 onCommandReceived(command, command.ttsFeedback)
                 break

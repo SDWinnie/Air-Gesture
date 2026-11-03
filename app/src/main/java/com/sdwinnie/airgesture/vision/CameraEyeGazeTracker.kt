@@ -248,6 +248,22 @@ class CameraEyeGazeTracker {
         smoothedLeftEar = 0.60f * rawLeftEar + 0.40f * smoothedLeftEar
         smoothedRightEar = 0.60f * rawRightEar + 0.40f * smoothedRightEar
 
+        // High-Precision Iris Gaze Ratio (Normalized position of pupil within eye aperture)
+        val leftCanthusSpan = (leftTracks.outerCanthusX - leftTracks.innerCanthusX).coerceAtLeast(0.001f)
+        val leftIrisX = ((leftTracks.pupilX - leftTracks.innerCanthusX) / leftCanthusSpan).coerceIn(0f, 1f)
+        val rightCanthusSpan = (rightTracks.outerCanthusX - rightTracks.innerCanthusX).coerceAtLeast(0.001f)
+        val rightIrisX = ((rightTracks.pupilX - rightTracks.innerCanthusX) / rightCanthusSpan).coerceIn(0f, 1f)
+        val avgIrisX = (leftIrisX + rightIrisX) * 0.5f
+
+        val leftLidSpan = (leftTracks.lowerLidY - leftTracks.upperLidY).coerceAtLeast(0.001f)
+        val leftIrisY = ((leftTracks.pupilY - leftTracks.upperLidY) / leftLidSpan).coerceIn(0f, 1f)
+        val rightLidSpan = (rightTracks.lowerLidY - rightTracks.upperLidY).coerceAtLeast(0.001f)
+        val rightIrisY = ((rightTracks.pupilY - rightTracks.upperLidY) / rightLidSpan).coerceIn(0f, 1f)
+        val avgIrisY = (leftIrisY + rightIrisY) * 0.5f
+
+        // Iris centered when gaze is directed straight toward the display (< 28% deviation)
+        val isIrisCentered = abs(avgIrisX - 0.5f) < 0.28f && abs(avgIrisY - 0.5f) < 0.32f
+
         return EyeGazeBlinkAnalyzer.EyeFrameData(
             leftEar = smoothedLeftEar,
             rightEar = smoothedRightEar,
@@ -260,7 +276,10 @@ class CameraEyeGazeTracker {
             leftEyeTrack = leftTracks,
             rightEyeTrack = rightTracks,
             trackingTrackCount = 32,
-            isSquintOrSmile = isSquintOrSmile
+            isSquintOrSmile = isSquintOrSmile,
+            irisGazeRatioX = avgIrisX,
+            irisGazeRatioY = avgIrisY,
+            isIrisCentered = isIrisCentered
         )
     }
 

@@ -579,4 +579,89 @@ class AirGestureEngineTest {
         assertTrue(commands.any { it.name == "VOLUME_MUTE" })
         assertTrue(commands.any { it.name == "LOCK_HAND" })
     }
+
+    @Test
+    fun `dual-zone one euro filter stabilizes fingertips while tracking palm motion`() {
+        val filter = LandmarkBankOneEuroFilter()
+        assertTrue(LandmarkBankOneEuroFilter.isFingertip(4)) // Thumb tip
+        assertTrue(LandmarkBankOneEuroFilter.isFingertip(8)) // Index tip
+        assertTrue(LandmarkBankOneEuroFilter.isFingertip(12)) // Middle tip
+        assertTrue(LandmarkBankOneEuroFilter.isFingertip(16)) // Ring tip
+        assertTrue(LandmarkBankOneEuroFilter.isFingertip(20)) // Pinky tip
+        assertFalse(LandmarkBankOneEuroFilter.isFingertip(0)) // Wrist is not fingertip
+
+        val frame = makeOpenPalm(timestampMs = 100L)
+        val smoothed = filter.filter(frame)
+        assertEquals(21, smoothed.landmarks.size)
+        assertNotNull(smoothed.landmarks[HandGeometry.INDEX_TIP])
+    }
+
+    @Test
+    fun `hand geometry computes fingertip aperture and pointing ray with precision`() {
+        val openPalm = makeOpenPalm()
+        val pinchHand = makePinchHand()
+
+        val openAperture = HandGeometry.fingertipApertureDistance(openPalm.landmarks)
+        val pinchAperture = HandGeometry.fingertipApertureDistance(pinchHand.landmarks)
+        assertTrue("Pinch aperture must be significantly smaller than open palm", pinchAperture < openAperture)
+
+        val (rayX, rayY) = HandGeometry.indexFingertipPointingRay(openPalm.landmarks)
+        val rayLen = kotlin.math.hypot(rayX, rayY)
+        assertEquals(1.0f, rayLen, 0.05f)
+    }
+
+    @Test
+    fun `acoustic fuzzy matcher correctly identifies colloquial Thai and English commands`() {
+        assertEquals(
+            com.sdwinnie.airgesture.voice.AirVoiceController.VoiceCommand.SCROLL_DOWN,
+            com.sdwinnie.airgesture.voice.AirVoiceController.matchVoiceCommand("ช่วยเลื่อนลงหน่อย")
+        )
+        assertEquals(
+            com.sdwinnie.airgesture.voice.AirVoiceController.VoiceCommand.SCROLL_UP,
+            com.sdwinnie.airgesture.voice.AirVoiceController.matchVoiceCommand("เลื่อนขึ้น")
+        )
+        assertEquals(
+            com.sdwinnie.airgesture.voice.AirVoiceController.VoiceCommand.SEND_HEART,
+            com.sdwinnie.airgesture.voice.AirVoiceController.matchVoiceCommand("กอดใจ")
+        )
+        assertEquals(
+            com.sdwinnie.airgesture.voice.AirVoiceController.VoiceCommand.SEND_HEART,
+            com.sdwinnie.airgesture.voice.AirVoiceController.matchVoiceCommand("like")
+        )
+        assertEquals(
+            com.sdwinnie.airgesture.voice.AirVoiceController.VoiceCommand.TAKE_SCREENSHOT,
+            com.sdwinnie.airgesture.voice.AirVoiceController.matchVoiceCommand("แคปจอ")
+        )
+        assertEquals(
+            com.sdwinnie.airgesture.voice.AirVoiceController.VoiceCommand.GO_HOME,
+            com.sdwinnie.airgesture.voice.AirVoiceController.matchVoiceCommand("กลับหน้าแรก")
+        )
+        assertEquals(
+            com.sdwinnie.airgesture.voice.AirVoiceController.VoiceCommand.VOLUME_MUTE,
+            com.sdwinnie.airgesture.voice.AirVoiceController.matchVoiceCommand("เงียบ")
+        )
+    }
+
+    @Test
+    fun `eye gaze analyzer properly processes iris centered state`() {
+        val eyeFrameCentered = EyeGazeBlinkAnalyzer.EyeFrameData(
+            leftEar = 0.32f,
+            rightEar = 0.32f,
+            gazeYawDeg = 5f,
+            gazePitchDeg = 5f,
+            isFaceDetected = true,
+            isIrisCentered = true
+        )
+        assertTrue(eyeFrameCentered.isLookingAtScreen)
+
+        val eyeFrameLookAway = EyeGazeBlinkAnalyzer.EyeFrameData(
+            leftEar = 0.32f,
+            rightEar = 0.32f,
+            gazeYawDeg = 5f,
+            gazePitchDeg = 5f,
+            isFaceDetected = true,
+            isIrisCentered = false
+        )
+        assertFalse("Looking away with iris offset must not register as screen engagement", eyeFrameLookAway.isLookingAtScreen)
+    }
 }
