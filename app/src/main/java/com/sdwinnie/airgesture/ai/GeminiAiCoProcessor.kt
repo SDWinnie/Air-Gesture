@@ -45,7 +45,7 @@ class GeminiAiCoProcessor {
     data class TelemetryState(
         val isKeyConfigured: Boolean = false,
         val isInferring: Boolean = false,
-        val activeModel: String = "gemini-2.0-flash",
+        val activeModel: String = "gemini-3.1-flash-lite",
         val lastSuccessTimeMs: Long = 0L,
         val lastInferenceSummary: String = "สแตนด์บาย (พร้อมช่วยเหลือ)"
     )
@@ -60,11 +60,11 @@ class GeminiAiCoProcessor {
         }
 
         val CANDIDATE_MODELS = listOf(
-            "gemini-3.8-flash",
-            "gemini-flash-latest",
+            "gemini-3.1-flash-lite",
+            "gemini-3-flash-preview",
             "gemini-flash-lite-latest",
-            "gemini-3.5-flash",
-            "gemini-3.1-flash-lite"
+            "gemini-flash-latest",
+            "gemini-3.8-flash"
         )
 
         fun resolveEffectiveKey(apiKey: String?): String {
@@ -82,7 +82,7 @@ class GeminiAiCoProcessor {
     private var lastInferenceTimeMs = 0L
 
     @Volatile
-    var activeVerifiedModel: String = "gemini-3.8-flash"
+    var activeVerifiedModel: String = "gemini-3.1-flash-lite"
         private set
 
     @Volatile
@@ -101,7 +101,7 @@ class GeminiAiCoProcessor {
      */
     fun evaluateAmbiguityAsync(
         apiKey: String?,
-        modelName: String = "gemini-3.8-flash",
+        modelName: String = "gemini-3.1-flash-lite",
         candidatePosture: HandPosture,
         observedHandSide: HandSide,
         leftEar: Float,
@@ -176,7 +176,7 @@ class GeminiAiCoProcessor {
      */
     fun testConnection(
         apiKey: String?,
-        preferredModel: String = "gemini-3.8-flash",
+        preferredModel: String = "gemini-3.1-flash-lite",
         onCompleted: (success: Boolean, message: String, verifiedModel: String) -> Unit
     ) {
         if (preferredModel.equals("on-device", ignoreCase = true)) {
@@ -201,12 +201,13 @@ class GeminiAiCoProcessor {
             val discoveredModels = discoverAvailableModels(effectiveKey)
             val modelToUse = when {
                 preferredModel.isNotBlank() && preferredModel != "on-device" && (discoveredModels.isEmpty() || discoveredModels.contains(preferredModel)) -> preferredModel
-                discoveredModels.contains("gemini-3.8-flash") -> "gemini-3.8-flash"
-                discoveredModels.contains("gemini-flash-latest") -> "gemini-flash-latest"
+                discoveredModels.contains("gemini-3.1-flash-lite") -> "gemini-3.1-flash-lite"
+                discoveredModels.contains("gemini-3-flash-preview") -> "gemini-3-flash-preview"
                 discoveredModels.contains("gemini-flash-lite-latest") -> "gemini-flash-lite-latest"
-                discoveredModels.contains("gemini-3.5-flash") -> "gemini-3.5-flash"
+                discoveredModels.contains("gemini-flash-latest") -> "gemini-flash-latest"
+                discoveredModels.contains("gemini-3.8-flash") -> "gemini-3.8-flash"
                 discoveredModels.isNotEmpty() -> discoveredModels.first()
-                else -> "gemini-3.8-flash"
+                else -> "gemini-3.1-flash-lite"
             }
 
             // Step 2: Try candidate models in order until one succeeds

@@ -523,20 +523,20 @@ class AirGestureEngineTest {
     @Test
     fun `gemini configuration defaults to valid official model and sanitizes deprecated models`() {
         val defaultConfig = AirGestureConfig()
-        assertEquals("gemini-3.8-flash", defaultConfig.geminiModelName)
+        assertEquals("gemini-3.1-flash-lite", defaultConfig.geminiModelName)
 
         val candidateModels = com.sdwinnie.airgesture.ai.GeminiAiCoProcessor.CANDIDATE_MODELS
         assertTrue(candidateModels.isNotEmpty())
-        assertEquals("gemini-3.8-flash", candidateModels.first())
+        assertEquals("gemini-3.1-flash-lite", candidateModels.first())
         assertFalse(candidateModels.contains("gemini-2.5-flash"))
 
         // PreferenceStore sanitization check
-        assertEquals("gemini-3.8-flash", com.sdwinnie.airgesture.security.PreferenceStore.sanitizeGeminiModel("gemini-2.5-flash"))
-        assertEquals("gemini-3.8-flash", com.sdwinnie.airgesture.security.PreferenceStore.sanitizeGeminiModel("gemini-2.0-flash"))
-        assertEquals("gemini-3.8-flash", com.sdwinnie.airgesture.security.PreferenceStore.sanitizeGeminiModel("gemini-1.5-flash"))
-        assertEquals("gemini-3.8-flash", com.sdwinnie.airgesture.security.PreferenceStore.sanitizeGeminiModel(""))
+        assertEquals("gemini-3.1-flash-lite", com.sdwinnie.airgesture.security.PreferenceStore.sanitizeGeminiModel("gemini-2.5-flash"))
+        assertEquals("gemini-3.1-flash-lite", com.sdwinnie.airgesture.security.PreferenceStore.sanitizeGeminiModel("gemini-2.0-flash"))
+        assertEquals("gemini-3.1-flash-lite", com.sdwinnie.airgesture.security.PreferenceStore.sanitizeGeminiModel("gemini-1.5-flash"))
+        assertEquals("gemini-3.1-flash-lite", com.sdwinnie.airgesture.security.PreferenceStore.sanitizeGeminiModel(""))
         assertEquals("on-device", com.sdwinnie.airgesture.security.PreferenceStore.sanitizeGeminiModel("on-device"))
-        assertEquals("gemini-3.8-flash", com.sdwinnie.airgesture.security.PreferenceStore.sanitizeGeminiModel("gemini-3.8-flash"))
+        assertEquals("gemini-3.1-flash-lite", com.sdwinnie.airgesture.security.PreferenceStore.sanitizeGeminiModel("gemini-3.1-flash-lite"))
     }
 
     @Test
@@ -549,12 +549,12 @@ class AirGestureEngineTest {
 
         // AiModelChoice resolution
         assertEquals(
-            com.sdwinnie.airgesture.model.AiModelChoice.GEMINI_3_8_FLASH,
-            com.sdwinnie.airgesture.model.AiModelChoice.fromModelId("gemini-3.8-flash")
+            com.sdwinnie.airgesture.model.AiModelChoice.GEMINI_3_1_FLASH_LITE,
+            com.sdwinnie.airgesture.model.AiModelChoice.fromModelId("gemini-3.1-flash-lite")
         )
         assertEquals(
-            com.sdwinnie.airgesture.model.AiModelChoice.GEMINI_FLASH_LATEST,
-            com.sdwinnie.airgesture.model.AiModelChoice.fromModelId("gemini-flash-latest")
+            com.sdwinnie.airgesture.model.AiModelChoice.GEMINI_3_FLASH,
+            com.sdwinnie.airgesture.model.AiModelChoice.fromModelId("gemini-3-flash-preview")
         )
         assertEquals(
             com.sdwinnie.airgesture.model.AiModelChoice.ON_DEVICE_NEURAL,
@@ -565,8 +565,8 @@ class AirGestureEngineTest {
         val offlineConfig = AirGestureConfig(enableGeminiAi = false)
         assertEquals(com.sdwinnie.airgesture.model.AiModelChoice.ON_DEVICE_NEURAL, offlineConfig.currentAiModelChoice)
 
-        val cloudConfig = AirGestureConfig(enableGeminiAi = true, geminiModelName = "gemini-3.8-flash")
-        assertEquals(com.sdwinnie.airgesture.model.AiModelChoice.GEMINI_3_8_FLASH, cloudConfig.currentAiModelChoice)
+        val cloudConfig = AirGestureConfig(enableGeminiAi = true, geminiModelName = "gemini-3.1-flash-lite")
+        assertEquals(com.sdwinnie.airgesture.model.AiModelChoice.GEMINI_3_1_FLASH_LITE, cloudConfig.currentAiModelChoice)
     }
 
     @Test

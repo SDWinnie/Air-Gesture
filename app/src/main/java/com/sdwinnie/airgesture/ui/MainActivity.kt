@@ -913,7 +913,7 @@ class MainActivity : AppCompatActivity() {
             if (suppressConfigListeners) return@setOnCheckedChangeListener
             if (isChecked) {
                 val targetModel = if (currentConfig.geminiModelName.equals("on-device", ignoreCase = true)) {
-                    "gemini-3.8-flash"
+                    "gemini-3.1-flash-lite"
                 } else {
                     currentConfig.geminiModelName
                 }

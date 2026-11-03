@@ -240,28 +240,28 @@ enum class AiModelChoice(
     val description: String,
     val isCloud: Boolean
 ) {
+    GEMINI_3_1_FLASH_LITE(
+        "gemini-3.1-flash-lite",
+        "🍃 Gemini 3.1 Flash Lite (แนะนำ - ไวและเสถียรสุด)",
+        "ประมวลผลเร็วพิเศษ < 850ms ฟรี ไม่ติดโควต้า พร้อมใช้งานทันที",
+        true
+    ),
+    GEMINI_3_FLASH(
+        "gemini-3-flash-preview",
+        "⚡ Gemini 3 Flash Preview (ความแม่นยำสูง)",
+        "โมเดลเจเนอเรชันใหม่ ละเอียด แม่นยำ ตอบสนองไว",
+        true
+    ),
     GEMINI_3_8_FLASH(
         "gemini-3.8-flash",
-        "⚡ Gemini 3.8 Flash (แนะนำล่าสุด - เร็วสุด)",
-        "ประมวลผลเร็วที่สุด แม่นยำสูงสุดสำหรับตรวจจับสายตาและมือ",
+        "🚀 Gemini 3.8 Flash (โมเดลประสิทธิภาพสูง)",
+        "ประมวลผลเร็วสูงสุดสำหรับตรวจจับสายตาและมือขั้นสูง",
         true
     ),
     GEMINI_FLASH_LATEST(
         "gemini-flash-latest",
-        "🚀 Gemini Flash Latest (อัปเดตอัตโนมัติ)",
+        "🔄 Gemini Flash Latest (อัปเดตอัตโนมัติ)",
         "เชื่อมต่อโมเดลล่าสุดจาก Google AI Studio เสมอ",
-        true
-    ),
-    GEMINI_FLASH_LITE(
-        "gemini-flash-lite-latest",
-        "🍃 Gemini Flash Lite (ประหยัดพลังงาน)",
-        "ลดภาระการรับส่งข้อมูล ประหยัดแบตเตอรี่สูงสุด",
-        true
-    ),
-    GEMINI_3_5_FLASH(
-        "gemini-3.5-flash",
-        "🛡️ Gemini 3.5 Flash (เสถียรภาพสูง)",
-        "โมเดลเวอร์ชันเสถียร รองรับการทำงานยาวนานต่อเนื่อง",
         true
     ),
     ON_DEVICE_NEURAL(
@@ -275,10 +275,11 @@ enum class AiModelChoice(
         fun fromModelId(id: String): AiModelChoice {
             val trimmed = id.trim().lowercase()
             return entries.firstOrNull { it.modelId.lowercase() == trimmed }
-                ?: if (trimmed.contains("lite")) GEMINI_FLASH_LITE
-                else if (trimmed.contains("3.5")) GEMINI_3_5_FLASH
+                ?: if (trimmed.contains("3-flash") || trimmed.contains("preview")) GEMINI_3_FLASH
+                else if (trimmed.contains("3.8")) GEMINI_3_8_FLASH
+                else if (trimmed.contains("latest")) GEMINI_FLASH_LATEST
                 else if (trimmed == "on-device") ON_DEVICE_NEURAL
-                else GEMINI_3_8_FLASH
+                else GEMINI_3_1_FLASH_LITE
         }
     }
 }
@@ -322,7 +323,7 @@ data class AirGestureConfig(
     val showLiveCalibrationPreview: Boolean = false,
     val enableGeminiAi: Boolean = false,
     val geminiApiKey: String = "",
-    val geminiModelName: String = "gemini-3.8-flash",
+    val geminiModelName: String = "gemini-3.1-flash-lite",
     val enableVoiceCommands: Boolean = false,
     val enableVoiceTts: Boolean = true,
     val enableLongDistanceBooster: Boolean = true
