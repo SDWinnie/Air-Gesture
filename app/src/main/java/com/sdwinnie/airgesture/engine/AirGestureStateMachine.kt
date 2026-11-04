@@ -373,7 +373,7 @@ class AirGestureStateMachine(
                 consecutiveWakeFrames = 0
                 events.add(GestureEvent.WakeDynamicIsland)
             }
-        } else if (isRadialTriggerMatch(posture, config.radialPreset)) {
+        } else if (config.enableRadialMenu && isRadialTriggerMatch(posture, config.radialPreset)) {
             if (radialCandidateStartMs < 0L) {
                 radialCandidateStartMs = timestampMs
             } else if ((timestampMs - radialCandidateStartMs) >= radialHoldActivationMs) {
@@ -398,7 +398,7 @@ class AirGestureStateMachine(
         val wholeHandSpeed = hypot(smoothedVxNormalized, smoothedVyNormalized)
 
         // 1. Check Circular App Wheel Trigger (steady hand hold prevents accidental trigger during fast swipe)
-        if (isRadialTriggerMatch(posture, config.radialPreset) && wholeHandSpeed < 1.85f) {
+        if (config.enableRadialMenu && isRadialTriggerMatch(posture, config.radialPreset) && wholeHandSpeed < 1.85f) {
             consecutiveVolumeFrames = 0
             if (radialCandidateStartMs < 0L) {
                 radialCandidateStartMs = timestampMs

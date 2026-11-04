@@ -47,6 +47,7 @@ class PreferenceStore(context: Context) {
             visionBufferSize = readEnum(KEY_VISION_BUFFER, VisionBufferSize.ROI_192, VisionBufferSize::valueOf),
             hardwareDelegate = readEnum(KEY_HARDWARE_DELEGATE, HardwareDelegateMode.AUTO_GPU_CPU, HardwareDelegateMode::valueOf),
             useFrontCamera = prefs.getBoolean(KEY_FRONT_CAMERA, true),
+            enableHandGestures = prefs.getBoolean(KEY_ENABLE_HAND_GESTURES, true),
             handLockMode = readEnum(KEY_HAND_LOCK, HandLockMode.AUTO_SINGLE, HandLockMode::valueOf),
             skeletonDensity = readEnum(KEY_SKELETON_DENSITY, SkeletonBoneDensity.BONES_48, SkeletonBoneDensity::valueOf),
             visionBalanceMode = readEnum(KEY_VISION_BALANCE_MODE, VisionBalanceMode.ISOTROPIC_CENTER_WEIGHTED, VisionBalanceMode::valueOf),
@@ -67,6 +68,7 @@ class PreferenceStore(context: Context) {
             airCursorSensitivity = prefs.getFloat(KEY_AIR_CURSOR_SENS, 1.0f).coerceIn(0.5f, 2.5f),
             scrollPreset = readEnum(KEY_SCROLL_PRESET, ScrollGesturePreset.OPEN_PALM_SWEEP, ScrollGesturePreset::valueOf),
             volumePreset = readEnum(KEY_VOLUME_PRESET, VolumeGesturePreset.PINCH_OK_SLIDE, VolumeGesturePreset::valueOf),
+            enableRadialMenu = prefs.getBoolean(KEY_ENABLE_RADIAL_MENU, true),
             radialPreset = readEnum(KEY_RADIAL_PRESET, RadialTriggerPreset.CLOSED_FIST, RadialTriggerPreset::valueOf),
             backPreset = readEnum(KEY_BACK_PRESET, BackTriggerPreset.HORIZONTAL_SWIPE, BackTriggerPreset::valueOf),
             horizontalNavMode = readEnum(KEY_H_NAV_MODE, HorizontalNavMode.BACK_AND_RECENTS, HorizontalNavMode::valueOf),
@@ -94,6 +96,7 @@ class PreferenceStore(context: Context) {
             .putString(KEY_VISION_BUFFER, config.visionBufferSize.name)
             .putString(KEY_HARDWARE_DELEGATE, config.hardwareDelegate.name)
             .putBoolean(KEY_FRONT_CAMERA, config.useFrontCamera)
+            .putBoolean(KEY_ENABLE_HAND_GESTURES, config.enableHandGestures)
             .putString(KEY_HAND_LOCK, config.handLockMode.name)
             .putString(KEY_SKELETON_DENSITY, config.skeletonDensity.name)
             .putString(KEY_VISION_BALANCE_MODE, config.visionBalanceMode.name)
@@ -114,6 +117,7 @@ class PreferenceStore(context: Context) {
             .putFloat(KEY_AIR_CURSOR_SENS, config.airCursorSensitivity)
             .putString(KEY_SCROLL_PRESET, config.scrollPreset.name)
             .putString(KEY_VOLUME_PRESET, config.volumePreset.name)
+            .putBoolean(KEY_ENABLE_RADIAL_MENU, config.enableRadialMenu)
             .putString(KEY_RADIAL_PRESET, config.radialPreset.name)
             .putString(KEY_BACK_PRESET, config.backPreset.name)
             .putString(KEY_H_NAV_MODE, config.horizontalNavMode.name)
@@ -164,6 +168,7 @@ class PreferenceStore(context: Context) {
         private const val KEY_VISION_BUFFER = "vision_buffer_size"
         private const val KEY_HARDWARE_DELEGATE = "hardware_delegate"
         private const val KEY_FRONT_CAMERA = "use_front_camera"
+        private const val KEY_ENABLE_HAND_GESTURES = "enable_hand_gestures"
         private const val KEY_HAND_LOCK = "hand_lock_mode"
         private const val KEY_SKELETON_DENSITY = "skeleton_density"
         private const val KEY_VISION_BALANCE_MODE = "vision_balance_mode"
@@ -184,6 +189,7 @@ class PreferenceStore(context: Context) {
         private const val KEY_AIR_CURSOR_SENS = "air_cursor_sensitivity"
         private const val KEY_SCROLL_PRESET = "scroll_gesture_preset"
         private const val KEY_VOLUME_PRESET = "volume_gesture_preset"
+        private const val KEY_ENABLE_RADIAL_MENU = "enable_radial_menu"
         private const val KEY_RADIAL_PRESET = "radial_trigger_preset"
         private const val KEY_BACK_PRESET = "back_trigger_preset"
         private const val KEY_H_NAV_MODE = "horizontal_nav_mode"

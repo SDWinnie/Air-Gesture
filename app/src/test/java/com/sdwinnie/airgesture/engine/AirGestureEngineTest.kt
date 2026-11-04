@@ -664,4 +664,23 @@ class AirGestureEngineTest {
         )
         assertFalse("Looking away with iris offset must not register as screen engagement", eyeFrameLookAway.isLookingAtScreen)
     }
+
+    @Test
+    fun `independent modular hub flags enable full toggle independence`() {
+        val config = AirGestureConfig()
+        assertTrue("Hand gestures default to true", config.enableHandGestures)
+        assertTrue("Radial menu defaults to true", config.enableRadialMenu)
+
+        val disabledRadialConfig = config.copy(enableRadialMenu = false)
+        val sm = AirGestureStateMachine()
+        // Fist gesture with radial disabled must not enter FIST_RADIAL_MENU mode
+        val fistFrame = makeFistHand(timestampMs = 500L)
+        sm.process(fistFrame, nowMs = 500L, config = disabledRadialConfig)
+        assertFalse("Radial menu mode must be blocked when disabled", sm.currentMode == AirGestureStateMachine.Mode.FIST_RADIAL_MENU)
+
+        // HandGeometry rawScale must support long distance (0.038f scale for 1.5m - 3.5m)
+        val distantPalm = makeOpenPalm(scale = 0.038f)
+        val isRecognized = HandGeometry.isAnatomicallyPlausibleHand(distantPalm.landmarks)
+        assertTrue("Distant hand (scale 0.038) must be recognized as plausible hand", isRecognized)
+    }
 }

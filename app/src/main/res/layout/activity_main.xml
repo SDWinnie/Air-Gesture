@@ -62,7 +62,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="v3.0 Single-Hand Spatial AI • 100% On-Device"
+                    android:text="v6.4.0 Spatial AI • Touchless Engine"
                     android:textColor="@color/text_secondary"
                     android:textSize="11sp" />
             </LinearLayout>
@@ -390,6 +390,222 @@
                         </LinearLayout>
                     </LinearLayout>
 
+                    <!-- Independent Modular Hub Card (9 Systems Fully Independent Toggles) -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="14dp"
+                        android:background="@drawable/bg_hero_bento"
+                        android:orientation="vertical"
+                        android:padding="16dp">
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal">
+
+                            <TextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="🎛️ ศูนย์ควบคุมเปิด-ปิดระบบอิสระ (Modular Hub)"
+                                android:textColor="@color/accent_cyan"
+                                android:textSize="14.5sp"
+                                android:textStyle="bold" />
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:background="@drawable/bg_bento_metric"
+                                android:paddingHorizontal="8dp"
+                                android:paddingVertical="3dp"
+                                android:text="9 ระบบอิสระ"
+                                android:textColor="@color/text_secondary"
+                                android:textSize="10.5sp"
+                                android:textStyle="bold" />
+                        </LinearLayout>
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="3dp"
+                            android:text="ทุกระบบสามารถเปิด/ปิดแยกกันได้ 100% ระบบที่ปิดจะหยุดทำงานทันทีเพื่อประหยัด CPU, GPU และแบตเตอรี่"
+                            android:textColor="@color/text_secondary"
+                            android:textSize="11.5sp" />
+
+                        <!-- Group 1: ท่าทางมือ & ดวงตา (Vision & Gestures) -->
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="12dp"
+                            android:text="🖐️ กายภาพ &amp; สายตา (Vision &amp; Gestures)"
+                            android:textColor="@color/text_muted"
+                            android:textSize="10sp"
+                            android:textStyle="bold" />
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="6dp"
+                            android:background="@drawable/bg_bento_metric"
+                            android:orientation="vertical"
+                            android:paddingHorizontal="12dp"
+                            android:paddingVertical="4dp">
+
+                            <com.google.android.material.materialswitch.MaterialSwitch
+                                android:id="@+id/switchMasterHandGestures"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:text="🖐️ ระบบตรวจจับท่าทางมือ (Air Gesture)"
+                                android:textColor="@color/text_primary"
+                                android:textSize="12.5sp"
+                                android:textStyle="bold" />
+
+                            <View
+                                android:layout_width="match_parent"
+                                android:layout_height="0.6dp"
+                                android:background="@color/stroke_subtle" />
+
+                            <com.google.android.material.materialswitch.MaterialSwitch
+                                android:id="@+id/switchMasterEyeBlink"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:text="👁️ สบตา &amp; กระพริบตาสั่งงาน (Eye Blink)"
+                                android:textColor="@color/text_primary"
+                                android:textSize="12.5sp"
+                                android:textStyle="bold" />
+
+                            <View
+                                android:layout_width="match_parent"
+                                android:layout_height="0.6dp"
+                                android:background="@color/stroke_subtle" />
+
+                            <com.google.android.material.materialswitch.MaterialSwitch
+                                android:id="@+id/switchMasterAirTap"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:text="👆 เคอร์เซอร์ &amp; แตะกลางอากาศ (Air Tap)"
+                                android:textColor="@color/text_primary"
+                                android:textSize="12.5sp"
+                                android:textStyle="bold" />
+
+                            <View
+                                android:layout_width="match_parent"
+                                android:layout_height="0.6dp"
+                                android:background="@color/stroke_subtle" />
+
+                            <com.google.android.material.materialswitch.MaterialSwitch
+                                android:id="@+id/switchMasterRadialMenu"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:text="🎡 วงล้อเลือกแอป 360° (Radial App Wheel)"
+                                android:textColor="@color/text_primary"
+                                android:textSize="12.5sp"
+                                android:textStyle="bold" />
+                        </LinearLayout>
+
+                        <!-- Group 2: เสียง & การควบคุมระบบ (Audio & Voice) -->
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="12dp"
+                            android:text="🎙️ เสียง &amp; การควบคุม (Audio &amp; Voice)"
+                            android:textColor="@color/text_muted"
+                            android:textSize="10sp"
+                            android:textStyle="bold" />
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="6dp"
+                            android:background="@drawable/bg_bento_metric"
+                            android:orientation="vertical"
+                            android:paddingHorizontal="12dp"
+                            android:paddingVertical="4dp">
+
+                            <com.google.android.material.materialswitch.MaterialSwitch
+                                android:id="@+id/switchMasterVoiceCommands"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:text="🎙️ สั่งงานด้วยเสียง &amp; เปิดแอป (Voice Nav)"
+                                android:textColor="@color/text_primary"
+                                android:textSize="12.5sp"
+                                android:textStyle="bold" />
+
+                            <View
+                                android:layout_width="match_parent"
+                                android:layout_height="0.6dp"
+                                android:background="@color/stroke_subtle" />
+
+                            <com.google.android.material.materialswitch.MaterialSwitch
+                                android:id="@+id/switchMasterVoiceTts"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:text="🔊 เสียงตอบกลับเมื่อสำเร็จ (Spoken TTS)"
+                                android:textColor="@color/text_primary"
+                                android:textSize="12.5sp"
+                                android:textStyle="bold" />
+                        </LinearLayout>
+
+                        <!-- Group 3: ปัญญาประดิษฐ์ & กล้อง (AI & Optics) -->
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="12dp"
+                            android:text="🤖 ปัญญาประดิษฐ์ &amp; มุมมองกล้อง (AI &amp; Optics)"
+                            android:textColor="@color/text_muted"
+                            android:textSize="10sp"
+                            android:textStyle="bold" />
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="6dp"
+                            android:background="@drawable/bg_bento_metric"
+                            android:orientation="vertical"
+                            android:paddingHorizontal="12dp"
+                            android:paddingVertical="4dp">
+
+                            <com.google.android.material.materialswitch.MaterialSwitch
+                                android:id="@+id/switchMasterGeminiAi"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:text="🤖 ผู้ช่วย AI Co-Processor (Gemini / Neural)"
+                                android:textColor="@color/text_primary"
+                                android:textSize="12.5sp"
+                                android:textStyle="bold" />
+
+                            <View
+                                android:layout_width="match_parent"
+                                android:layout_height="0.6dp"
+                                android:background="@color/stroke_subtle" />
+
+                            <com.google.android.material.materialswitch.MaterialSwitch
+                                android:id="@+id/switchMasterDistanceBooster"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:text="🔭 ตัวเร่งระยะไกล 1.5 - 3.5 ม. (Distance Booster)"
+                                android:textColor="@color/text_primary"
+                                android:textSize="12.5sp"
+                                android:textStyle="bold" />
+
+                            <View
+                                android:layout_width="match_parent"
+                                android:layout_height="0.6dp"
+                                android:background="@color/stroke_subtle" />
+
+                            <com.google.android.material.materialswitch.MaterialSwitch
+                                android:id="@+id/switchMasterLivePreview"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:text="🎯 จอพรีวิวสดกล้องหน้า (Volatile Live Preview)"
+                                android:textColor="@color/text_primary"
+                                android:textSize="12.5sp"
+                                android:textStyle="bold" />
+                        </LinearLayout>
+                    </LinearLayout>
+
                     <!-- Setup & On-Screen Circular Wheel Enablement Card -->
                     <LinearLayout
                         android:layout_width="match_parent"
@@ -614,6 +830,45 @@
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
                     android:visibility="gone">
+
+                    <!-- Master Hand Gestures Enable Card -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:background="@drawable/bg_glass_bento"
+                        android:orientation="vertical"
+                        android:padding="16dp">
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal">
+
+                            <TextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="🖐️ ระบบตรวจจับท่าทางมือ (Air Gesture)"
+                                android:textColor="@color/accent_cyan"
+                                android:textSize="14.5sp"
+                                android:textStyle="bold" />
+
+                            <com.google.android.material.materialswitch.MaterialSwitch
+                                android:id="@+id/switchEnableHandGestures"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:checked="true" />
+                        </LinearLayout>
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="3dp"
+                            android:text="หากปิด ระบบจะหยุดประมวลผลโมเดลมือเพื่อประหยัด CPU/GPU 100% แต่ยังสามารถใช้คำสั่งเสียงและสายตาได้อิสระ"
+                            android:textColor="@color/text_secondary"
+                            android:textSize="11.5sp" />
+                    </LinearLayout>
 
                     <!-- Single-Hand Lock Card -->
                     <LinearLayout
@@ -1742,6 +1997,16 @@
                             android:text="เมื่อทำท่าเรียกวงกลม วงล้อนี้จะเด้งขึ้นกลางหน้าจอ • เลื่อนมือขึ้น/ลง/ซ้าย/ขวาเหมือนจอยสติ๊กเพื่อชี้แอป • แบมือเพื่อเปิดทันที (แบมือตรงกลาง = ยกเลิก)"
                             android:textColor="@color/text_secondary"
                             android:textSize="11.5sp" />
+
+                        <com.google.android.material.materialswitch.MaterialSwitch
+                            android:id="@+id/switchEnableRadialMenu"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="10dp"
+                            android:text="🎡 เปิดใช้งานวงล้อเลือกแอป 360° (Radial App Wheel)"
+                            android:textColor="@color/text_primary"
+                            android:textSize="13sp"
+                            android:textStyle="bold" />
 
                         <!-- Slot Count Chips: 6 / 8 / 12 / 15 Apps -->
                         <com.google.android.material.chip.ChipGroup

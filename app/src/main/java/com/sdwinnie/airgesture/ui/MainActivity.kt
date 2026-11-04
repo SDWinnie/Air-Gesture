@@ -141,10 +141,12 @@ class MainActivity : AppCompatActivity() {
 
         setupSegmentedTabs()
         setupPermissionAndControlActions()
+        setupMasterHubControls()
         setupGestureAndVisualStudioControls()
         setupPipelineConfigControls()
         setupCalibrationPreviewSurface()
         setupRadialSlotsGrid()
+        syncAllSwitchesFromConfig()
         applyVisualCustomizationsToViews()
         refreshSecurityAudit()
         applyPipLayoutState(isInPictureInPictureMode)
@@ -283,6 +285,16 @@ class MainActivity : AppCompatActivity() {
 
     private fun setupGestureAndVisualStudioControls() {
         refreshGestureStudioLabels()
+
+        binding.switchEnableHandGestures.setOnCheckedChangeListener { _, isChecked ->
+            if (suppressConfigListeners) return@setOnCheckedChangeListener
+            persistAndReloadConfig(currentConfig.copy(enableHandGestures = isChecked))
+            Toast.makeText(
+                this,
+                if (isChecked) "🖐️ เปิดระบบตรวจจับท่าทางมือ" else "🖐️ ปิดระบบท่าทางมือ (พัก CPU/GPU)",
+                Toast.LENGTH_SHORT
+            ).show()
+        }
 
         binding.btnPickHandLock.setOnClickListener {
             showEnumSingleChoiceDialog(
@@ -1014,6 +1026,149 @@ class MainActivity : AppCompatActivity() {
         preferenceStore.saveConfig(updated)
         AirGestureRuntimeBus.updateVisualConfig(updated)
         AirGestureForegroundService.notifyConfigUpdated(this)
+        syncAllSwitchesFromConfig()
+    }
+
+    private fun setupMasterHubControls() {
+        binding.switchMasterHandGestures.setOnCheckedChangeListener { _, isChecked ->
+            if (suppressConfigListeners) return@setOnCheckedChangeListener
+            persistAndReloadConfig(currentConfig.copy(enableHandGestures = isChecked))
+            Toast.makeText(
+                this,
+                if (isChecked) "🖐️ เปิดระบบตรวจจับท่าทางมือ" else "🖐️ ปิดระบบท่าทางมือ (พัก CPU/GPU)",
+                Toast.LENGTH_SHORT
+            ).show()
+        }
+
+        binding.switchMasterEyeBlink.setOnCheckedChangeListener { _, isChecked ->
+            if (suppressConfigListeners) return@setOnCheckedChangeListener
+            persistAndReloadConfig(currentConfig.copy(enableEyeContactBlink = isChecked))
+            refreshGestureStudioLabels()
+            Toast.makeText(
+                this,
+                if (isChecked) "👁️ เปิดระบบสบตา & กระพริบตาสั่งงาน" else "👁️ ปิดระบบสบตา & กระพริบตา",
+                Toast.LENGTH_SHORT
+            ).show()
+        }
+
+        binding.switchMasterAirTap.setOnCheckedChangeListener { _, isChecked ->
+            if (suppressConfigListeners) return@setOnCheckedChangeListener
+            persistAndReloadConfig(currentConfig.copy(enableAirTap = isChecked))
+            refreshGestureStudioLabels()
+            Toast.makeText(
+                this,
+                if (isChecked) "👆 เปิดระบบเคาะจอสัมผัสกลางอากาศ" else "👆 ปิดระบบเคาะจอสัมผัสกลางอากาศ",
+                Toast.LENGTH_SHORT
+            ).show()
+        }
+
+        binding.switchMasterRadialMenu.setOnCheckedChangeListener { _, isChecked ->
+            if (suppressConfigListeners) return@setOnCheckedChangeListener
+            persistAndReloadConfig(currentConfig.copy(enableRadialMenu = isChecked))
+            Toast.makeText(
+                this,
+                if (isChecked) "🎡 เปิดใช้งานวงล้อเลือกแอป 360°" else "🎡 ปิดใช้งานวงล้อเลือกแอป 360°",
+                Toast.LENGTH_SHORT
+            ).show()
+        }
+
+        binding.switchMasterVoiceCommands.setOnCheckedChangeListener { _, isChecked ->
+            if (suppressConfigListeners) return@setOnCheckedChangeListener
+            if (isChecked) {
+                val hasAudioPerm = ContextCompat.checkSelfPermission(
+                    this,
+                    Manifest.permission.RECORD_AUDIO
+                ) == PackageManager.PERMISSION_GRANTED
+                if (!hasAudioPerm) {
+                    audioPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                    return@setOnCheckedChangeListener
+                }
+            }
+            persistAndReloadConfig(currentConfig.copy(enableVoiceCommands = isChecked))
+            Toast.makeText(
+                this,
+                if (isChecked) "🎙️ เปิดระบบสั่งงานด้วยเสียง" else "🎙️ ปิดระบบสั่งงานด้วยเสียง",
+                Toast.LENGTH_SHORT
+            ).show()
+        }
+
+        binding.switchMasterVoiceTts.setOnCheckedChangeListener { _, isChecked ->
+            if (suppressConfigListeners) return@setOnCheckedChangeListener
+            persistAndReloadConfig(currentConfig.copy(enableVoiceTts = isChecked))
+        }
+
+        binding.switchMasterGeminiAi.setOnCheckedChangeListener { _, isChecked ->
+            if (suppressConfigListeners) return@setOnCheckedChangeListener
+            if (isChecked) {
+                val targetModel = if (currentConfig.geminiModelName.equals("on-device", ignoreCase = true)) {
+                    "gemini-3.1-flash-lite"
+                } else {
+                    currentConfig.geminiModelName
+                }
+                persistAndReloadConfig(currentConfig.copy(enableGeminiAi = true, geminiModelName = targetModel))
+                Toast.makeText(this, "🤖 เปิดผู้ช่วย AI Co-Processor", Toast.LENGTH_SHORT).show()
+            } else {
+                persistAndReloadConfig(currentConfig.copy(enableGeminiAi = false))
+                Toast.makeText(this, "🤖 สลับใช้ระบบบนเครื่อง 100%", Toast.LENGTH_SHORT).show()
+            }
+            updateAiModelStatusText()
+        }
+
+        binding.switchMasterDistanceBooster.setOnCheckedChangeListener { _, isChecked ->
+            if (suppressConfigListeners) return@setOnCheckedChangeListener
+            persistAndReloadConfig(currentConfig.copy(enableLongDistanceBooster = isChecked))
+            Toast.makeText(
+                this,
+                if (isChecked) "🔭 เปิดตัวเร่งระยะไกล 1.5 - 3.5 ม." else "🔭 ปิดตัวเร่งระยะไกล",
+                Toast.LENGTH_SHORT
+            ).show()
+        }
+
+        binding.switchMasterLivePreview.setOnCheckedChangeListener { _, isChecked ->
+            if (suppressConfigListeners) return@setOnCheckedChangeListener
+            binding.cardCalibrationPreview.visibility = if (isChecked) View.VISIBLE else View.GONE
+            persistAndReloadConfig(currentConfig.copy(showLiveCalibrationPreview = isChecked))
+            if (isChecked && binding.textureCalibrationPreview.isAvailable) {
+                bindSurfaceFromTexture(binding.textureCalibrationPreview.surfaceTexture)
+            } else if (!isChecked) {
+                AirGestureRuntimeBus.bindCalibrationPreviewSurface(null)
+            }
+        }
+    }
+
+    private fun syncAllSwitchesFromConfig() {
+        suppressConfigListeners = true
+        try {
+            // Master Hub Switches (Tab 1)
+            binding.switchMasterHandGestures.isChecked = currentConfig.enableHandGestures
+            binding.switchMasterEyeBlink.isChecked = currentConfig.enableEyeContactBlink
+            binding.switchMasterAirTap.isChecked = currentConfig.enableAirTap
+            binding.switchMasterRadialMenu.isChecked = currentConfig.enableRadialMenu
+            binding.switchMasterVoiceCommands.isChecked = currentConfig.enableVoiceCommands
+            binding.switchMasterVoiceTts.isChecked = currentConfig.enableVoiceTts
+            binding.switchMasterGeminiAi.isChecked = currentConfig.enableGeminiAi
+            binding.switchMasterDistanceBooster.isChecked = currentConfig.enableLongDistanceBooster
+            binding.switchMasterLivePreview.isChecked = currentConfig.showLiveCalibrationPreview
+
+            // Tab 2 Switches
+            binding.switchEnableHandGestures.isChecked = currentConfig.enableHandGestures
+            binding.switchVoiceCommands.isChecked = currentConfig.enableVoiceCommands
+            binding.switchVoiceTts.isChecked = currentConfig.enableVoiceTts
+            binding.switchEnableAirTap.isChecked = currentConfig.enableAirTap
+            binding.switchShowAirCursor.isChecked = currentConfig.showAirCursor
+            binding.switchEnableEyeBlink.isChecked = currentConfig.enableEyeContactBlink
+            binding.switchRequireEyeContact.isChecked = currentConfig.requireEyeContact
+
+            // Tab 3 Switches
+            binding.switchCalibrationPreview.isChecked = currentConfig.showLiveCalibrationPreview
+            binding.switchGeminiAi.isChecked = currentConfig.enableGeminiAi
+            binding.switchLongDistanceBooster.isChecked = currentConfig.enableLongDistanceBooster
+
+            // Tab 4 Switches
+            binding.switchEnableRadialMenu.isChecked = currentConfig.enableRadialMenu
+        } finally {
+            suppressConfigListeners = false
+        }
     }
 
     private fun showAiModelSelectionDialog() {
@@ -1152,6 +1307,16 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupRadialSlotsGrid() {
+        binding.switchEnableRadialMenu.setOnCheckedChangeListener { _, isChecked ->
+            if (suppressConfigListeners) return@setOnCheckedChangeListener
+            persistAndReloadConfig(currentConfig.copy(enableRadialMenu = isChecked))
+            Toast.makeText(
+                this,
+                if (isChecked) "🎡 เปิดใช้งานวงล้อเลือกแอป 360°" else "🎡 ปิดใช้งานวงล้อเลือกแอป 360°",
+                Toast.LENGTH_SHORT
+            ).show()
+        }
+
         radialSlotAdapter = RadialSlotAdapter(radialSlotManager) { clickedSlot ->
             previewTestSlotIndex = clickedSlot.slotIndex
             val rad = Math.toRadians((clickedSlot.centerAngleDegrees - 90f).toDouble())

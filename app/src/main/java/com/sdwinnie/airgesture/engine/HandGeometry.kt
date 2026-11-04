@@ -83,16 +83,16 @@ object HandGeometry {
         if (landmarks.size < 21) return false
         val wrist = landmarks[WRIST]
         val rawScale = dist2D(wrist, landmarks[MIDDLE_MCP])
-        if (rawScale < 0.048f || rawScale > 0.62f) return false
+        if (rawScale < 0.035f || rawScale > 0.75f) return false
 
         val palmWidth = dist2D(landmarks[INDEX_MCP], landmarks[PINKY_MCP])
         val widthRatio = palmWidth / rawScale
-        if (widthRatio < 0.32f || widthRatio > 1.75f) return false
+        if (widthRatio < 0.28f || widthRatio > 1.85f) return false
 
-        // Ensure no fingertip teleports beyond anatomically possible 3.2x palm length
+        // Ensure no fingertip teleports beyond anatomically possible 3.35x palm length
         val tips = intArrayOf(THUMB_TIP, INDEX_TIP, MIDDLE_TIP, RING_TIP, PINKY_TIP)
         for (tipIdx in tips) {
-            if (dist2D(landmarks[tipIdx], wrist) > rawScale * 3.25f) return false
+            if (dist2D(landmarks[tipIdx], wrist) > rawScale * 3.35f) return false
         }
         return true
     }

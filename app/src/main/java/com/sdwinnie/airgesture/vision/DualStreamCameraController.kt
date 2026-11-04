@@ -420,11 +420,15 @@ class DualStreamCameraController(
                     null
                 }
 
-                val handFrame = handTracker.detectSingleHand(
-                    isotropicBitmap = volatileBitmap,
-                    isMirroredSelfie = isFrontFacing,
-                    frameTimestampMs = nowMs
-                )
+                val handFrame = if (activeConfig.enableHandGestures) {
+                    handTracker.detectSingleHand(
+                        isotropicBitmap = volatileBitmap,
+                        isMirroredSelfie = isFrontFacing,
+                        frameTimestampMs = nowMs
+                    )
+                } else {
+                    null
+                }
 
                 if (handFrame != null || eyeFrame?.isFaceDetected == true) {
                     lastActivityDetectedMs = nowMs
